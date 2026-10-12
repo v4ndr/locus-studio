@@ -85,7 +85,7 @@ function Row({ r, kind, open, onOpen, onDone, muted }: { r: InboxRow; kind: Inbo
     </>
   );
   const cls = cn("flex w-full items-start gap-3 rounded-[12px] px-3 py-3 text-left text-ink hover:bg-hover hover:text-ink");
-  if (kind !== "messages" && r.href) return <Link href={r.href} className={cls}>{head}<I.chevron /></Link>;
+  if (kind !== "messages" && r.href) return <Link href={`${r.href}?from=${kind}`} className={cls}>{head}<I.chevron /></Link>;
   return (
     <div className={cn("rounded-[12px]", open && "bg-paper ring-1 ring-line")}>
       <button type="button" onClick={onOpen} aria-expanded={open} className={cls}>{head}<I.chevron open={open} /></button>

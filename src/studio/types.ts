@@ -6,7 +6,9 @@ export interface AgendaSlot { patientId: string; heure: string; nom: string; mot
 export interface PatientRef { id: string; nom: string; prenom: string; nomUsage: string; initials: string; hue: number; age: number; naissance: string; profession?: string; ins: string; famille?: string; rdv?: string }
 export interface HomeData { praticien: { initials: string; nom: string }; agenda: AgendaSlot[]; patients: PatientRef[]; courriersNonLus: number; bioNonLues: number; messagesNonLus: number }
 
-export interface Note { dot: "accent" | "warn" | "gray"; texte: string; tag: string }
+/** Ce qu'un clic sur une ligne « à noter » déclenche : ouvrir le document source, lancer un raccourci préparé, poser la question à Locus, ou dérouler une fiche du dossier. */
+export type NoteAction = { type: "doc"; href: string } | { type: "cmd"; chipId: string } | { type: "ask"; texte: string } | { type: "fiche"; section: "antecedents" | "allergies" | "traitements" | "suivis" | "depistages" };
+export interface Note { dot: "accent" | "warn" | "gray"; texte: string; tag: string; action: NoteAction }
 export interface Fiche { k: string; v?: string; muted?: boolean }
 export interface PatientView {
   ref: PatientRef;
@@ -30,6 +32,8 @@ export interface DocLine { k: string; v?: string; flag?: "normal" | "bas" | "hau
 export interface DocView {
   id: string;
   patientId: string;
+  /** Le type d'enregistrement d'origine : dit de quelle boîte ce document peut venir. */
+  source: "document" | "lab" | "prescription" | "sick-leave" | "letter" | "encounter";
   type: DocRow["type"];
   titre: string;
   date: string;

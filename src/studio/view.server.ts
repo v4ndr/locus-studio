@@ -6,7 +6,8 @@ import { ageAt, toPatientEhr } from "@/locus/ehr";
 import { now, day } from "@/data/clock";
 import { fmtTime, fmtRelative, initials } from "@/lib/format";
 import type { Dossier, Proposal, LabReport, ClinicalDocument, Prescription, SickLeave, Letter, Encounter } from "@/domain/types";
-import type { HomeData, PatientRef, PatientView, Note, Fiche, Chip, DocRow, AgendaSlot, DocView, DocLine, InboxKind, InboxRow, InboxView, Urgence } from "./types";
+import type { HomeData, PatientRef, PatientView, Note, NoteAction, Fiche, Chip, DocRow, AgendaSlot, DocView, DocLine, InboxKind, InboxRow, InboxView, Urgence } from "./types";
+import { norm } from "@/lib/norm";
 
 const PRATICIEN = { initials: `${DR_LAURENT.prenom[0]}${DR_LAURENT.nom[0]}`, nom: `Dr ${DR_LAURENT.prenom} ${DR_LAURENT.nom}` };
 
@@ -47,11 +48,6 @@ export function patientView(id: string): PatientView | undefined {
   const letters = recordsOf(d, "letter");
   const encs = recordsOf(d, "encounter");
 
-  const aNoter: Note[] = [];
-  for (const x of proposals.filter((x) => x.action === "signaler").slice(0, 2)) aNoter.push({ dot: "accent", texte: x.titre, tag: "nouveau" });
-  for (const e of briefing?.echeances.slice(0, 2) ?? []) aNoter.push({ dot: "warn", texte: e.libelle.replace(/ — .*$/, ""), tag: "dû" });
-  for (const a of allergies.slice(0, 1)) aNoter.push({ dot: "gray", texte: `${a.substance}${a.reaction ? ` · ${a.reaction.toLowerCase()}` : ""}`, tag: "à savoir" });
-  if (aNoter.length === 0 && sum?.enCeMoment[0]) aNoter.push({ dot: "gray", texte: sum.enCeMoment[0], tag: "à savoir" });
 
   const yr = (iso?: string) => iso?.slice(0, 4);
   const antecedents: Fiche[] = problems.filter((x) => (x.categorie === "medical" && x.evolution !== "chronique") || x.categorie === "chirurgical" || x.categorie === "gyneco-obstetrical").map((x) => ({ k: x.libelle, v: yr(x.depuis) }));
@@ -81,7 +77,7 @@ export function patientView(id: string): PatientView | undefined {
       default: return null;
     }
   };
-  for (const x of proposals) { const c = chipOf(x); if (c && chips.length < 3) chips.push(c); }
+  for (const x of proposals) { const c = chipOf(x); if (c) chips.push(c); }
 
   const rows: DocRow[] = [
     ...docs.map((x) => ({ id: x.id, date: fr(x.dateDocument), type: (x.type === "cr-imagerie" ? "Imagerie" : "Courrier") as DocRow["type"], titre: x.titre, de: x.auteur?.split(",")[0] ?? x.canal })),
@@ -91,6 +87,30 @@ export function patientView(id: string): PatientView | undefined {
     ...letters.map((x) => ({ id: x.id, date: fr(x.date), type: "Courrier" as const, titre: x.titre, de: PRATICIEN.nom })),
     ...encs.map((x) => ({ id: x.id, date: fr(x.date), type: "Consultation" as const, titre: x.note.motifs.join(", "), de: PRATICIEN.nom })),
   ].sort((a, b) => b.date.split("/").reverse().join("").localeCompare(a.date.split("/").reverse().join("")));
+
+  /* « À noter » : chaque ligne sait où elle mène. */
+  const STOP = new Set(["rappel", "renouvellement", "renouveler", "bilan", "prise", "sang", "dans", "pour", "avec", "mail", "semaine", "semaines", "mois", "jours", "controle", "resultat", "resultats", "patient", "patiente", "demande", "compte", "rendu", "courrier", "avant", "apres", "depuis", "vers", "faire", "voir"]);
+  const words = (t: string) => new Set(norm(t).split(/[^a-z0-9]+/).filter((w) => w.length >= 4 && !STOP.has(w)));
+  const overlap = (a: string, b: string) => { const A = words(a), B = words(b); let n = 0; for (const w of A) if (B.has(w)) n++; return n; };
+  const recent = rows.filter((r) => r.type === "Courrier" || r.type === "Imagerie" || r.type === "Biologie");
+  const docHref = (docId: string) => `/p/${id}/documents/${docId}?from=dossier`;
+  const sourceOf = (x: Proposal): NoteAction => {
+    const rid = x.declencheur.recordId ?? x.provenance.derivedFrom?.find((r) => rows.some((row) => row.id === r));
+    if (rid && rows.some((r) => r.id === rid)) return { type: "doc", href: docHref(rid) };
+    const best = recent.map((r) => ({ r, n: overlap(`${x.titre} ${x.justification}`, `${r.titre} ${r.type}`) })).sort((a, b) => b.n - a.n)[0];
+    if (best && best.n >= 1) return { type: "doc", href: docHref(best.r.id) };
+    return { type: "ask", texte: x.titre };
+  };
+  const chipFor = (libelle: string): Chip | undefined => chips.map((c) => ({ c, n: overlap(libelle, `${c.label} ${c.title}`) })).filter((x) => x.n >= 1).sort((a, b) => b.n - a.n)[0]?.c;
+  const aNoter: Note[] = [];
+  for (const x of proposals.filter((x) => x.action === "signaler").slice(0, 2)) aNoter.push({ dot: "accent", texte: x.titre, tag: "nouveau", action: sourceOf(x) });
+  for (const e of briefing?.echeances.slice(0, 2) ?? []) {
+    const lib = e.libelle.replace(/ — .*$/, "");
+    const c = chipFor(lib);
+    aNoter.push({ dot: "warn", texte: lib, tag: "dû", action: c ? { type: "cmd", chipId: c.id } : /vaccin|rappel|dtp|dtca|grippe|covid|depist|mammo|hpv|frottis|fit|colorectal/i.test(lib) ? { type: "fiche", section: "depistages" } : { type: "ask", texte: `${lib} : que faut-il préparer ?` } });
+  }
+  for (const a of allergies.slice(0, 1)) aNoter.push({ dot: "gray", texte: `${a.substance}${a.reaction ? ` · ${a.reaction.toLowerCase()}` : ""}`, tag: "à savoir", action: { type: "fiche", section: "allergies" } });
+  if (aNoter.length === 0 && sum?.enCeMoment[0]) aNoter.push({ dot: "gray", texte: sum.enCeMoment[0], tag: "à savoir", action: { type: "fiche", section: "suivis" } });
 
   const slots = todayAppointments();
   const i = slots.findIndex((s) => s.dossier.patient.id === id);
@@ -140,7 +160,7 @@ export function documentView(id: string, docId: string): DocView | undefined {
   const rec = d.records.find((r) => r.id === docId);
   if (!rec) return undefined;
   const nav = { prev: rows[i - 1] ? { id: rows[i - 1].id, titre: rows[i - 1].titre } : undefined, next: rows[i + 1] ? { id: rows[i + 1].id, titre: rows[i + 1].titre } : undefined };
-  const base = { id: docId, patientId: id, type: row.type, titre: row.titre, date: row.date, de: row.de, ...nav };
+  const base = { id: docId, patientId: id, source: rec.kind as DocView["source"], type: row.type, titre: row.titre, date: row.date, de: row.de, ...nav };
   const sig = (s?: { par: string; le: string }) => (s ? [{ k: "Signé", v: `${fr(s.le)} · e-CPS` }] : [{ k: "Signature", v: "non signée" }]);
   switch (rec.kind) {
     case "document": {
