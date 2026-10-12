@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import type { PatientView, DocRow } from "@/studio/types";
 import { Header, Omni, I } from "./chrome";
+import { ComposeCard, useCompose } from "./compose";
 import { norm } from "@/lib/norm";
 import { cn } from "@/lib/cn";
 
@@ -16,6 +17,7 @@ export function DocumentsView({ v, praticien }: { v: PatientView; praticien: { i
 
 function Inner({ v, praticien }: { v: PatientView; praticien: { initials: string } }) {
   const sp = useSearchParams();
+  const composer = useCompose();
   // Prérendu statique : le filtre de l'URL s'applique après l'hydratation, pour ne pas diverger du HTML servi.
   const [type, setType] = React.useState<string>("Tous");
   const fromUrl = sp.get("type");
@@ -48,7 +50,7 @@ function Inner({ v, praticien }: { v: PatientView; praticien: { initials: string
           {rows.length === 0 && <div className="px-4 py-3 text-sm text-muted-2">Aucun document.</div>}
         </div>
       </main>
-      <Omni placeholder="« Toutes les TSH depuis 2020 », « renvoie le CR du scanner au kiné »…" suggestions={[{ k: "chercher", t: "Toutes les TSH depuis 2020, en courbe" }, { k: "envoyer", t: "Renvoie le compte rendu du scanner au kiné" }, { k: "résumer", t: "Résume les courriers du cardiologue en trois lignes" }, { k: "dmp", t: "Partage la dernière ordonnance sur Mon espace santé" }]} />
+      <Omni placeholder="« Toutes les TSH depuis 2020 », « renvoie le CR du scanner au kiné »…" onSubmit={(t) => composer.run({ texte: t, patientId: v.ref.id, ecran: "documents" })} suggestions={[{ k: "chercher", t: "Toutes les TSH depuis 2020, en courbe" }, { k: "envoyer", t: "Renvoie le compte rendu du scanner au kiné" }, { k: "résumer", t: "Résume les courriers du cardiologue en trois lignes" }, { k: "dmp", t: "Partage la dernière ordonnance sur Mon espace santé" }]}>{composer.open && <ComposeCard state={composer.state} onClose={composer.reset} />}</Omni>
     </div>
   );
 }

@@ -1,0 +1,78 @@
+import "server-only";
+import Anthropic from "@anthropic-ai/sdk";
+import { SYSTEM, buildContext } from "./context";
+import { TOOLS, executeTool, type ToolCtx } from "./tools";
+import { simulateCompose } from "./simulation";
+import type { ComposeEvent, ComposeInput, ComposePlan } from "./contract";
+
+/**
+ * La boucle du composer. Un modèle frontière (Claude) reçoit la demande et le
+ * contexte, appelle les outils du LGC — Locus (locus-core) en est un — et
+ * termine par une synthèse courte. Le navigateur reçoit les étapes, les
+ * actions au fil de l'eau, puis le plan complet.
+ *
+ * Sans ANTHROPIC_API_KEY : un composeur à règles produit le même plan, pour
+ * que le produit soit entier à sec.
+ */
+
+export const MODEL = "claude-sonnet-5-5";
+const MAX_TOURS = 6;
+
+export function composeMode(): "claude" | "simulation" {
+  return process.env.ANTHROPIC_API_KEY ? "claude" : "simulation";
+}
+
+export async function* compose(input: ComposeInput): AsyncGenerator<ComposeEvent> {
+  if (composeMode() === "simulation") { yield* simulateCompose(input); return; }
+
+  const client = new Anthropic();
+  const { contexte } = buildContext(input);
+  const queue: ComposeEvent[] = [];
+  const ctx: ToolCtx = { input, actions: [], references: [], locus: 0, patientId: input.patientId, emit: (ev) => queue.push(ev) };
+  const messages: Anthropic.MessageParam[] = [{ role: "user", content: `${contexte}\n\n## Demande du médecin\n${input.texte}` }];
+  let synthese = "";
+
+  yield { step: "reflexion", titre: "Je lis le dossier et la demande" };
+  for (let tour = 0; tour < MAX_TOURS; tour++) {
+    const stream = client.beta.messages.stream({
+      model: MODEL,
+      max_tokens: 8000,
+      betas: ["server-side-fallback-2026-07-01"],
+      fallbacks: "default",
+      system: [{ type: "text", text: SYSTEM, cache_control: { type: "ephemeral" } }],
+      tools: TOOLS.map((t) => ({ ...t, eager_input_streaming: true })),
+      messages,
+      output_config: { effort: "low" },
+    });
+    let message: Anthropic.Beta.BetaMessage;
+    try {
+      message = await stream.finalMessage();
+    } catch (e) {
+      yield { step: "error", detail: e instanceof Anthropic.APIError ? `Claude a répondu ${e.status} : ${e.message}` : e instanceof Error ? e.message : String(e) };
+      return;
+    }
+    const texts = message.content.filter((b): b is Anthropic.Beta.BetaTextBlock => b.type === "text").map((b) => b.text).join("\n").trim();
+    if (texts) { synthese = texts; yield { step: "texte", texte: texts }; }
+    if (message.stop_reason === "refusal") { yield { step: "error", detail: "Claude a décliné cette demande." }; return; }
+    if (message.stop_reason === "max_tokens") { yield { step: "error", detail: "Réponse tronquée (max_tokens)." }; return; }
+    const uses = message.content.filter((b): b is Anthropic.Beta.BetaToolUseBlock => b.type === "tool_use");
+    if (message.stop_reason !== "tool_use" || uses.length === 0) break;
+
+    messages.push({ role: "assistant", content: message.content as unknown as Anthropic.ContentBlockParam[] });
+    const results: Anthropic.ToolResultBlockParam[] = [];
+    for (const u of uses) {
+      const inp = (u.input && typeof u.input === "object" ? u.input : {}) as Record<string, unknown>;
+      yield { step: "reflexion", titre: LABEL[u.name] ?? u.name };
+      let out: string;
+      try { out = await executeTool(u.name, inp, ctx); } catch (e) { out = `Erreur de l'outil : ${e instanceof Error ? e.message : String(e)}`; }
+      while (queue.length) yield queue.shift()!;
+      results.push({ type: "tool_result", tool_use_id: u.id, content: out });
+    }
+    messages.push({ role: "user", content: results });
+  }
+
+  const plan: ComposePlan = { synthese: synthese || (ctx.actions.length ? "Prêt à valider." : "Je n'ai rien trouvé à faire avec cette demande."), actions: ctx.actions, references: ctx.references, via: "claude", modele: MODEL, locus: ctx.locus };
+  yield { step: "done", plan };
+}
+
+const LABEL: Record<string, string> = { locus_retrieve: "Je consulte Locus", lire_document: "Je lis le document", proposer_ordonnance: "Je rédige l'ordonnance", proposer_rdv: "Je cherche un créneau", proposer_message: "Je rédige le message", proposer_courrier: "Je rédige le courrier", proposer_arret: "Je prépare l'arrêt", inscrire_au_dossier: "J'inscris au dossier", ouvrir: "J'ouvre l'écran" };

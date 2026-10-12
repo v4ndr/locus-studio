@@ -1,0 +1,77 @@
+import "server-only";
+import { getDossier, DOSSIERS, recordsOf, displayName, todayAppointments } from "@/data";
+import { DR_LAURENT, CABINET } from "@/data/cabinet";
+import { now, TODAY } from "@/data/clock";
+import { toPatientEhr, ageAt } from "@/locus/ehr";
+import { patientView, documentView, inboxView } from "@/studio/view.server";
+import { fmtTime } from "@/lib/format";
+import type { ComposeInput } from "./contract";
+
+/**
+ * Le contexte que le composer donne au modèle : qui parle, où l'on est,
+ * ce que le dossier dit (la même projection `patient_ehr` que locus-core
+ * reçoit), ce qui est déjà préparé, et le document ouvert s'il y en a un.
+ * Court, structuré, sans roman.
+ */
+
+export const SYSTEM = `Tu es Locus, l'agent du cabinet de médecine générale « ${CABINET.nom} » (${CABINET.adresse}). Tu travailles pour le Dr ${DR_LAURENT.prenom} ${DR_LAURENT.nom}, médecin généraliste. Nous sommes le ${TODAY}.
+
+Le médecin te parle depuis la ligne de commande du logiciel (⌘K). Tu ne rédiges pas de réponse : tu COMPOSES DES ACTIONS dans le logiciel, avec les outils fournis, et tu termines par une synthèse d'une à trois phrases. Le médecin valide d'un geste ; rien ne part sans sa signature.
+
+Règles :
+- Une demande d'action (ordonnance, rendez-vous, message, courrier, arrêt, inscription au dossier, ouvrir quelque chose) = un ou plusieurs appels d'outils. Pas de prose à la place.
+- Une question clinique = d'abord \`locus_retrieve\` (le moteur de recommandations du cabinet, sourcé HAS/ANSM/SPF/RCP), puis une synthèse courte avec renvois [n], puis les actions que la réponse implique (un contrôle biologique, un rendez-vous, une inscription au dossier) si elles sont évidentes.
+- Tu t'appuies strictement sur le dossier fourni. Tu n'inventes ni fait patient, ni résultat, ni date. Ce que tu ne sais pas, tu le dis en une phrase.
+- Tu respectes les allergies et intolérances du dossier. Tu signales une interaction ou une contre-indication plutôt que de la contourner en silence.
+- Posologies et durées en français courant (« 1 cp matin et soir », « 3 mois »), DCI en minuscules.
+- Un message au patient : simple, chaleureux, deux à quatre phrases, signé « Dr Vandepitterie ». Un courrier à un confrère : confraternel, les éléments utiles du dossier, pas de bavardage.
+- Depuis l'accueil (aucun patient ouvert), identifie le patient dans la liste fournie, utilise \`ouvrir\` vers son dossier, puis compose ce qui est demandé avec son identifiant.
+- Quand plusieurs outils sont nécessaires, appelle-les en parallèle dans le même tour.
+- Synthèse finale : une à trois phrases, en français, sans titre ni liste. Pas de résumé des outils appelés.`;
+
+function fr(iso: string) { const [y, m, d] = iso.slice(0, 10).split("-"); return `${d}/${m}/${y}`; }
+
+export function buildContext(input: ComposeInput): { contexte: string; patientEhr?: string } {
+  const lines: string[] = [];
+  const d = input.patientId ? getDossier(input.patientId) : undefined;
+  const ehr = d ? toPatientEhr(d, now()) : undefined;
+
+  if (d) {
+    const p = d.patient;
+    lines.push(`## Patient ouvert\nid: ${p.id} · ${displayName(p)} · ${ageAt(p.ins.dateNaissance, now())} ans · ${p.ins.sexe} · né(e) le ${fr(p.ins.dateNaissance)}${p.vie?.profession ? ` · ${p.vie.profession}` : ""}`);
+    lines.push(`## Dossier (patient_ehr)\n${ehr}`);
+    const v = patientView(p.id);
+    if (v) {
+      if (v.rdv) lines.push(`## Rendez-vous du jour\n${v.rdv.heure} · ${v.rdv.motif}`);
+      if (v.prose) lines.push(`## Synthèse de Locus avant la rencontre\n${v.prose.replace(/==|\*\*/g, "")}`);
+      if (v.aNoter.length) lines.push(`## À noter\n${v.aNoter.map((n) => `- ${n.texte} (${n.tag})`).join("\n")}`);
+      if (v.chips.length) lines.push(`## Déjà préparé par Locus (propositions en attente)\n${v.chips.map((c) => `- ${c.label} — ${c.title}`).join("\n")}`);
+      const docs = v.documents.slice(0, 12);
+      if (docs.length) lines.push(`## Documents récents (id · date · type · titre · émetteur)\n${docs.map((r) => `- ${r.id} · ${r.date} · ${r.type} · ${r.titre} · ${r.de}`).join("\n")}`);
+      const meds = recordsOf(d, "medication").filter((m) => m.status === "actif");
+      if (meds.length) lines.push(`## Traitements actifs (pour un renouvellement)\n${meds.map((m) => `- ${m.dci}${m.dosage ? " " + m.dosage : ""} · ${m.posologie} · ${m.type}${m.dernierRenouvellement ? ` · dernier renouvellement ${fr(m.dernierRenouvellement)}` : ""}`).join("\n")}`);
+    }
+  }
+
+  if (input.ecran === "document" && input.patientId && input.docId) {
+    const doc = documentView(input.patientId, input.docId);
+    if (doc) {
+      const body = [doc.lecture ? `Lecture de Locus : ${doc.lecture.resume}${doc.lecture.points.length ? " Points : " + doc.lecture.points.join(" ; ") : ""}` : "", doc.lignes ? doc.lignes.map((l) => `- ${l.k} : ${l.v ?? ""}${l.flag && l.flag !== "normal" ? ` (${l.flag})` : ""}${l.ref ? ` [norme ${l.ref}]` : ""}${l.precedent ? ` [précédent ${l.precedent}]` : ""}`).join("\n") : "", doc.note ? doc.note.map((n) => `${n.k} : ${n.v}`).join("\n") : "", doc.corps ?? ""].filter(Boolean).join("\n");
+      lines.push(`## Document ouvert\nid: ${doc.id} · ${doc.type} · ${doc.date} · ${doc.titre} · ${doc.de}\n${body}`);
+    }
+  }
+
+  if (input.ecran === "home" || !d) {
+    const slots = todayAppointments();
+    lines.push(`## Agenda du jour\n${slots.map((s) => `- ${fmtTime(s.appointment.debut)} · ${s.dossier.patient.id} · ${displayName(s.dossier.patient)} · ${s.appointment.motif}`).join("\n")}`);
+    lines.push(`## Patientèle (id · nom · naissance)\n${DOSSIERS.map((x) => `- ${x.patient.id} · ${displayName(x.patient)} · ${fr(x.patient.ins.dateNaissance)}`).join("\n")}`);
+  }
+
+  if (input.ecran === "inbox" && input.boite) {
+    const box = inboxView(input.boite);
+    lines.push(`## Boîte « ${input.boite} » (non lus d'abord ; patientId · de · objet · urgence · résumé)\n${box.rows.slice(0, 14).map((r) => `- ${r.id} · ${r.patient.id} · ${r.patient.nom} · ${r.de} · ${r.titre} · ${r.urgence}${r.nonLu ? " · non lu" : ""}${r.resume ? ` · ${r.resume}` : ""}`).join("\n")}`);
+  }
+
+  lines.push(`## Écran\n${input.ecran}`);
+  return { contexte: lines.join("\n\n"), patientEhr: ehr };
+}

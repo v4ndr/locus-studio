@@ -4,11 +4,8 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { PatientView, Chip, NoteAction } from "@/studio/types";
 import { Header, Omni, ResultCard, CtaLink, I, Rich } from "./chrome";
-import { Md } from "../md";
-import { readNdjson } from "@/locus/ndjson";
-import type { StudioStreamEvent, PublicRetrieve } from "@/locus/contract";
+import { ComposeCard, useCompose } from "./compose";
 import { useRencontre } from "@/store/rencontre";
-import { norm } from "@/lib/norm";
 import { cn } from "@/lib/cn";
 
 /** L'overview du dossier : une phrase, trois choses à noter, et tout le reste à un clic. */
@@ -18,25 +15,23 @@ export function DossierView({ v, praticien }: { v: PatientView; praticien: { ini
   const [open, setOpen] = React.useState(false);
   const [done, setDone] = React.useState<string | null>(null);
   const chip = v.chips.find((c) => c.id === me.cmd);
-  const question = me.cmdQuestion ?? null;
+  const composer = useCompose();
 
   /** Un clic sur « à noter » : le document source, le raccourci préparé, la question à Locus, ou la fiche. */
   function act(a: NoteAction) {
     switch (a.type) {
       case "doc": router.push(a.href); return;
       case "cmd": dispatch({ type: "cmd", patientId: v.ref.id, cmd: a.chipId }); return;
-      case "ask": dispatch({ type: "cmd", patientId: v.ref.id, cmd: null, question: a.texte }); return;
+      case "ask": dispatch({ type: "cmd", patientId: v.ref.id, cmd: null }); composer.run({ texte: a.texte, patientId: v.ref.id, ecran: "dossier" }); return;
       case "fiche": setOpen(true); setTimeout(() => document.getElementById(`fiche-${a.section}`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 50); return;
     }
   }
 
+  /** Tout ce qu'on tape dans ⌘K part au composer : un plan d'actions revient. Un raccourci déjà préparé prend le pas s'il correspond mot pour mot. */
   function ask(text: string) {
-    const t = norm(text);
-    const by = (re: RegExp) => v.chips.find((c) => re.test(norm(c.tool)) || re.test(norm(c.label)));
-    const hit = /rdv|rendez|revoir|dans \d+ (sem|jour|mois)/.test(t) ? by(/agenda/) : /mail|message|ecris|rappel|previens/.test(t) ? by(/messagerie/) : /ordo|renouvel|prescri|levothyrox/.test(t) ? by(/ordonnance/) : /courrier|adresse|lettre/.test(t) ? by(/courrier/) : /consult|rencontre/.test(t) ? null : undefined;
-    if (/consult|rencontre/.test(t)) { router.push(`/p/${v.ref.id}/rencontre`); return; }
-    if (hit) { dispatch({ type: "cmd", patientId: v.ref.id, cmd: hit.id }); return; }
-    dispatch({ type: "cmd", patientId: v.ref.id, cmd: null, question: text });
+    if (/^(consult|rencontre)/i.test(text.trim())) { router.push(`/p/${v.ref.id}/rencontre`); return; }
+    dispatch({ type: "cmd", patientId: v.ref.id, cmd: null });
+    composer.run({ texte: text, patientId: v.ref.id, ecran: "dossier" });
   }
 
   return (
@@ -86,10 +81,10 @@ export function DossierView({ v, praticien }: { v: PatientView; praticien: { ini
           </div>
         )}
       </main>
-      <Omni placeholder="Ordo, rendez-vous, mail, courrier, question… tout." onSubmit={ask} suggestions={exemples(v)} chips={v.chips.slice(0, 3).map((c) => ({ id: c.id, label: c.label, onClick: () => dispatch({ type: "cmd", patientId: v.ref.id, cmd: c.id }) }))} cta={<CtaLink href={`/p/${v.ref.id}/rencontre`}>+ Consultation</CtaLink>}>
+      <Omni placeholder="Ordo, rendez-vous, mail, courrier, question… tout." onSubmit={ask} suggestions={exemples(v)} chips={v.chips.slice(0, 3).map((c) => ({ id: c.id, label: c.label, onClick: () => { composer.reset(); dispatch({ type: "cmd", patientId: v.ref.id, cmd: c.id }); } }))} cta={<CtaLink href={`/p/${v.ref.id}/rencontre`}>+ Consultation</CtaLink>}>
         {chip && !done && <ResultCard tool={chip.tool} title={chip.title} body={chip.body.replace(/\[\d+\]/g, "")} cta={chip.cta} onCta={() => { setDone(chip.id); setTimeout(() => { dispatch({ type: "cmd", patientId: v.ref.id, cmd: null }); setDone(null); }, 1400); }} onClose={() => dispatch({ type: "cmd", patientId: v.ref.id, cmd: null })} />}
         {chip && done === chip.id && <div className="flex items-center gap-2.5 rounded-[14px] border border-line bg-paper px-[18px] py-3.5 text-sm text-ok"><I.check />{chip.cta === "Envoyer" ? "Envoyé." : chip.cta === "Réserver" ? "Réservé, SMS envoyé." : "Signé et transmis."}</div>}
-        {question && <LocusCard patientId={v.ref.id} question={question} onClose={() => dispatch({ type: "cmd", patientId: v.ref.id, cmd: null })} />}
+        {composer.open && <ComposeCard state={composer.state} onClose={composer.reset} />}
       </Omni>
     </div>
   );
@@ -114,39 +109,4 @@ function Card({ id, title, children }: { id?: string; title: string; children: R
 }
 function Li({ k, v, muted, warn }: { k: string; v?: string; muted?: boolean; warn?: boolean }) {
   return <div className="li"><span className={cn("flex-1", muted && "text-muted-2")}>{k}</span>{v && <span className="d" style={warn ? { color: "var(--warn)" } : undefined}>{v}</span>}</div>;
-}
-
-/** Une question : Locus répond dans la carte, avec les sources. */
-export function LocusCard({ patientId, question, onClose }: { patientId?: string; question: string; onClose: () => void }) {
-  const [answer, setAnswer] = React.useState<string>();
-  const [res, setRes] = React.useState<PublicRetrieve>();
-  const [err, setErr] = React.useState<string>();
-  const [steps, setSteps] = React.useState<string[]>([]);
-  React.useEffect(() => {
-    let alive = true;
-    setAnswer(undefined); setRes(undefined); setErr(undefined); setSteps([]);
-    (async () => {
-      try {
-        const r = await fetch("/api/locus/retrieve", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ query: question, patientId, mode: "rapide" }) });
-        if (!r.ok || !r.body) throw new Error(`BFF ${r.status}`);
-        for await (const ev of readNdjson<StudioStreamEvent>(r.body)) {
-          if (!alive) return;
-          if (ev.step === "reflexion") setSteps((s) => [...s, ev.titre]);
-          else if (ev.step === "answer") setAnswer(ev.answer);
-          else if (ev.step === "done") { setRes(ev.payload); setAnswer(ev.payload.answer); }
-          else if (ev.step === "error") setErr(ev.detail);
-        }
-      } catch (e) { if (alive) setErr(e instanceof Error ? e.message : String(e)); }
-    })();
-    return () => { alive = false; };
-  }, [question, patientId]);
-  const n = (res?.docs.length ?? 0) + (res?.rcp.length ?? 0);
-  return (
-    <ResultCard tool="locus · répondre" title={question} cta="Verser au dossier" secondary="Préciser" onCta={onClose} onClose={onClose}>
-      {!answer && !err && <div className="text-sm text-muted-2">{steps[steps.length - 1] ?? "Locus lit le dossier et les sources…"}</div>}
-      {err && <div className="text-sm text-rec-text">{err}</div>}
-      {answer && <div className="max-h-[40vh] overflow-y-auto"><Md text={answer} /></div>}
-      {res && n > 0 && <div className="text-xs text-muted-2">{n} source{n > 1 ? "s" : ""} : {res.docs.slice(0, 3).map((d) => d.title ?? d.id).join(" · ")}{res.rcp.length ? ` · RCP ${res.rcp.map((x) => x.dci).join(", ")}` : ""} · {res.via === "locus-core" ? `locus-core ${res.coreVersion}` : "simulation"}</div>}
-    </ResultCard>
-  );
 }
