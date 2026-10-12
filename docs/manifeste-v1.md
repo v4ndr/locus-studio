@@ -1,6 +1,6 @@
 # Manifeste, première version (15 prises de parti)
 
-*Conservé pour mémoire. La deuxième version (sept ruptures) est dans `src/data/manifeste.ts` et sur `/manifeste`. Celle-ci décrivait un meilleur LGC ; l'autre décrit l'avenir.*
+*Conservé pour mémoire. La deuxième version (sept ruptures) est dans `src/data/manifeste.ts`. Celle-ci décrivait un meilleur LGC ; l'autre décrit l'avenir.*
 
 ## 1. L'écran d'accueil est la journée préparée, pas l'agenda.
 

@@ -24,13 +24,13 @@ export function ActionsView({ v, praticien }: { v: PatientView; praticien: { ini
   });
   const todo = docs.filter((d) => d.statut === "relire" || d.statut === "question").length;
   const label = (s: string) => ({ pret: "prêt", relire: "à relire", question: "1 question", attente: "en attente" }[s] ?? s);
-  const color = (s: string) => (s === "pret" ? "#1F6B3A" : s === "attente" ? "#6B6B66" : "#A35400");
+  const color = (s: string) => (s === "pret" ? "var(--ok)" : s === "attente" ? "var(--muted-2)" : "var(--warn)");
 
   return (
     <div className="flex min-h-dvh flex-col">
       <Header praticien={praticien} patient={{ id: v.ref.id, nom: v.ref.nom, initials: v.ref.initials }} back={`/p/${v.ref.id}/rencontre`} />
-      <main className="mx-auto flex w-full max-w-[720px] flex-1 flex-col gap-6 px-6 pb-8 pt-14">
-        <h1 className="m-0 text-[26px] font-medium tracking-[-.02em]">{docs.length} document{docs.length > 1 ? "s" : ""} prêt{docs.length > 1 ? "s" : ""}{todo ? ` · ${todo} à regarder` : ""}</h1>
+      <main className="mx-auto flex w-full max-w-[720px] flex-1 flex-col gap-6 px-4 pb-8 pt-8 sm:px-6 sm:pt-14">
+        <h1 className="m-0 text-[22px] font-medium sm:text-[26px] tracking-[-.02em]">{docs.length} document{docs.length > 1 ? "s" : ""} prêt{docs.length > 1 ? "s" : ""}{todo ? ` · ${todo} à regarder` : ""}</h1>
         {r.question && !answer && (
           <div className="flex flex-col gap-3 rounded-[14px] bg-accent-soft-2 px-5 py-[18px]">
             <span className="text-[15px]">{r.question.texte}</span>
@@ -52,7 +52,7 @@ export function ActionsView({ v, praticien }: { v: PatientView; praticien: { ini
                 {isOpen && (
                   <div className="flex flex-col px-4 pb-4 pt-1 md:pl-[58px]">
                     {d.fields.map((f, i) => <div key={i} className="flex gap-4 border-t border-soft py-2.5 text-sm leading-[1.45]"><span className="w-[110px] shrink-0 text-muted-2">{f.k}</span><span className="flex-1">{f.v}</span></div>)}
-                    <span className="pt-2.5 text-xs" style={{ color: "#1A4DFF" }}>Voir la phrase dictée · ouvrir le document</span>
+                    <span className="pt-2.5 text-xs" style={{ color: "var(--accent)" }}>Voir la phrase dictée · ouvrir le document</span>
                   </div>
                 )}
               </div>
@@ -60,7 +60,7 @@ export function ActionsView({ v, praticien }: { v: PatientView; praticien: { ini
           })}
         </section>
       </main>
-      <Omni placeholder="« Ajoute un bon de transport », « passe la kiné à domicile »…" cta={<CtaLink href={`/p/${v.ref.id}/signature`}>Signer <Kbd dark>⌘⏎</Kbd></CtaLink>} />
+      <Omni placeholder="« Ajoute un bon de transport », « passe la kiné à domicile »…" suggestions={[{ k: "ajouter", t: "Ajoute un bon de transport assis" }, { k: "modifier", t: "Passe la kiné à domicile, 10 séances" }, { k: "retirer", t: "Retire le courrier, je l'appellerai" }, { k: "ordo", t: "Ajoute du paracétamol 1 g si douleur" }]} cta={<CtaLink href={`/p/${v.ref.id}/signature`}>Signer <Kbd dark>⌘⏎</Kbd></CtaLink>} />
     </div>
   );
 }

@@ -63,7 +63,7 @@ const proposals = [
 ];
 
 const summary = rec("summary", ID, P.agentValide(0.9, day(-30)), {
-  enUneLigne: "54 ans, hypothyroïdie substituée, cystites récidivantes, ménopausée ; mère avec cancer du sein à 61 ans.",
+  enUneLigne: "Hypothyroïdie substituée, ==cystite simple ce matin (4e épisode en 12 mois)== par messagerie, ménopausée. ==Mammographie en retard== de 6 mois.",
   synthese: "Responsable de magasin, peu disponible en journée, préfère la messagerie. Hashimoto bien équilibrée sous lévothyroxine 75. Cystites simples 3-4 fois par an, toujours typiques. Ménopause sans THM. Dépistage du col et colorectal à jour, mammographie en retard.",
   enCeMoment: ["Cystite simple (4e épisode/12 mois) : fosfomycine + consultation de prévention à prévoir.", "Mammographie en retard de 6 mois."],
   derniereValidation: day(-30), changementsDepuis: [messages[0].id],

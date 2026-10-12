@@ -508,7 +508,7 @@ export interface Message extends BaseRecord {
   kind: "message";
   canal: Channel;
   threadId: string;
-  de: { type: "patient" | "praticien" | "confrere" | "agent" | "secretariat" | "labo" | "systeme"; nom: string; adresse?: string };
+  de: { type: "patient" | "praticien" | "confrere" | "agent" | "secretariat" | "labo" | "pharmacie" | "systeme"; nom: string; adresse?: string };
   a: { type: "patient" | "praticien" | "confrere" | "agent" | "secretariat"; nom: string }[];
   date: ISODate;
   objet?: string;

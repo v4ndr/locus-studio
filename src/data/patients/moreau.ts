@@ -114,7 +114,7 @@ const proposals = [
 
 const briefing = rec("briefing", ID, P.agent(0.9, [messages[0].id]), {
   appointmentId: appointment.id,
-  synthese: "Léa Moreau, 29 ans, asthmatique sous Symbicort, enceinte (≈ 7 SA, test urinaire positif hier). Petite perte de contrôle de l'asthme la semaine dernière sur rhinite. Pré-conception préparée en " + day(-95).slice(0, 7) + " (acide folique en cours).",
+  synthese: "Asthmatique sous Symbicort, ==enceinte (≈ 7 SA, test positif hier)==. Petite perte de contrôle de l'asthme la semaine dernière. Pré-conception préparée cet été (acide folique en cours).",
   depuisDerniereFois: ["Message hier 22h15 : test positif, DDR " + day(-49) + ", demande Ventoline, sifflements la semaine dernière."],
   echeances: [{ libelle: "Déclaration de grossesse (DSG amelipro) avant 14 SA" }, { libelle: "Échographie T1 : 11-13 SA + 6 j, soit entre " + day(28) + " et " + day(48) }, { libelle: "Vaccination grippe (saison) : à proposer ce matin" }],
   questions: ["ACT / contrôle de l'asthme : fréquence de la Ventoline, réveils nocturnes ?", "Nausées, saignements, douleurs ?", "Acide folique poursuivi ?", "Tabac, alcool : non connus — confirmer.", "Souhaite-t-elle un suivi par vous, une sage-femme, une maternité ? (orientation HAS : grossesse à bas risque, suivi A)"],
