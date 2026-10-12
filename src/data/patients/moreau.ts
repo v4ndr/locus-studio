@@ -9,7 +9,7 @@ export const patientMoreau = rec("patient", ID, P.systeme("insi"), {
   ins: { matricule: "2 97 06 75 112 089 31", oid: "1.2.250.1.213.1.4.8", nomNaissance: "MOREAU", prenoms: "LEA CAMILLE", sexe: "F", dateNaissance: "1997-06-18", lieuNaissance: "75112", statut: "qualifiee", verifieeLe: day(-200) },
   nomUsage: "Moreau", prenomUsuel: "Léa", photoHue: 320,
   contact: { telephone: "07 61 20 30 40", email: "lea.moreau@exemple.fr", adresse: { ligne1: "3 rue de Marseille", codePostal: "69007", ville: "Lyon" }, canalPrefere: "messagerie" },
-  couverture: { regime: "general", mutuelle: { nom: "MGEN", numero: "MG-7731002" }, medecinTraitant: { rpps: "10003456789", nom: "Dr Claire Laurent", declareLe: "2023-01-20" }, droitsVerifiesLe: day(-200) },
+  couverture: { regime: "general", mutuelle: { nom: "MGEN", numero: "MG-7731002" }, medecinTraitant: { rpps: "10003456789", nom: "Dr Romain Vandepitterie", declareLe: "2023-01-20" }, droitsVerifiesLe: day(-200) },
   vie: { profession: "Professeure des écoles", situation: "En couple" },
   consentement: { monEspaceSante: true, dmpAlimentation: true, messagerieAgent: "clinique-valide" },
 }, { id: ID, at: "2023-01-20T10:00:00+02:00" });
@@ -57,18 +57,18 @@ const prescriptions = [
 const messages = [
   rec("message", ID, P.patient(), {
     canal: "patient", threadId: "th_moreau_ventoline",
-    de: { type: "patient", nom: "Léa Moreau" }, a: [{ type: "praticien", nom: "Dr Laurent" }],
+    de: { type: "patient", nom: "Léa Moreau" }, a: [{ type: "praticien", nom: "Dr Vandepitterie" }],
     date: at("22:15", -1),
     objet: "Ventoline + une nouvelle 🙂",
-    corps: "Bonsoir Dr Laurent, j'aurais besoin d'une nouvelle ordonnance de Ventoline (il m'en reste très peu, j'ai eu une rhinite avec un peu de sifflements la semaine dernière). Et… test de grossesse positif hier ! Mes dernières règles datent du " + day(-49) + ". Est-ce que je continue le Symbicort ? Qu'est-ce que je dois faire maintenant ? Merci !",
+    corps: "Bonsoir Dr Vandepitterie, j'aurais besoin d'une nouvelle ordonnance de Ventoline (il m'en reste très peu, j'ai eu une rhinite avec un peu de sifflements la semaine dernière). Et… test de grossesse positif hier ! Mes dernières règles datent du " + day(-49) + ". Est-ce que je continue le Symbicort ? Qu'est-ce que je dois faire maintenant ? Merci !",
     triage: { intention: "renouvellement", urgence: "semaine", resume: "Grossesse débutante (≈ 7 SA) chez une asthmatique sous Symbicort ; demande Ventoline ; légère perte de contrôle la semaine dernière. Questions sur la conduite à tenir.", autonomePossible: false, reponseProposeeId: `${ID}.message.2` },
   }, { at: at("22:15", -1) }),
   rec("message", ID, P.agent(0.9), {
     canal: "patient", threadId: "th_moreau_ventoline",
-    de: { type: "agent", nom: "Locus, pour le Dr Laurent" }, a: [{ type: "patient", nom: "Léa Moreau" }],
+    de: { type: "agent", nom: "Locus, pour le Dr Vandepitterie" }, a: [{ type: "patient", nom: "Léa Moreau" }],
     date: at("07:25"),
     objet: "Re: Ventoline + une nouvelle 🙂",
-    corps: "Bonjour Léa, et félicitations !\n\nOui : le Symbicort se poursuit tel quel pendant la grossesse — un asthme bien contrôlé est ce qui protège le mieux le bébé. La Ventoline aussi, si besoin.\n\nLe Dr Laurent vous propose un rendez-vous ce matin à 11h00 pour faire le point (asthme + début de grossesse). Elle préparera la déclaration de grossesse, le bilan de début de grossesse et l'ordonnance de Ventoline. Si vous ne pouvez pas, répondez ici et on trouve un autre créneau cette semaine.\n\nSol, pour le Dr Laurent",
+    corps: "Bonjour Léa, et félicitations !\n\nOui : le Symbicort se poursuit tel quel pendant la grossesse — un asthme bien contrôlé est ce qui protège le mieux le bébé. La Ventoline aussi, si besoin.\n\nLe Dr Vandepitterie vous propose un rendez-vous ce matin à 11h00 pour faire le point (asthme + début de grossesse). Elle préparera la déclaration de grossesse, le bilan de début de grossesse et l'ordonnance de Ventoline. Si vous ne pouvez pas, répondez ici et on trouve un autre créneau cette semaine.\n\nSol, pour le Dr Vandepitterie",
   }, { status: "propose", at: at("07:25") }),
 ];
 

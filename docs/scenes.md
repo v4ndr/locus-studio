@@ -1,110 +1,67 @@
-# Les trois scènes
+# Une rencontre, en cinq temps
 
-Le studio ne se visite pas, il se joue. Trois scènes suffisent à montrer
-l'avenir ; chacune tient dans l'écran unique (fil + composer + scène) et
-tourne sur le même jeu de données que les vues héritées.
+Le studio se joue, il ne se visite pas. Le parcours suit le design :
+**identifier → overview → saisir → actions → signer**, avec une seule entrée
+(l'omni-saisie) en bas de chaque écran. Patiente du scénario : Claire Moreau,
+46 ans, aide-soignante, épicondylite droite en arrêt depuis août.
 
-Conventions : `⌘K` ouvre le composer. Ce que le médecin tape ou dit est en
-`monospace`. Ce que la scène rend est en *italique*. Ce que Locus fait en
-arrière-plan apparaît dans le fil, avec son état.
+## 0 · Qui voyez-vous ? (`/`)
 
----
+Une question, une boîte de recherche, l'agenda du matin. `⌘K` ouvre la
+palette ; `moreau cl` suffit : *Claire Moreau · 46 ans · née le 14/03/1980 ·
+aide-soignante · INS qualifiée*, et en dessous une homonyme. « RDV 10:30 ·
+motif agenda : renouvellement arrêt · scanner reçu · patiente reconnue depuis
+l'agenda. » `⏎`.
 
-## Scène 1 — La matinée (8h05)
+## 1 · Overview (`/p/pat_cmoreau`)
 
-Le Dr Laurent ouvre le studio. Pas de tableau de bord : le fil, et en bas,
-une entrée de Locus postée à 7h52.
+Le dossier tient en une phrase : *Arrêt pour épicondylite droite jusqu'au
+14/10. Le **scanner du coude est arrivé**. Douleurs des mains en bilan,
+anti-CCP en attente.* Puis trois choses à noter (nouveau · dû · à savoir),
+et le reste du dossier à un clic (« › Dossier », Documents 14, Ordonnances 5…).
 
-> **Locus** · 7h52 · Avant 8h30 : trois décisions, rien à remplir. La biologie de
-> Mme Delacroix est arrivée (le diabète dérive, le rein baisse) ; sa fille a
-> écrit cette nuit. M. Garnier a le dos bloqué et demande un arrêt, je l'ai
-> mis à 10h. Léa Moreau est enceinte. Le reste de la journée est préparé.
+En bas, l'omni-saisie et trois raccourcis que Locus a préparés : *Mail :
+rappel prise de sang*, *Renouveler la Lévothyrox*, *RDV dans 3 semaines*.
+Chacun rend une carte prête à valider (« agenda · créer », « Lun 2 nov ·
+09:30 · 20 min », Réserver). Une question libre (« épicondylite résistante :
+quelle prise en charge ? ») rend la réponse sourcée de locus-core dans la même
+carte. `+ Consultation`.
 
-`⌘K` → `ma matinée`
+## 2 · Saisie de la rencontre (`/p/pat_cmoreau/rencontre`)
 
-*La scène rend la matinée : non pas l'agenda, mais l'ordre des décisions.
-Delacroix d'abord (biologie + courrier cardio + fille), puis Garnier
-(arrêt), puis Moreau (grossesse). Chaque bloc porte ce qui est prêt à signer.*
+Point rouge, « Dictée ». Le texte se dicte ; Locus surligne ce qu'il
+comprend : *on fait la déclaration MP*, *Prolonge arrêt 3 semaines*, *Kiné 15
+séances*, *Renouvelle Lévothyrox et paracétamol*, *adresser rhumato si
+positif*, *rappel dTP*, *Revoir dans 3 sem*. Le compteur monte : « 7 actions
+détectées ». `⌥ espace` met en pause. `Générer ⌘⏎`.
 
-`⌘K` → `@Delacroix où en est son rein`
+## 3 · Actions générées (`/p/pat_cmoreau/actions`)
 
-*Courbe du DFG sur trois ans, avec les deux décisions qui l'ont jalonnée
-(ramipril 2019, apixaban 2024) et le point de ce matin (48). En dessous :
-« Metformine au plafond pour ce DFG, iSGLT2 indiqué, apixaban inchangé »,
-avec les sources.*
+« 7 documents prêts · 2 à regarder ». Une question d'abord : *Arrêt : vous
+avez dit « sorties libres ». Sans restriction horaire ?* (Oui, libres ·
+9-11 h et 14-16 h · Non autorisées.) Puis la liste : AT, MP (à relire,
+tableau 57 RG), K, Rx (vérifié : AINS évités), VAC, RV, CR (en attente des
+anti-CCP). Chaque ligne se déplie en champs. `Signer ⌘⏎`.
 
-`⌘K` → `signe l'ordonnance`
+## 4 · Validation et signature (`/p/pat_cmoreau/signature`)
 
-*L'ordonnance préparée par Locus s'affiche (dapagliflozine + renouvellement,
-metformine plafonnée, alertes LAP). Signer.*
+À gauche, six documents cochés avec leur destination (CPAM · télétransmis,
+patiente · e-ordo, dossier · DMP) et deux en attente, en pointillé. À droite,
+le document sélectionné tel qu'il sera signé (en-tête praticien, patiente,
+corps, « Signature e-CPS »). En bas : *Pro Santé Connect · e-CPS connectée*,
+**Signer et envoyer 6 documents** `⌘⏎`.
 
-Dans le fil, trois lignes de Locus apparaissent, l'une après l'autre :
-*transmission ordonnance numérique… faite · dépôt Mon Espace Santé… fait ·
-message à Anne Delacroix (pilulier) envoyé*.
+Puis : *Rencontre clôturée · 6 documents signés et envoyés · synthèse versée
+au dossier · 2 suivis programmés · Patient suivant · Hugo Lefèvre* `⏎`.
 
-Ce qu'on a montré : on n'a ouvert aucun dossier. On a dit un nom et trois
-phrases. Rien n'a été saisi.
+## 2b · Documents (`/p/pat_cmoreau/documents`)
 
----
-
-## Scène 2 — La consultation (9h30)
-
-Mme Delacroix et sa fille entrent. `⌘K` → `consultation Delacroix`.
-
-*La scène passe en mode consultation : à gauche la transcription qui
-s'écrit, au centre la note qui se structure (motif, histoire, examen,
-conclusion, conduite), chaque phrase surlignée vers le tour de parole dont
-elle vient. Dans le fil, la consultation s'inscrit comme un segment à trois
-voix.*
-
-La fille parle des palpitations. *Dans la scène, Locus pose : « la cardiologue
-proposait le bisoprolol si gêne ; la gêne est là ». Niveau observe : rien
-n'est préparé, c'est une décision.*
-
-Le médecin examine, annonce la dapagliflozine, décide le bisoprolol.
-*Deux ordonnances apparaissent, vérifiées : DFG, interactions, allergie.*
-
-`⌘K` → `plutôt un mois pour le bisoprolol`
-
-*La ligne change. C'est la seule « saisie » de la consultation, et c'est une
-phrase.*
-
-`⌘K` → `clôture`
-
-*La scène rend le reçu : codage DRC (diabète, HTA, palpitations), G en tiers
-payant AMO, FSE télétransmise, note signée, ordonnance numérique, courrier
-ophtalmologie, DMP alimenté, rendez-vous à un mois posé. Un geste.*
-
-Ce qu'on a montré : le médecin n'a rien tapé de clinique. Il a parlé, a
-corrigé une durée, a signé.
+La table complète, filtrable par type, cherchable, avec l'omni-saisie en bas
+(« Toutes les TSH depuis 2020 »).
 
 ---
 
-## Scène 3 — L'après (11h50, puis 19h)
-
-Le médecin tape `⌘K` → `qu'est-ce que Locus a fait ce matin`.
-
-*La scène liste les sessions de Locus : 4 ordonnances transmises, 3 messages
-envoyés, 1 rendez-vous pris, 1 dépôt DMP, 1 appel au laboratoire Biogroup
-pour une sérologie manquante (en attente de rappel), 1 relance mammographie
-(Sophie Marchand). Chaque ligne a son état et son déclencheur.*
-
-Il écrit une consigne, parce qu'il vient de corriger la même chose deux fois :
-
-`⌘K` → `consigne : chez les plus de 75 ans, propose toujours la consultation longue une fois par an`
-
-*La consigne apparaît dans le fil, versionnée. Locus répond : « Noté. Deux
-patients concernés ce mois-ci : Monique Lefort (prévu ce matin), Robert
-Fontaine (visite du 3 novembre). »*
-
-À 19h, Sophie Marchand écrit dans son fil : « pas mieux, et j'ai un peu de
-fièvre ». *Locus lit, triage (cystite sous fosfomycine depuis 12 h, fièvre :
-hors périmètre « logistique »), et poste dans le fil du médecin : « Sophie
-Marchand, fièvre sous fosfomycine : je lui ai dit de consulter ce soir si
-> 38,5 ou douleur lombaire, et j'ai bloqué 8h30 demain. À valider. »*
-
-Le médecin, depuis son téléphone : `valide`.
-
-Ce qu'on a montré : le logiciel n'est pas un endroit où l'on va. C'est un
-collègue qui travaille entre deux messages, qui apprend une consigne en une
-phrase, et qui sait quand il doit s'arrêter.
+Les autres patients du jour suivent le même parcours ; leur dictée n'est pas
+scriptée (les documents générés viennent de ce que Locus avait préparé avant
+la rencontre). Les écrans de la première version restent en vues héritées
+(`/journee`, `/inbox`, `/patients`, `/agents`, `/routines`, `/locus`).

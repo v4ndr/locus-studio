@@ -1,101 +1,93 @@
 @import "tailwindcss";
 
-@custom-variant dark (&:is(.dark *));
-
-/* Les jetons de marque — repris de locus-app/packages/theme (teal/cyan sur slate),
-   pour que le studio soit visiblement un produit Locus. */
+/* Les jetons du design : clair, calme, une encre, un bleu. */
 :root {
-  --radius: 0.75rem;
-  --background: oklch(0.985 0.004 240);
-  --foreground: oklch(0.208 0.042 265.755);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.208 0.042 265.755);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.208 0.042 265.755);
-  --primary: oklch(0.52 0.093 217.2);
-  --primary-foreground: oklch(0.984 0.003 247.858);
-  --secondary: oklch(0.968 0.007 247.896);
-  --secondary-foreground: oklch(0.208 0.042 265.755);
-  --muted: oklch(0.955 0.007 247.896);
-  --muted-foreground: oklch(0.554 0.046 257.417);
-  --accent: oklch(0.94 0.03 217);
-  --accent-foreground: oklch(0.3 0.06 217);
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.984 0.003 247.858);
-  --success: oklch(0.55 0.15 150);
-  --warning: oklch(0.62 0.15 70);
-  --border: oklch(0.91 0.008 247.896);
-  --input: oklch(0.91 0.008 247.896);
-  --ring: oklch(0.52 0.093 217.2);
-  --agent: oklch(0.6 0.14 300);
-  --agent-foreground: oklch(0.98 0.01 300);
-  --agent-soft: oklch(0.96 0.03 300);
-  --sidebar: oklch(0.975 0.005 247.858);
-}
-
-/* Sombre uniquement : l'écran unique est un fil qu'on lit, pas un formulaire qu'on remplit. */
-.dark {
-  --background: oklch(0.135 0.01 260);
-  --foreground: oklch(0.93 0.005 247.858);
-  --card: oklch(0.165 0.011 260);
-  --card-foreground: oklch(0.93 0.005 247.858);
-  --popover: oklch(0.2 0.012 260);
-  --popover-foreground: oklch(0.95 0.005 247.858);
-  --primary: oklch(0.79 0.13 205.5);
-  --primary-foreground: oklch(0.17 0.03 220);
-  --secondary: oklch(0.22 0.012 260);
-  --secondary-foreground: oklch(0.93 0.005 247.858);
-  --muted: oklch(0.2 0.011 260);
-  --muted-foreground: oklch(0.66 0.02 257.417);
-  --accent: oklch(0.3 0.04 217);
-  --accent-foreground: oklch(0.85 0.08 205);
-  --destructive: oklch(0.65 0.2 25);
-  --destructive-foreground: oklch(0.98 0.01 25);
-  --success: oklch(0.72 0.14 150);
-  --warning: oklch(0.75 0.14 75);
-  --border: oklch(0.24 0.012 260);
-  --input: oklch(0.26 0.012 260);
-  --ring: oklch(0.79 0.13 205.5);
-  --agent: oklch(0.75 0.12 300);
-  --agent-foreground: oklch(0.2 0.03 300);
-  --agent-soft: oklch(0.24 0.035 300);
-  --sidebar: oklch(0.15 0.011 260);
+  --bg: #FBFBFA;
+  --paper: #FFFFFF;
+  --ink: #111111;
+  --ink-2: #33332F;
+  --ink-3: #44443F;
+  --muted: #55554F;
+  --muted-2: #6B6B66;
+  --muted-3: #8A8A84;
+  --line: #E3E2DC;
+  --line-2: #ECEBE6;
+  --line-3: #E8E7E1;
+  --line-4: #EFEEE9;
+  --hover: #F2F1EC;
+  --soft: #F0EFEA;
+  --accent: #1A4DFF;
+  --accent-soft: #E4E9FF;
+  --accent-soft-2: #F2F4FF;
+  --accent-line: #D7DEFF;
+  --ok: #1F6B3A;
+  --ok-soft: #E6F4EA;
+  --warn: #A35400;
+  --warn-dot: #D97706;
+  --rec: #D93A2B;
+  --rec-text: #B3261E;
+  --gray-dot: #C7C6BF;
+  --shadow: 0 1px 0 rgba(0,0,0,.02), 0 8px 24px rgba(17,17,17,.06);
+  --shadow-accent: 0 8px 24px rgba(26,77,255,.08);
+  --radius: 14px;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
-  --color-popover: var(--popover);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
+  --color-bg: var(--bg);
+  --color-paper: var(--paper);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
   --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
+  --color-muted-2: var(--muted-2);
+  --color-muted-3: var(--muted-3);
+  --color-line: var(--line);
+  --color-line-2: var(--line-2);
+  --color-line-3: var(--line-3);
+  --color-line-4: var(--line-4);
+  --color-hover: var(--hover);
+  --color-soft: var(--soft);
   --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-destructive: var(--destructive);
-  --color-destructive-foreground: var(--destructive-foreground);
-  --color-success: var(--success);
-  --color-warning: var(--warning);
-  --color-border: var(--border);
-  --color-input: var(--input);
-  --color-ring: var(--ring);
-  --color-agent: var(--agent);
-  --color-agent-foreground: var(--agent-foreground);
-  --color-agent-soft: var(--agent-soft);
-  --color-sidebar: var(--sidebar);
-  --color-brand-cyan: #22d3ee;
-  --color-brand-teal: #0e7490;
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
-  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
-  --font-mono: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-soft-2: var(--accent-soft-2);
+  --color-accent-line: var(--accent-line);
+  --color-ok: var(--ok);
+  --color-ok-soft: var(--ok-soft);
+  --color-warn: var(--warn);
+  --color-warn-dot: var(--warn-dot);
+  --color-rec: var(--rec);
+  --color-rec-text: var(--rec-text);
+  --color-gray-dot: var(--gray-dot);
+  /* Alias pour les vues héritées (anciens jetons shadcn). */
+  --color-background: var(--bg);
+  --color-foreground: var(--ink);
+  --color-card: var(--paper);
+  --color-card-foreground: var(--ink);
+  --color-popover: var(--paper);
+  --color-popover-foreground: var(--ink);
+  --color-primary: var(--accent);
+  --color-primary-foreground: #ffffff;
+  --color-secondary: var(--soft);
+  --color-secondary-foreground: var(--ink);
+  --color-muted-foreground: var(--muted-2);
+  --color-accent-foreground: var(--accent);
+  --color-destructive: var(--rec);
+  --color-destructive-foreground: #ffffff;
+  --color-success: var(--ok);
+  --color-warning: var(--warn);
+  --color-border: var(--line);
+  --color-input: var(--line);
+  --color-ring: var(--accent);
+  --color-agent: var(--accent);
+  --color-agent-foreground: #ffffff;
+  --color-agent-soft: var(--accent-soft-2);
+  --color-sidebar: var(--paper);
+  --radius-sm: 10px;
+  --radius-md: 12px;
+  --radius-lg: 14px;
+  --radius-xl: 16px;
+  --font-sans: var(--font-geist), system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
   --text-meta: 0.75rem;
   --text-meta--line-height: 1rem;
   --text-micro: 0.6875rem;
@@ -103,33 +95,43 @@
 }
 
 @layer base {
-  * { @apply border-border outline-ring/50; }
+  * { @apply border-line; }
   html { @apply antialiased; }
-  body { @apply bg-background text-foreground; font-feature-settings: "cv11", "ss01"; }
-  ::selection { background: color-mix(in oklch, var(--primary) 25%, transparent); }
+  body { @apply bg-bg text-ink; }
+  a { color: var(--ink); text-decoration: none; }
+  a:hover { color: var(--accent); }
+  ::selection { background: var(--accent-soft); }
 }
 
-/* La prose des réponses Locus et des courriers. */
-.prose-locus { @apply text-[0.9375rem] leading-relaxed; }
-.prose-locus h1 { @apply text-base font-semibold tracking-tight mb-3 text-foreground; }
-.prose-locus h2 { @apply text-sm font-semibold mt-4 mb-1.5; }
-.prose-locus p { @apply my-2; }
-.prose-locus ul, .prose-locus ol { @apply my-2 pl-5; }
-.prose-locus ul { @apply list-disc; }
-.prose-locus ol { @apply list-decimal; }
-.prose-locus li { @apply my-1; }
-.prose-locus strong { @apply font-semibold; }
-.prose-locus table { @apply text-sm my-3 w-full border-collapse; }
-.prose-locus th, .prose-locus td { @apply border px-2 py-1 text-left align-top; }
-.prose-locus code { @apply font-mono text-[0.85em] bg-muted px-1 py-0.5 rounded; }
-.prose-locus blockquote { @apply border-l-2 pl-3 text-muted-foreground; }
-.prose-locus sup { @apply text-primary font-medium; }
+/* Les classes du design. */
+.k { font-family: var(--font-geist-mono), ui-monospace, monospace; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted-2); }
+.kbd { font-family: var(--font-geist-mono), ui-monospace, monospace; font-size: 11px; border: 1px solid #DDDCD7; border-radius: 5px; padding: 2px 6px; color: var(--muted); background: #fff; white-space: nowrap; }
+.kbd-dark { background: #2A2A28; border-color: #3A3A37; color: #E8E7E1; }
+.d { font-family: var(--font-geist-mono), ui-monospace, monospace; font-size: 12px; color: var(--muted-2); }
+mark { background: var(--accent-soft); color: var(--ink); border-radius: 3px; padding: 0 2px; }
+.card { background: var(--paper); border: 1px solid var(--line-3); border-radius: var(--radius); }
+.sticky-fade { position: sticky; bottom: 0; background: linear-gradient(rgba(251,251,250,0), #FBFBFA 30%); }
 
-/* La ligne de scan subtile sous une carte « agent ». */
-.agent-glow { box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--agent) 35%, transparent); }
+/* Prose des réponses Locus. */
+.prose-locus { font-size: 15px; line-height: 1.55; }
+.prose-locus h1 { font-size: 16px; font-weight: 500; margin: 0 0 8px; }
+.prose-locus h2 { font-size: 14px; font-weight: 500; margin: 12px 0 4px; }
+.prose-locus p { margin: 6px 0; }
+.prose-locus ul, .prose-locus ol { margin: 6px 0; padding-left: 20px; }
+.prose-locus ul { list-style: disc; } .prose-locus ol { list-style: decimal; }
+.prose-locus li { margin: 3px 0; }
+.prose-locus strong { font-weight: 500; }
+.prose-locus table { font-size: 13px; margin: 8px 0; width: 100%; border-collapse: collapse; }
+.prose-locus th, .prose-locus td { border: 1px solid var(--line-3); padding: 4px 8px; text-align: left; vertical-align: top; }
+.prose-locus code { font-family: var(--font-geist-mono), monospace; font-size: .85em; background: var(--soft); padding: 1px 4px; border-radius: 4px; }
+.prose-locus blockquote { border-left: 2px solid var(--line); padding-left: 12px; color: var(--muted-2); }
+.prose-locus sup { color: var(--accent); font-weight: 500; }
 
-@keyframes pulse-soft { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
+.agent-glow { box-shadow: inset 0 0 0 1px var(--accent-line); }
+@keyframes pulse-soft { 0%, 100% { opacity: 1; } 50% { opacity: .45; } }
 .animate-pulse-soft { animation: pulse-soft 1.6s ease-in-out infinite; }
-
-/* Scrollbars discrètes. */
-* { scrollbar-width: thin; scrollbar-color: color-mix(in oklch, var(--foreground) 15%, transparent) transparent; }
+@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+.caret { display: inline-block; width: 2px; height: 20px; background: var(--accent); vertical-align: -4px; margin-left: 2px; animation: blink 1s step-end infinite; }
+* { scrollbar-width: thin; scrollbar-color: rgba(17,17,17,.15) transparent; }
+.li { display: flex; gap: 12px; font-size: 14px; line-height: 1.45; }
+.tr { display: grid; grid-template-columns: 96px 120px minmax(0, 1fr) 200px 24px; gap: 16px; align-items: center; padding: 12px 16px; font-size: 14px; }

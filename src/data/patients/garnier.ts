@@ -9,7 +9,7 @@ export const patientGarnier = rec("patient", ID, P.systeme("insi"), {
   ins: { matricule: "1 84 03 13 055 221 44", oid: "1.2.250.1.213.1.4.8", nomNaissance: "GARNIER", prenoms: "JULIEN", sexe: "M", dateNaissance: "1984-03-09", lieuNaissance: "13055", statut: "qualifiee", verifieeLe: day(-40) },
   nomUsage: "Garnier", prenomUsuel: "Julien", photoHue: 210,
   contact: { telephone: "06 44 55 66 77", email: "julien.garnier@exemple.fr", adresse: { ligne1: "27 cours Gambetta", codePostal: "69007", ville: "Lyon" }, canalPrefere: "messagerie" },
-  couverture: { regime: "general", mutuelle: { nom: "Alan", numero: "AL-9920031" }, medecinTraitant: { rpps: "10003456789", nom: "Dr Claire Laurent", declareLe: "2021-09-01" }, droitsVerifiesLe: day(-40) },
+  couverture: { regime: "general", mutuelle: { nom: "Alan", numero: "AL-9920031" }, medecinTraitant: { rpps: "10003456789", nom: "Dr Romain Vandepitterie", declareLe: "2021-09-01" }, droitsVerifiesLe: day(-40) },
   vie: { profession: "Chauffeur-livreur (CDI)", situation: "En couple, 2 enfants (6 et 9 ans)" },
   consentement: { monEspaceSante: true, dmpAlimentation: true, messagerieAgent: "clinique-valide" },
 }, { id: ID, at: "2021-09-01T10:00:00+02:00" });
@@ -50,7 +50,7 @@ const encounters = [
 const messages = [
   rec("message", ID, P.patient(), {
     canal: "patient", threadId: "th_garnier_dos",
-    de: { type: "patient", nom: "Julien Garnier" }, a: [{ type: "praticien", nom: "Dr Laurent" }],
+    de: { type: "patient", nom: "Julien Garnier" }, a: [{ type: "praticien", nom: "Dr Vandepitterie" }],
     date: at("06:40"),
     objet: "Mal au dos — arrêt ?",
     corps: "Bonjour docteur, depuis avant-hier j'ai le bas du dos bloqué, ça a commencé en soulevant un colis. Je marche mais je ne peux pas rester assis longtemps, donc conduire c'est impossible. Pas de fièvre, pas de fourmillements dans les jambes, j'urine normalement. J'ai pris de l'ibuprofène qu'il me restait, ça soulage un peu. Est-ce qu'il faudrait un arrêt ? Je peux passer ce matin si besoin. Merci",
@@ -58,10 +58,10 @@ const messages = [
   }, { at: at("06:40") }),
   rec("message", ID, P.agent(0.92), {
     canal: "patient", threadId: "th_garnier_dos",
-    de: { type: "agent", nom: "Locus, pour le Dr Laurent" }, a: [{ type: "patient", nom: "Julien Garnier" }],
+    de: { type: "agent", nom: "Locus, pour le Dr Vandepitterie" }, a: [{ type: "patient", nom: "Julien Garnier" }],
     date: at("07:05"),
     objet: "Re: Mal au dos — arrêt ?",
-    corps: "Bonjour Julien,\n\nMerci pour les précisions, elles sont rassurantes. Le Dr Laurent vous voit ce matin à 10h00 (rendez-vous ajouté — répondez « non » si l'horaire ne va pas). Un arrêt de travail nécessite de vous examiner.\n\nD'ici là : continuez à bouger autant que la douleur le permet, évitez de rester allongé, chaleur locale. L'ibuprofène 400 mg à 3 par jour au repas au maximum, pas plus de 5 jours, et pas si vous avez des brûlures d'estomac.\n\nAppelez le 15 si vous perdez la force d'une jambe, si vous n'arrivez plus à uriner, ou si la douleur devient insupportable.\n\nSol, pour le Dr Laurent",
+    corps: "Bonjour Julien,\n\nMerci pour les précisions, elles sont rassurantes. Le Dr Vandepitterie vous voit ce matin à 10h00 (rendez-vous ajouté — répondez « non » si l'horaire ne va pas). Un arrêt de travail nécessite de vous examiner.\n\nD'ici là : continuez à bouger autant que la douleur le permet, évitez de rester allongé, chaleur locale. L'ibuprofène 400 mg à 3 par jour au repas au maximum, pas plus de 5 jours, et pas si vous avez des brûlures d'estomac.\n\nAppelez le 15 si vous perdez la force d'une jambe, si vous n'arrivez plus à uriner, ou si la douleur devient insupportable.\n\nSol, pour le Dr Vandepitterie",
   }, { status: "propose", at: at("07:05") }),
 ];
 

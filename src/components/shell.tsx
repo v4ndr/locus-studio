@@ -19,8 +19,8 @@ const NAV = [
 
 export function Shell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  /* L'écran unique (le fil) n'a pas de barre latérale : il n'y a plus de pages. */
-  if (pathname === "/") return <>{children}</>;
+  /* Le parcours principal (accueil, /p/…) a sa propre tête, sans barre latérale. */
+  if (pathname === "/" || pathname.startsWith("/p/")) return <>{children}</>;
   return (
     <StudioProvider>
       <ShellInner>{children}</ShellInner>
@@ -70,9 +70,9 @@ function ShellInner({ children }: { children: React.ReactNode }) {
           })}
         </nav>
         <div className="px-4 py-3 border-t text-micro text-muted-foreground space-y-1">
-          <Link href="/" className="flex items-center gap-2 rounded-md bg-agent-soft px-2 py-1.5 text-agent font-medium"><Sparkles className="h-3 w-3" /> Retour au fil (l'écran unique)</Link>
+          <Link href="/" className="flex items-center gap-2 rounded-md bg-agent-soft px-2 py-1.5 text-agent font-medium"><Sparkles className="h-3 w-3" /> Retour au studio</Link>
           <div className="pt-1 text-muted-foreground/80">Ces écrans sont les « vues héritées » : un meilleur LGC, pas l'avenir.</div>
-          <div>Dr Claire Laurent · jeudi 15 oct. 2026</div>
+          <div>Dr Romain Vandepitterie · jeudi 15 oct. 2026</div>
         </div>
       </aside>
       <div className="flex-1 min-w-0 overflow-x-hidden">

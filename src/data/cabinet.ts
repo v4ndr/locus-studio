@@ -3,11 +3,11 @@ import type { Cabinet, Practitioner, AutonomyPolicy } from "@/domain/types";
 export const DR_LAURENT: Practitioner = {
   id: "pr_laurent",
   rpps: "10003456789",
-  nom: "Laurent",
-  prenom: "Claire",
+  nom: "Vandepitterie",
+  prenom: "Romain",
   specialite: "Médecine générale",
   secteur: 1,
-  mssante: "claire.laurent@medecin.mssante.fr",
+  mssante: "romain.vandepitterie@medecin.mssante.fr",
   agentNom: "Locus",
 };
 
@@ -42,7 +42,7 @@ export const CABINET: Cabinet = {
   },
 };
 
-/** La politique d'autonomie du Dr Laurent — ce que Locus peut faire seul. */
+/** La politique d'autonomie du Dr Vandepitterie — ce que Locus peut faire seul. */
 export const AUTONOMY_LAURENT: AutonomyPolicy = {
   praticien: DR_LAURENT.id,
   parAction: {
