@@ -9,7 +9,7 @@ export const patientPerrin = rec("patient", ID, P.systeme("insi"), {
   ins: { matricule: "2 18 04 69 388 240 19", oid: "1.2.250.1.213.1.4.8", nomNaissance: "PERRIN", prenoms: "INES NOA", sexe: "F", dateNaissance: "2018-04-12", lieuNaissance: "69388", statut: "qualifiee", verifieeLe: day(-90) },
   nomUsage: "Perrin", prenomUsuel: "Inès", photoHue: 150,
   contact: { telephone: "06 23 45 67 89 (mère, Camille)", canalPrefere: "messagerie" },
-  couverture: { regime: "general", mutuelle: { nom: "Harmonie Mutuelle (ayant droit)", numero: "HM-5520987" }, medecinTraitant: { rpps: "10003456789", nom: "Dr Claire Laurent", declareLe: "2018-05-02" }, droitsVerifiesLe: day(-90) },
+  couverture: { regime: "general", mutuelle: { nom: "Harmonie Mutuelle (ayant droit)", numero: "HM-5520987" }, medecinTraitant: { rpps: "10003456789", nom: "Dr Romain Vandepitterie", declareLe: "2018-05-02" }, droitsVerifiesLe: day(-90) },
   vie: { situation: "CE2, école Jean-Macé ; 1 frère (4 ans)" },
   personneConfiance: { nom: "Camille Perrin", lien: "mère", telephone: "06 23 45 67 89" },
   consentement: { monEspaceSante: true, dmpAlimentation: true, messagerieAgent: "clinique-valide" },
@@ -42,7 +42,7 @@ const vaccins = [
 const messages = [
   rec("message", ID, P.patient(), {
     canal: "patient", threadId: "th_perrin_angine",
-    de: { type: "patient", nom: "Camille Perrin (mère d'Inès)" }, a: [{ type: "praticien", nom: "Dr Laurent" }],
+    de: { type: "patient", nom: "Camille Perrin (mère d'Inès)" }, a: [{ type: "praticien", nom: "Dr Vandepitterie" }],
     date: at("07:12"),
     objet: "Inès — fièvre et gorge",
     corps: "Bonjour, Inès a 39,2 ce matin, elle a mal à la gorge depuis hier soir et n'a pas voulu déjeuner. Pas de toux, pas de nez qui coule. Elle a eu du Doliprane à 6h30. Est-ce que je peux l'amener ce matin ? Je ne l'envoie pas à l'école.",
@@ -50,10 +50,10 @@ const messages = [
   }, { at: at("07:12") }),
   rec("message", ID, P.agent(0.93), {
     canal: "patient", threadId: "th_perrin_angine",
-    de: { type: "agent", nom: "Locus, pour le Dr Laurent" }, a: [{ type: "patient", nom: "Camille Perrin" }],
+    de: { type: "agent", nom: "Locus, pour le Dr Vandepitterie" }, a: [{ type: "patient", nom: "Camille Perrin" }],
     date: at("07:42"),
     objet: "Re: Inès — fièvre et gorge",
-    corps: "Bonjour Madame,\n\nOui, venez ce matin : rendez-vous à 15h00 avec le Dr Laurent (le premier créneau enfant). Elle fera un test rapide de la gorge pour savoir si un antibiotique est nécessaire — dans la plupart des angines chez l'enfant, ce n'est pas le cas.\n\nD'ici là : paracétamol 15 mg/kg soit 400 mg (une dose de 26 kg sur la pipette) toutes les 6 h si besoin, à boire régulièrement, pas d'ibuprofène. Si elle a du mal à respirer, à avaler sa salive, ou si elle est très abattue, appelez le 15.\n\nSol, pour le Dr Laurent",
+    corps: "Bonjour Madame,\n\nOui, venez ce matin : rendez-vous à 15h00 avec le Dr Vandepitterie (le premier créneau enfant). Elle fera un test rapide de la gorge pour savoir si un antibiotique est nécessaire — dans la plupart des angines chez l'enfant, ce n'est pas le cas.\n\nD'ici là : paracétamol 15 mg/kg soit 400 mg (une dose de 26 kg sur la pipette) toutes les 6 h si besoin, à boire régulièrement, pas d'ibuprofène. Si elle a du mal à respirer, à avaler sa salive, ou si elle est très abattue, appelez le 15.\n\nSol, pour le Dr Vandepitterie",
   }, { status: "propose", at: at("07:42") }),
 ];
 

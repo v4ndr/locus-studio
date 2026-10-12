@@ -77,7 +77,7 @@ export function ProposalCard({ proposal, patient, compact, defaultOpen }: { prop
                 </div>
               ) : (
                 <div className="text-micro text-muted-foreground">
-                  {etat === "executee" ? "Exécuté par Locus" : etat === "validee" ? "Validé par Dr Laurent" : etat === "modifiee" ? "Modifié puis validé par Dr Laurent" : etat === "rejetee" ? "Rejeté par Dr Laurent — Locus retient la correction" : etat}
+                  {etat === "executee" ? "Exécuté par Locus" : etat === "validee" ? "Validé par Dr Vandepitterie" : etat === "modifiee" ? "Modifié puis validé par Dr Vandepitterie" : etat === "rejetee" ? "Rejeté par Dr Vandepitterie — Locus retient la correction" : etat}
                   {proposal.decision?.le && ` · ${fmtRelative(proposal.decision.le)}`}
                 </div>
               )}
@@ -140,7 +140,7 @@ export function PrescriptionPreview({ p }: { p: Draft<Prescription> }) {
     <div className="rounded-md border bg-background">
       <div className="flex items-center justify-between border-b px-3 py-1.5 text-micro text-muted-foreground">
         <span>Ordonnance {p.type} · {fmtDate(p.date)}</span>
-        <span>Dr Claire Laurent · RPPS 10003456789</span>
+        <span>Dr Romain Vandepitterie · RPPS 10003456789</span>
       </div>
       <ul className="divide-y">
         {p.lignes.map((l, i) => <LineView key={i} l={l} />)}

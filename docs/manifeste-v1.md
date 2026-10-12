@@ -46,7 +46,7 @@ Observe, prépare, agit. L'administratif réversible peut être fait seul ; l'or
 
 Il a un prénom, une file de travail, un journal. On lui délègue ; on ne lui assigne pas. Il se déclare agent quand il écrit au patient. Et chaque rejet est une correction qu'il retient.
 
-**Dans le studio :** Locus : file « à trancher », « fait », journal append-only ; signature « Locus, pour le Dr Laurent » dans les messages.
+**Dans le studio :** Locus : file « à trancher », « fait », journal append-only ; signature « Locus, pour le Dr Vandepitterie » dans les messages.
 
 **Vu ailleurs :** Linear Agent Interaction Guidelines (« an agent cannot be held accountable »), Hippocratic « nurse orders AI agent ».
 

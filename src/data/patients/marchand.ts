@@ -9,7 +9,7 @@ export const patientMarchand = rec("patient", ID, P.systeme("insi"), {
   ins: { matricule: "2 72 09 99 139 044 27", oid: "1.2.250.1.213.1.4.8", nomNaissance: "MARCHAND", prenoms: "SOPHIE MARIE", sexe: "F", dateNaissance: "1972-09-03", lieuNaissance: "69123", statut: "qualifiee", verifieeLe: day(-300) },
   nomUsage: "Marchand", prenomUsuel: "Sophie", photoHue: 10,
   contact: { telephone: "06 55 44 33 22", email: "sophie.marchand@exemple.fr", canalPrefere: "messagerie" },
-  couverture: { regime: "general", mutuelle: { nom: "Malakoff Humanis", numero: "MH-8812003" }, medecinTraitant: { rpps: "10003456789", nom: "Dr Claire Laurent", declareLe: "2019-11-12" }, droitsVerifiesLe: day(-300) },
+  couverture: { regime: "general", mutuelle: { nom: "Malakoff Humanis", numero: "MH-8812003" }, medecinTraitant: { rpps: "10003456789", nom: "Dr Romain Vandepitterie", declareLe: "2019-11-12" }, droitsVerifiesLe: day(-300) },
   vie: { profession: "Responsable de magasin", situation: "Divorcée, 1 fille étudiante" },
   consentement: { monEspaceSante: true, dmpAlimentation: true, messagerieAgent: "clinique-valide" },
 }, { id: ID, at: "2019-11-12T10:00:00+02:00" });
@@ -34,7 +34,7 @@ const screenings = [
 const messages = [
   rec("message", ID, P.patient(), {
     canal: "patient", threadId: "th_marchand_cystite",
-    de: { type: "patient", nom: "Sophie Marchand" }, a: [{ type: "praticien", nom: "Dr Laurent" }],
+    de: { type: "patient", nom: "Sophie Marchand" }, a: [{ type: "praticien", nom: "Dr Vandepitterie" }],
     date: at("06:58"),
     objet: "Encore une cystite",
     corps: "Bonjour Docteur, ça recommence : brûlures en urinant depuis hier soir, envies très fréquentes, pas de fièvre, pas de douleur dans le dos. Comme d'habitude. Est-ce que vous pouvez m'envoyer le sachet (Monuril) ? Je suis au magasin toute la journée. Merci beaucoup",
@@ -42,10 +42,10 @@ const messages = [
   }, { at: at("06:58") }),
   rec("message", ID, P.agent(0.94), {
     canal: "patient", threadId: "th_marchand_cystite",
-    de: { type: "agent", nom: "Locus, pour le Dr Laurent" }, a: [{ type: "patient", nom: "Sophie Marchand" }],
+    de: { type: "agent", nom: "Locus, pour le Dr Vandepitterie" }, a: [{ type: "patient", nom: "Sophie Marchand" }],
     date: at("07:15"),
     objet: "Re: Encore une cystite",
-    corps: "Bonjour Sophie,\n\nLe Dr Laurent a validé une ordonnance de fosfomycine (Monuril 3 g, un sachet unique, le soir au coucher, vessie vide). Elle est déjà dans Mon Espace Santé et à votre pharmacie habituelle (ordonnance numérique) — rien à imprimer.\n\nBuvez bien. Si la fièvre monte, si vous avez mal dans le dos ou si ça ne va pas mieux dans 3 jours, écrivez-nous ou consultez.\n\nC'est le 4e épisode en un an : le Dr Laurent vous propose un rendez-vous dans les prochaines semaines pour en parler (un ECBU à distance, et des options de prévention). Voulez-vous que je vous propose des créneaux ?\n\nSol, pour le Dr Laurent",
+    corps: "Bonjour Sophie,\n\nLe Dr Vandepitterie a validé une ordonnance de fosfomycine (Monuril 3 g, un sachet unique, le soir au coucher, vessie vide). Elle est déjà dans Mon Espace Santé et à votre pharmacie habituelle (ordonnance numérique) — rien à imprimer.\n\nBuvez bien. Si la fièvre monte, si vous avez mal dans le dos ou si ça ne va pas mieux dans 3 jours, écrivez-nous ou consultez.\n\nC'est le 4e épisode en un an : le Dr Vandepitterie vous propose un rendez-vous dans les prochaines semaines pour en parler (un ECBU à distance, et des options de prévention). Voulez-vous que je vous propose des créneaux ?\n\nSol, pour le Dr Vandepitterie",
   }, { status: "propose", at: at("07:15") }),
 ];
 

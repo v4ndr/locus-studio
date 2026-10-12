@@ -88,7 +88,7 @@ export function ConsultationView({ patient, ligne, script, briefing, existing, s
             <ol className="space-y-1.5">
               {script.steps.slice(0, step + 1).map((s, i) => (
                 <li key={i} onMouseEnter={() => setHover(i)} onMouseLeave={() => setHover(null)} className={cn("rounded-lg px-3 py-2 text-sm transition-colors", s.turn.qui === "medecin" ? "bg-accent/50" : s.turn.qui === "patient" ? "bg-card border" : "bg-warning/10", hover === i && "ring-2 ring-agent/50")}>
-                  <div className="text-micro text-muted-foreground"><span className="font-mono">{fmtT(s.turn.t)}</span> · {s.turn.qui === "medecin" ? "Dr Laurent" : s.turn.qui === "patient" ? patient.prenomUsuel : "Accompagnant"}</div>
+                  <div className="text-micro text-muted-foreground"><span className="font-mono">{fmtT(s.turn.t)}</span> · {s.turn.qui === "medecin" ? "Dr Vandepitterie" : s.turn.qui === "patient" ? patient.prenomUsuel : "Accompagnant"}</div>
                   <div>{s.turn.texte}</div>
                 </li>
               ))}

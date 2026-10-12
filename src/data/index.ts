@@ -6,6 +6,7 @@ import { dossierVasseur } from "./patients/vasseur";
 import { dossierPerrin } from "./patients/perrin";
 import { dossierMarchand } from "./patients/marchand";
 import { dossierRoussel } from "./patients/roussel";
+import { dossierCMoreau } from "./patients/cmoreau";
 import { dossiersSecondaires } from "./patients/secondaires";
 import { TODAY } from "./clock";
 
@@ -13,7 +14,7 @@ export { CABINET, DR_LAURENT, AUTONOMY_LAURENT } from "./cabinet";
 export { NOW_ISO, TODAY, now, day, at } from "./clock";
 
 /** La patientèle — en mémoire. Le studio est une maquette : pas de base. */
-export const DOSSIERS: Dossier[] = [dossierDelacroix, dossierGarnier, dossierMoreau, dossierVasseur, dossierPerrin, dossierMarchand, dossierRoussel, ...dossiersSecondaires];
+export const DOSSIERS: Dossier[] = [dossierCMoreau, dossierDelacroix, dossierGarnier, dossierMoreau, dossierVasseur, dossierPerrin, dossierMarchand, dossierRoussel, ...dossiersSecondaires];
 
 const byId = new Map(DOSSIERS.map((d) => [d.patient.id, d]));
 

@@ -28,7 +28,7 @@ export function JourneeView({ agenda, pending, stats }: { agenda: Slot[]; pendin
     <div className="space-y-5">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <div className="text-micro uppercase tracking-wider text-muted-foreground font-semibold">Jeudi 15 octobre 2026 · Dr Claire Laurent</div>
+          <div className="text-micro uppercase tracking-wider text-muted-foreground font-semibold">Jeudi 15 octobre 2026 · Dr Romain Vandepitterie</div>
           <h1 className="text-2xl font-semibold tracking-tight">Votre journée, préparée.</h1>
           <p className="mt-1 text-sm text-muted-foreground max-w-2xl">
             Locus a lu ce qui est arrivé cette nuit, préparé chaque consultation et rédigé ce qu'il pouvait. Il vous reste <span className="font-medium text-foreground">{allPending.length} décision{allPending.length > 1 ? "s" : ""}</span> à prendre avant 8h30 — rien à remplir.

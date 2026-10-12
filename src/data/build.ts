@@ -55,5 +55,5 @@ export function journal(patientId: string | undefined, at: string, acteur: Journ
 }
 
 export const LOCUS = { type: "agent" as const, nom: "Locus" };
-export const LAURENT = { type: "praticien" as const, nom: "Dr Laurent" };
+export const LAURENT = { type: "praticien" as const, nom: "Dr Vandepitterie" };
 export const SYS = (nom: string) => ({ type: "systeme" as const, nom });
