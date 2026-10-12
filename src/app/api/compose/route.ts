@@ -14,8 +14,9 @@ export const maxDuration = 300;
 export async function POST(req: Request) {
   const body = (await req.json().catch(() => ({}))) as Partial<ComposeInput>;
   const texte = (body.texte ?? "").trim();
-  if (!texte) return Response.json({ error: "texte manquant" }, { status: 400 });
-  return ndjsonResponse(compose({ texte, patientId: body.patientId || undefined, ecran: body.ecran ?? "home", docId: body.docId, boite: body.boite }));
+  const note = (body.note ?? "").trim() || undefined;
+  if (!texte && !note) return Response.json({ error: "texte manquant" }, { status: 400 });
+  return ndjsonResponse(compose({ texte, patientId: body.patientId || undefined, ecran: body.ecran ?? "home", docId: body.docId, boite: body.boite, patient: body.patient, note }));
 }
 
 export async function GET() {

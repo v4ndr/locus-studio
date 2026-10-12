@@ -52,7 +52,7 @@ export function useCompose() {
 
 const STATUT: Record<string, { label: string; color: string }> = { pret: { label: "prêt", color: "var(--ok)" }, relire: { label: "à relire", color: "var(--warn)" } };
 
-export function ComposeCard({ state, onClose, suivreSeul = true }: { state: ComposeState; onClose: () => void; suivreSeul?: boolean }) {
+export function ComposeCard({ state, onClose, suivreSeul = true, onValide, libelleValider }: { state: ComposeState; onClose: () => void; suivreSeul?: boolean; onValide?: (actions: ComposeAction[], plan: ComposePlan) => void; libelleValider?: string }) {
   const router = useRouter();
   const [open, setOpen] = React.useState<string | null>(null);
   const [retires, setRetires] = React.useState<Set<string>>(new Set());
@@ -67,7 +67,7 @@ export function ComposeCard({ state, onClose, suivreSeul = true }: { state: Comp
     if (done && suivreSeul && nav.length === 1 && docs.length === 0 && nav[0].href) { const h = nav[0].href; const t = setTimeout(() => { onClose(); router.push(h); }, 350); return () => clearTimeout(t); }
   }, [done, suivreSeul, nav, docs.length, router, onClose]);
 
-  const valider = React.useCallback(() => { if (done && gardes.length) setValide(true); }, [done, gardes.length]);
+  const valider = React.useCallback(() => { if (done && gardes.length) { setValide(true); onValide?.(gardes, state.plan!); } }, [done, gardes, onValide, state.plan]);
   React.useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if ((e.metaKey || e.ctrlKey) && e.key === "Enter") { e.preventDefault(); valider(); } };
     window.addEventListener("keydown", onKey);
@@ -94,7 +94,7 @@ export function ComposeCard({ state, onClose, suivreSeul = true }: { state: Comp
     <div className="flex flex-col gap-3 rounded-[14px] border border-accent-line bg-paper px-[18px] py-4" style={{ boxShadow: "var(--shadow-accent)" }}>
       <div className="flex items-center gap-2.5">
         <span className="k whitespace-nowrap" style={{ color: "var(--accent)" }}>locus · composer</span>
-        {state.input && <span className="truncate text-[13px] text-muted-2">« {state.input.texte} »</span>}
+        {state.input && <span className="truncate text-[13px] text-muted-2">« {state.input.texte || state.input.note?.replace(/\s+/g, " ").slice(0, 80)} »</span>}
         <span className="flex-1" />
         <button type="button" onClick={onClose} aria-label="Fermer" className="px-1 text-base text-muted-3">×</button>
       </div>
@@ -144,7 +144,7 @@ export function ComposeCard({ state, onClose, suivreSeul = true }: { state: Comp
 
       {done && (
         <div className="flex flex-wrap items-center gap-2">
-          {gardes.length > 0 && <button type="button" onClick={valider} className="flex items-center gap-2 rounded-[10px] bg-ink px-4 py-[9px] text-sm text-paper">Valider {gardes.length > 1 ? `les ${gardes.length}` : ""} <Kbd dark>⌘⏎</Kbd></button>}
+          {gardes.length > 0 && <button type="button" onClick={valider} className="flex items-center gap-2 rounded-[10px] bg-ink px-4 py-[9px] text-sm text-paper">{libelleValider ?? `Valider ${gardes.length > 1 ? `les ${gardes.length}` : ""}`} <Kbd dark>⌘⏎</Kbd></button>}
           {gardes.length === 0 && docs.length === 0 && nav.length === 0 && <button type="button" onClick={onClose} className="rounded-[10px] border border-line bg-paper px-4 py-[9px] text-sm text-ink">Fermer</button>}
           <button type="button" onClick={() => setOpen(open ? null : docs[0]?.id ?? null)} className="rounded-[10px] border border-line bg-paper px-4 py-[9px] text-sm text-ink">Modifier</button>
           <span className="flex-1" />

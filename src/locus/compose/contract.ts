@@ -6,7 +6,21 @@
  * Partagé serveur / navigateur : pas d'import serveur ici.
  */
 
-export type Ecran = "home" | "dossier" | "documents" | "document" | "inbox" | "actions";
+export type Ecran = "home" | "dossier" | "documents" | "document" | "inbox" | "actions" | "note";
+
+/** Un patient créé dans le navigateur (sans carte Vitale) : le serveur n'a pas de base, il le reçoit avec la demande. */
+export interface PatientLocalPayload {
+  id: string;
+  nomUsage: string;
+  prenomUsuel: string;
+  naissance: string;
+  sexe: "F" | "M";
+  profession?: string;
+  antecedents: string[];
+  allergies: string[];
+  traitements: string[];
+  notes: { date: string; motif?: string; synthese: string }[];
+}
 
 export interface ComposeInput {
   texte: string;
@@ -14,6 +28,10 @@ export interface ComposeInput {
   ecran: Ecran;
   docId?: string;
   boite?: "courriers" | "bio" | "messages";
+  /** Le patient local, quand `patientId` commence par `loc_`. */
+  patient?: PatientLocalPayload;
+  /** En écran « note » : la note de consultation à décliner en actions. */
+  note?: string;
 }
 
 export type ComposeKind = "ordonnance" | "rdv" | "message" | "courrier" | "arret" | "dossier" | "naviguer";

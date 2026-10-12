@@ -1,5 +1,6 @@
 import "server-only";
 import { getDossier, DOSSIERS, recordsOf, displayName, todayAppointments } from "@/data";
+import { resolvePatient } from "./patient";
 import { DR_LAURENT, CABINET } from "@/data/cabinet";
 import { now, TODAY } from "@/data/clock";
 import { toPatientEhr, ageAt } from "@/locus/ehr";
@@ -33,9 +34,15 @@ function fr(iso: string) { const [y, m, d] = iso.slice(0, 10).split("-"); return
 
 export function buildContext(input: ComposeInput): { contexte: string; patientEhr?: string } {
   const lines: string[] = [];
-  const d = input.patientId ? getDossier(input.patientId) : undefined;
-  const ehr = d ? toPatientEhr(d, now()) : undefined;
+  const pt = resolvePatient(input);
+  const d = pt && !pt.local ? getDossier(pt.id) : undefined;
+  const ehr = pt?.ehr;
 
+  if (pt?.local) {
+    lines.push(`## Patient ouvert (dossier créé au cabinet, sans carte Vitale)\nid: ${pt.id} · ${pt.nom} · ${pt.age} ans · ${pt.sexe}`);
+    lines.push(`## Dossier (patient_ehr)\n${pt.ehr}`);
+    if (pt.meds.length) lines.push(`## Traitements actifs (pour un renouvellement)\n${pt.meds.map((m) => `- ${m.dci}${m.dosage ? " " + m.dosage : ""} · ${m.posologie}`).join("\n")}`);
+  }
   if (d) {
     const p = d.patient;
     lines.push(`## Patient ouvert\nid: ${p.id} · ${displayName(p)} · ${ageAt(p.ins.dateNaissance, now())} ans · ${p.ins.sexe} · né(e) le ${fr(p.ins.dateNaissance)}${p.vie?.profession ? ` · ${p.vie.profession}` : ""}`);
@@ -61,7 +68,7 @@ export function buildContext(input: ComposeInput): { contexte: string; patientEh
     }
   }
 
-  if (input.ecran === "home" || !d) {
+  if (input.ecran === "home" || !pt) {
     const slots = todayAppointments();
     lines.push(`## Agenda du jour\n${slots.map((s) => `- ${fmtTime(s.appointment.debut)} · ${s.dossier.patient.id} · ${displayName(s.dossier.patient)} · ${s.appointment.motif}`).join("\n")}`);
     lines.push(`## Patientèle (id · nom · naissance)\n${DOSSIERS.map((x) => `- ${x.patient.id} · ${displayName(x.patient)} · ${fr(x.patient.ins.dateNaissance)}`).join("\n")}`);
@@ -72,6 +79,6 @@ export function buildContext(input: ComposeInput): { contexte: string; patientEh
     lines.push(`## Boîte « ${input.boite} » (non lus d'abord ; patientId · de · objet · urgence · résumé)\n${box.rows.slice(0, 14).map((r) => `- ${r.id} · ${r.patient.id} · ${r.patient.nom} · ${r.de} · ${r.titre} · ${r.urgence}${r.nonLu ? " · non lu" : ""}${r.resume ? ` · ${r.resume}` : ""}`).join("\n")}`);
   }
 
-  lines.push(`## Écran\n${input.ecran}`);
+  lines.push(`## Écran\n${input.ecran === "note" ? "note de consultation (le médecin vient de la saisir ; décline-la en actions)" : input.ecran}`);
   return { contexte: lines.join("\n\n"), patientEhr: ehr };
 }
