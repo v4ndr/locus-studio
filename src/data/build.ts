@@ -41,8 +41,8 @@ export function rec<K extends RecordKind>(
 /* Provenances usuelles. */
 export const P = {
   medecin: (validatedAt?: string): Provenance => ({ origin: "praticien", actor: "pr_laurent", validatedBy: "pr_laurent", validatedAt }),
-  agent: (confidence: number, derivedFrom?: string[]): Provenance => ({ origin: "agent", actor: "sol", confidence, derivedFrom }),
-  agentValide: (confidence: number, validatedAt: string, derivedFrom?: string[]): Provenance => ({ origin: "agent", actor: "sol", confidence, derivedFrom, validatedBy: "pr_laurent", validatedAt }),
+  agent: (confidence: number, derivedFrom?: string[]): Provenance => ({ origin: "agent", actor: "locus", confidence, derivedFrom }),
+  agentValide: (confidence: number, validatedAt: string, derivedFrom?: string[]): Provenance => ({ origin: "agent", actor: "locus", confidence, derivedFrom, validatedBy: "pr_laurent", validatedAt }),
   patient: (): Provenance => ({ origin: "patient" }),
   import: (actor: string): Provenance => ({ origin: "import", actor }),
   systeme: (actor: string): Provenance => ({ origin: "systeme", actor }),
@@ -54,6 +54,6 @@ export function journal(patientId: string | undefined, at: string, acteur: Journ
   return { id: `j${journalN}`, patientId, at, acteur, action, detail, recordId };
 }
 
-export const SOL = { type: "agent" as const, nom: "Sol" };
+export const LOCUS = { type: "agent" as const, nom: "Locus" };
 export const LAURENT = { type: "praticien" as const, nom: "Dr Laurent" };
 export const SYS = (nom: string) => ({ type: "systeme" as const, nom });

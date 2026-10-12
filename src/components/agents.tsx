@@ -27,8 +27,8 @@ export function AgentsView({ all, journal, inboxCount, policy }: { all: Row[]; j
     <div className="space-y-4">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight flex items-center gap-2"><span className="flex h-8 w-8 items-center justify-center rounded-md bg-agent-soft text-agent"><Sparkles className="h-4 w-4" /></span> Sol, l'agent du cabinet</h1>
-          <p className="mt-1 text-sm text-muted-foreground max-w-2xl">Sol est un collègue nommé, délégué, jamais responsable : chaque chose qu'il fait a un humain qui tranche ou qui peut révoquer. Voici sa file de travail, ce qu'il a fait, et ce que vous l'autorisez à faire seul.</p>
+          <h1 className="text-2xl font-semibold tracking-tight flex items-center gap-2"><span className="flex h-8 w-8 items-center justify-center rounded-md bg-agent-soft text-agent"><Sparkles className="h-4 w-4" /></span> Locus, l'agent du cabinet</h1>
+          <p className="mt-1 text-sm text-muted-foreground max-w-2xl">Locus est un collègue nommé, délégué, jamais responsable : chaque chose qu'il fait a un humain qui tranche ou qui peut révoquer. Voici sa file de travail, ce qu'il a fait, et ce que vous l'autorisez à faire seul.</p>
         </div>
         <div className="flex rounded-md border p-0.5 text-xs">
           {([["file", `À trancher · ${pending.length}`], ["fait", `Fait · ${done.length}`], ["politique", "Autonomie"], ["journal", "Journal"]] as const).map(([k, l]) => <button key={k} onClick={() => setTab(k)} className={cn("rounded px-2.5 py-1", tab === k ? "bg-muted font-medium" : "text-muted-foreground")}>{l}</button>)}
@@ -44,7 +44,7 @@ export function AgentsView({ all, journal, inboxCount, policy }: { all: Row[]; j
       {tab === "fait" && (
         <div className="space-y-4">
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{done.map((r) => <ProposalCard key={r.proposal.id} proposal={r.proposal} patient={r.patient} compact />)}</div>
-          {rejected.length > 0 && <><SectionTitle>Rejeté — Sol retient la correction</SectionTitle><div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{rejected.map((r) => <ProposalCard key={r.proposal.id} proposal={r.proposal} patient={r.patient} compact />)}</div></>}
+          {rejected.length > 0 && <><SectionTitle>Rejeté — Locus retient la correction</SectionTitle><div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{rejected.map((r) => <ProposalCard key={r.proposal.id} proposal={r.proposal} patient={r.patient} compact />)}</div></>}
         </div>
       )}
 
@@ -74,11 +74,11 @@ export function AgentsView({ all, journal, inboxCount, policy }: { all: Row[]; j
           </Card>
           <Card className="p-4 text-sm space-y-2">
             <div className="font-medium">Trois niveaux, pas plus</div>
-            <p className="text-muted-foreground"><span className="font-medium text-foreground">0 · observe.</span> Sol signale, n'écrit rien. Pour ce qui est une décision clinique.</p>
-            <p className="text-muted-foreground"><span className="font-medium text-foreground">1 · prépare.</span> Sol rédige, vous tranchez. Rien ne sort du cabinet sans votre geste. C'est le défaut.</p>
-            <p className="text-muted-foreground"><span className="font-medium text-foreground">2 · agit.</span> Sol exécute et rend compte dans le journal ; vous pouvez révoquer. Pour l'administratif réversible.</p>
+            <p className="text-muted-foreground"><span className="font-medium text-foreground">0 · observe.</span> Locus signale, n'écrit rien. Pour ce qui est une décision clinique.</p>
+            <p className="text-muted-foreground"><span className="font-medium text-foreground">1 · prépare.</span> Locus rédige, vous tranchez. Rien ne sort du cabinet sans votre geste. C'est le défaut.</p>
+            <p className="text-muted-foreground"><span className="font-medium text-foreground">2 · agit.</span> Locus exécute et rend compte dans le journal ; vous pouvez révoquer. Pour l'administratif réversible.</p>
             <p className="text-muted-foreground">Les <span className="font-medium text-foreground">verrous</span> (ordonnance, arrêt de travail) ne montent jamais à 2 : une signature est une signature.</p>
-            <p className="text-micro text-muted-foreground">Chaque rejet est une correction que Sol retient : il ne refait pas deux fois la même proposition.</p>
+            <p className="text-micro text-muted-foreground">Chaque rejet est une correction que Locus retient : il ne refait pas deux fois la même proposition.</p>
           </Card>
         </div>
       )}

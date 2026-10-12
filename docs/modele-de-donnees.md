@@ -68,7 +68,7 @@ Sept patients écrits à la main, avec un fil complet et une situation du jour :
 | Patient | Situation |
 |---|---|
 | Marguerite Delacroix, 74 ans | DT2 + HTA + FA sous apixaban ; biologie reçue ce matin (HbA1c ↑, DFG ↓), CR cardio hier, fille aidante qui écrit ; consultation scriptée à 9h30 |
-| Julien Garnier, 42 ans | lombalgie aiguë par messagerie à 6h40, arrêt demandé ; RDV pris par Sol ; consultation scriptée |
+| Julien Garnier, 42 ans | lombalgie aiguë par messagerie à 6h40, arrêt demandé ; RDV pris par Locus ; consultation scriptée |
 | Léa Moreau, 29 ans | asthme, test de grossesse positif hier, demande de Ventoline ; bilan T1 préparé |
 | Jean-Pierre Vasseur, 67 ans | BPCO, dépression, CR pneumo (bithérapie, MP amiante), coloscopie plutôt que kit |
 | Inès Perrin, 8 ans | angine fébrile, mère par messagerie ; ordonnance conditionnelle au TROD |

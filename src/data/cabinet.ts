@@ -8,7 +8,7 @@ export const DR_LAURENT: Practitioner = {
   specialite: "Médecine générale",
   secteur: 1,
   mssante: "claire.laurent@medecin.mssante.fr",
-  agentNom: "Sol",
+  agentNom: "Locus",
 };
 
 export const DR_NDIAYE: Practitioner = {
@@ -19,7 +19,7 @@ export const DR_NDIAYE: Practitioner = {
   specialite: "Médecine générale",
   secteur: 1,
   mssante: "moussa.ndiaye@medecin.mssante.fr",
-  agentNom: "Sol",
+  agentNom: "Locus",
 };
 
 export const CABINET: Cabinet = {
@@ -42,7 +42,7 @@ export const CABINET: Cabinet = {
   },
 };
 
-/** La politique d'autonomie du Dr Laurent — ce que Sol peut faire seul. */
+/** La politique d'autonomie du Dr Laurent — ce que Locus peut faire seul. */
 export const AUTONOMY_LAURENT: AutonomyPolicy = {
   praticien: DR_LAURENT.id,
   parAction: {

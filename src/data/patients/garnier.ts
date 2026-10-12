@@ -1,5 +1,5 @@
 import type { Dossier, Patient } from "@/domain/types";
-import { rec, P, journal, SOL, SYS } from "../build";
+import { rec, P, journal, LOCUS, SYS } from "../build";
 import { at, day } from "../clock";
 
 /** Julien Garnier, 42 ans — lombalgie aiguë, demande d'arrêt par la messagerie ; tabac ; FINDRISC. */
@@ -58,7 +58,7 @@ const messages = [
   }, { at: at("06:40") }),
   rec("message", ID, P.agent(0.92), {
     canal: "patient", threadId: "th_garnier_dos",
-    de: { type: "agent", nom: "Sol, pour le Dr Laurent" }, a: [{ type: "patient", nom: "Julien Garnier" }],
+    de: { type: "agent", nom: "Locus, pour le Dr Laurent" }, a: [{ type: "patient", nom: "Julien Garnier" }],
     date: at("07:05"),
     objet: "Re: Mal au dos — arrêt ?",
     corps: "Bonjour Julien,\n\nMerci pour les précisions, elles sont rassurantes. Le Dr Laurent vous voit ce matin à 10h00 (rendez-vous ajouté — répondez « non » si l'horaire ne va pas). Un arrêt de travail nécessite de vous examiner.\n\nD'ici là : continuez à bouger autant que la douleur le permet, évitez de rester allongé, chaleur locale. L'ibuprofène 400 mg à 3 par jour au repas au maximum, pas plus de 5 jours, et pas si vous avez des brûlures d'estomac.\n\nAppelez le 15 si vous perdez la force d'une jambe, si vous n'arrivez plus à uriner, ou si la douleur devient insupportable.\n\nSol, pour le Dr Laurent",
@@ -74,7 +74,7 @@ const proposals = [
     action: "rdv", titre: "Rendez-vous ajouté à 10h00 (créneau libre, demande du matin)",
     justification: "Lombalgie aiguë sans drapeau rouge rapporté, chez un chauffeur-livreur qui demande un arrêt : un examen est nécessaire le jour même, pas une urgence. Créneau libre à 10h00 ; le patient a dit pouvoir passer ce matin.",
     declencheur: { type: "message", recordId: messages[0].id, libelle: "Message de Julien Garnier à 6h40" },
-    autonomie: 2, etat: "executee", decision: { par: "sol", le: at("07:04") }, agent: "sol", resultatsIds: [appointment.id],
+    autonomie: 2, etat: "executee", decision: { par: "locus", le: at("07:04") }, agent: "locus", resultatsIds: [appointment.id],
   }, { status: "actif", at: at("07:04") }),
   rec("proposal", ID, P.agent(0.92, [messages[0].id]), {
     action: "message-patient", titre: "Répondre à Julien Garnier (rendez-vous, conseils, signes d'alerte)",
@@ -82,7 +82,7 @@ const proposals = [
     references: [{ docId: "has-lombalgie-2019", titre: "Prise en charge du patient présentant une lombalgie commune", editeur: "HAS", date: "2019" }],
     charge: { recordId: messages[1].id, patch: { status: "actif" } },
     declencheur: { type: "message", recordId: messages[0].id, libelle: "Message de Julien Garnier à 6h40" },
-    autonomie: 1, etat: "a-valider", agent: "sol",
+    autonomie: 1, etat: "a-valider", agent: "locus",
   }, { status: "propose", at: at("07:05") }),
   rec("proposal", ID, P.agent(0.85, [messages[0].id]), {
     action: "arret-travail", titre: "Préparer un arrêt de travail de 4 jours (à confirmer après examen)",
@@ -90,7 +90,7 @@ const proposals = [
     references: [{ titre: "Fiches repères durées d'arrêt de travail — Lombalgie commune", editeur: "Assurance Maladie" }],
     charge: { du: day(0), au: day(3), motif: "Lombalgie aiguë commune", sortiesAutorisees: "libres" },
     declencheur: { type: "message", recordId: messages[0].id, libelle: "Message de Julien Garnier à 6h40" },
-    autonomie: 1, etat: "a-valider", agent: "sol",
+    autonomie: 1, etat: "a-valider", agent: "locus",
   }, { status: "propose", at: at("07:06") }),
   rec("proposal", ID, P.agent(0.8, [encounters[0].id]), {
     action: "ordonnance", titre: "Bilan : glycémie à jeun et lipides (prévu il y a 40 jours, jamais prescrit)",
@@ -98,14 +98,14 @@ const proposals = [
     references: [{ titre: "Dépistage du diabète de type 2 — FINDRISC", editeur: "HAS" }],
     charge: { type: "biologie", date: day(0), lignes: [{ libelle: "Glycémie à jeun" }, { libelle: "Bilan lipidique (CT, HDL, LDL, TG)" }] },
     declencheur: { type: "encounter", recordId: encounters[0].id, libelle: "Conduite à tenir du " + day(-40) },
-    autonomie: 1, etat: "a-valider", agent: "sol",
+    autonomie: 1, etat: "a-valider", agent: "locus",
   }, { status: "propose", at: at("07:07") }),
 ];
 
 const briefing = rec("briefing", ID, P.agent(0.9, [messages[0].id]), {
   appointmentId: appointment.id,
   synthese: "Julien Garnier, 42 ans, chauffeur-livreur, fumeur, en surpoids, père diabétique. Lombalgie aiguë depuis 2 jours après port de charge, sans drapeau rouge déclaré. Demande un arrêt. Deuxième épisode (2023, résolu en 3 semaines).",
-  depuisDerniereFois: ["Message ce matin 6h40 : lombalgie, ibuprofène en automédication, demande d'arrêt.", "Rendez-vous pris par Sol à 10h00."],
+  depuisDerniereFois: ["Message ce matin 6h40 : lombalgie, ibuprofène en automédication, demande d'arrêt.", "Rendez-vous pris par Locus à 10h00."],
   echeances: [{ libelle: "Glycémie à jeun + lipides : prévus il y a 40 jours, non prescrits" }, { libelle: "Dépistage colorectal : non éligible (< 50 ans)" }],
   questions: ["Drapeaux rouges à vérifier à l'examen : déficit moteur, Lasègue, troubles sphinctériens, fièvre, perte de poids.", "Durée d'arrêt : 4 jours proposés ; port de charges au travail — aménagement possible ?", "Tabac : « avant 45 ans » — relancer les substituts ?", "Kiné si persistance > 2 semaines."],
   propositionsIds: proposals.slice(1).map((p) => p.id),
@@ -123,9 +123,9 @@ export const dossierGarnier: Dossier = {
   records: [...Object.values(pb), ...meds, ...mesures, ...vaccins, ...encounters, ...messages, appointment, ...proposals, briefing, summary],
   journal: [
     journal(ID, at("06:40"), SYS("Messagerie"), "message.receive", "Message de Julien Garnier", messages[0].id),
-    journal(ID, at("06:55"), SOL, "message.triage", "Lombalgie aiguë sans drapeau rouge — urgence « jour »", messages[0].id),
-    journal(ID, at("07:04"), SOL, "appointment.create", "RDV 10h00 pris (autonomie 2)", appointment.id),
-    journal(ID, at("07:05"), SOL, "message.draft", "Réponse rédigée, à valider", messages[1].id),
-    journal(ID, at("07:06"), SOL, "proposal.create", "Arrêt de travail pré-rempli (verrouillé)", proposals[2].id),
+    journal(ID, at("06:55"), LOCUS, "message.triage", "Lombalgie aiguë sans drapeau rouge — urgence « jour »", messages[0].id),
+    journal(ID, at("07:04"), LOCUS, "appointment.create", "RDV 10h00 pris (autonomie 2)", appointment.id),
+    journal(ID, at("07:05"), LOCUS, "message.draft", "Réponse rédigée, à valider", messages[1].id),
+    journal(ID, at("07:06"), LOCUS, "proposal.create", "Arrêt de travail pré-rempli (verrouillé)", proposals[2].id),
   ],
 };

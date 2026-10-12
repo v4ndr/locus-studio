@@ -1,5 +1,5 @@
 import type { Dossier, Patient } from "@/domain/types";
-import { rec, P, journal, SOL, SYS } from "../build";
+import { rec, P, journal, LOCUS, SYS } from "../build";
 import { at, day } from "../clock";
 
 /** Sophie Marchand, 54 ans — cystite simple par messagerie (l'agent peut presque tout faire), mammographie en retard. Pas de rendez-vous aujourd'hui. */
@@ -42,7 +42,7 @@ const messages = [
   }, { at: at("06:58") }),
   rec("message", ID, P.agent(0.94), {
     canal: "patient", threadId: "th_marchand_cystite",
-    de: { type: "agent", nom: "Sol, pour le Dr Laurent" }, a: [{ type: "patient", nom: "Sophie Marchand" }],
+    de: { type: "agent", nom: "Locus, pour le Dr Laurent" }, a: [{ type: "patient", nom: "Sophie Marchand" }],
     date: at("07:15"),
     objet: "Re: Encore une cystite",
     corps: "Bonjour Sophie,\n\nLe Dr Laurent a validé une ordonnance de fosfomycine (Monuril 3 g, un sachet unique, le soir au coucher, vessie vide). Elle est déjà dans Mon Espace Santé et à votre pharmacie habituelle (ordonnance numérique) — rien à imprimer.\n\nBuvez bien. Si la fièvre monte, si vous avez mal dans le dos ou si ça ne va pas mieux dans 3 jours, écrivez-nous ou consultez.\n\nC'est le 4e épisode en un an : le Dr Laurent vous propose un rendez-vous dans les prochaines semaines pour en parler (un ECBU à distance, et des options de prévention). Voulez-vous que je vous propose des créneaux ?\n\nSol, pour le Dr Laurent",
@@ -56,10 +56,10 @@ const proposals = [
     references: [{ docId: "has-cystite-2021", titre: "Cystite aiguë simple, à risque de complication ou récidivante, de la femme", editeur: "HAS", date: "2021" }],
     charge: { type: "medicament", date: day(0), lignes: [{ libelle: "FOSFOMYCINE TROMÉTAMOL 3 g sachet", dci: "fosfomycine trométamol", cis: "67317742", posologie: "1 sachet en prise unique, le soir au coucher, vessie vide", duree: "1 jour", alertes: [{ type: "redondance", niveau: "info", message: "4e cure de fosfomycine en 12 mois : ECBU à distance et consultation « cystites récidivantes » recommandés (HAS 2021)." }] }] },
     declencheur: { type: "message", recordId: messages[0].id, libelle: "Message de Sophie Marchand à 6h58" },
-    autonomie: 1, etat: "a-valider", agent: "sol",
+    autonomie: 1, etat: "a-valider", agent: "locus",
   }, { status: "propose", at: at("07:14") }),
-  rec("proposal", ID, P.agent(0.94, [messages[0].id]), { action: "message-patient", titre: "Répondre à Sophie Marchand (ordonnance envoyée, signes d'alerte, proposer un rendez-vous)", justification: "Part avec l'ordonnance dès votre signature.", charge: { recordId: messages[1].id, patch: { status: "actif" } }, declencheur: { type: "message", recordId: messages[0].id, libelle: "Message de Sophie Marchand à 6h58" }, autonomie: 1, etat: "a-valider", agent: "sol" }, { status: "propose", at: at("07:15") }),
-  rec("proposal", ID, P.agent(0.92, [screenings[0].id]), { action: "message-patient", titre: "Mammographie en retard de 6 mois : relance avec l'invitation du CRCDC", justification: "Dépistage organisé 50-74 ans, mère atteinte à 61 ans (pas de surrisque justifiant un suivi spécifique [1]). Dernière mammographie il y a 2 ans et demi. Relance logistique — dans mon périmètre d'autonomie, envoyée.", references: [{ titre: "Dépistage du cancer du sein — femmes à risque", editeur: "HAS / INCa" }], declencheur: { type: "echeance", recordId: screenings[0].id, libelle: "Mammographie en retard" }, autonomie: 2, etat: "executee", decision: { par: "sol", le: at("07:16") }, agent: "sol" }, { status: "actif", at: at("07:16") }),
+  rec("proposal", ID, P.agent(0.94, [messages[0].id]), { action: "message-patient", titre: "Répondre à Sophie Marchand (ordonnance envoyée, signes d'alerte, proposer un rendez-vous)", justification: "Part avec l'ordonnance dès votre signature.", charge: { recordId: messages[1].id, patch: { status: "actif" } }, declencheur: { type: "message", recordId: messages[0].id, libelle: "Message de Sophie Marchand à 6h58" }, autonomie: 1, etat: "a-valider", agent: "locus" }, { status: "propose", at: at("07:15") }),
+  rec("proposal", ID, P.agent(0.92, [screenings[0].id]), { action: "message-patient", titre: "Mammographie en retard de 6 mois : relance avec l'invitation du CRCDC", justification: "Dépistage organisé 50-74 ans, mère atteinte à 61 ans (pas de surrisque justifiant un suivi spécifique [1]). Dernière mammographie il y a 2 ans et demi. Relance logistique — dans mon périmètre d'autonomie, envoyée.", references: [{ titre: "Dépistage du cancer du sein — femmes à risque", editeur: "HAS / INCa" }], declencheur: { type: "echeance", recordId: screenings[0].id, libelle: "Mammographie en retard" }, autonomie: 2, etat: "executee", decision: { par: "locus", le: at("07:16") }, agent: "locus" }, { status: "actif", at: at("07:16") }),
 ];
 
 const summary = rec("summary", ID, P.agentValide(0.9, day(-30)), {
@@ -74,7 +74,7 @@ export const dossierMarchand: Dossier = {
   records: [...Object.values(pb), ...meds, ...labs, ...screenings, ...messages, ...proposals, summary],
   journal: [
     journal(ID, at("06:58"), SYS("Messagerie"), "message.receive", "Message de Sophie Marchand", messages[0].id),
-    journal(ID, at("07:14"), SOL, "proposal.create", "Ordonnance fosfomycine (verrouillée)", proposals[0].id),
-    journal(ID, at("07:16"), SOL, "message.send", "Relance mammographie envoyée (autonomie 2)", proposals[2].id),
+    journal(ID, at("07:14"), LOCUS, "proposal.create", "Ordonnance fosfomycine (verrouillée)", proposals[0].id),
+    journal(ID, at("07:16"), LOCUS, "message.send", "Relance mammographie envoyée (autonomie 2)", proposals[2].id),
   ],
 };

@@ -19,7 +19,7 @@ interface Turn {
 }
 
 /**
- * « Demander à Sol » — le fil avec locus-core, contextualisé par le dossier.
+ * « Demander à Locus » — le fil avec locus-core, contextualisé par le dossier.
  * La question part au BFF avec l'identifiant du patient ; le serveur projette
  * le dossier en `patient_ehr`. Ce que le navigateur reçoit est public : pas
  * de règle (MKU), seulement l'étape, la réponse et les sources.
@@ -62,10 +62,10 @@ export function LocusPanel({ patientId, patientNom, suggestions, compact }: { pa
     if (!t.result?.ehrAdditions || !patientId) return;
     const p: Proposal = {
       id: `session.proposal.${Date.now()}`, kind: "proposal", patientId, schema: 1, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
-      provenance: { origin: "agent", actor: "sol", confidence: 0.8 }, status: "propose",
+      provenance: { origin: "agent", actor: "locus", confidence: 0.8 }, status: "propose",
       action: "creer-enregistrement", titre: `Inscrire au dossier : ${t.result.ehrAdditions}`,
-      justification: "Fait patient énoncé pendant le dialogue avec Sol (champ `ehr_additions` de locus-core). À inscrire pour qu'il compte dans les prochaines réponses.",
-      declencheur: { type: "praticien", libelle: `Question : « ${t.question} »` }, autonomie: 1, etat: "a-valider", agent: "sol", traceId: t.result.traceId || undefined,
+      justification: "Fait patient énoncé pendant le dialogue avec Locus (champ `ehr_additions` de locus-core). À inscrire pour qu'il compte dans les prochaines réponses.",
+      declencheur: { type: "praticien", libelle: `Question : « ${t.question} »` }, autonomie: 1, etat: "a-valider", agent: "locus", traceId: t.result.traceId || undefined,
     };
     dispatch({ type: "ajouter", proposal: p });
     setTurns((ts) => ts.map((x) => (x === t ? { ...x, result: { ...x.result!, ehrAdditions: "" } } : x)));
@@ -75,7 +75,7 @@ export function LocusPanel({ patientId, patientNom, suggestions, compact }: { pa
     <div className={cn("flex flex-col", compact ? "h-[520px]" : "h-[calc(100dvh-7rem)] min-h-[480px]")}>
       <div className="flex items-center gap-2 border-b pb-2 mb-2">
         <span className="flex h-6 w-6 items-center justify-center rounded-md bg-agent-soft text-agent"><Sparkles className="h-3.5 w-3.5" /></span>
-        <div className="text-sm font-medium">Demander à Sol</div>
+        <div className="text-sm font-medium">Demander à Locus</div>
         {patientNom && <Badge tone="primary">dossier : {patientNom}</Badge>}
         <div className="ml-auto flex rounded-md border p-0.5 text-micro">
           {(["rapide", "approfondi"] as const).map((m) => (
@@ -86,7 +86,7 @@ export function LocusPanel({ patientId, patientNom, suggestions, compact }: { pa
       <div className="flex-1 overflow-y-auto space-y-4 pr-1">
         {turns.length === 0 && (
           <div className="space-y-2 pt-2">
-            <p className="text-sm text-muted-foreground">{patientNom ? `Une question clinique sur ${patientNom}. Sol lit le dossier, interroge Locus (HAS, ANSM, SPF, sociétés savantes…) et répond avec les sources.` : "Une question clinique, sans patient : Sol interroge Locus et répond avec les sources."}</p>
+            <p className="text-sm text-muted-foreground">{patientNom ? `Une question clinique sur ${patientNom}. Locus lit le dossier, interroge Locus (HAS, ANSM, SPF, sociétés savantes…) et répond avec les sources.` : "Une question clinique, sans patient : Locus interroge Locus et répond avec les sources."}</p>
             {suggestions && (
               <div className="flex flex-wrap gap-1.5">
                 {suggestions.map((s) => <button key={s} onClick={() => ask(s)} className="rounded-full border px-2.5 py-1 text-xs hover:bg-muted text-left">{s}</button>)}
@@ -103,7 +103,7 @@ export function LocusPanel({ patientId, patientNom, suggestions, compact }: { pa
                   {t.steps.map((s, j) => <li key={j} className="flex items-center gap-1.5">{t.pending && j === t.steps.length - 1 ? <Loader2 className="h-3 w-3 animate-spin text-agent" /> : <span className="h-1 w-1 rounded-full bg-muted-foreground/50" />}{s}</li>)}
                 </ol>
               )}
-              {t.pending && !t.answer && <div className="text-sm text-muted-foreground animate-pulse-soft">Sol réfléchit…</div>}
+              {t.pending && !t.answer && <div className="text-sm text-muted-foreground animate-pulse-soft">Locus réfléchit…</div>}
               {t.error && <div className="rounded bg-destructive/10 px-2 py-1.5 text-xs text-destructive">{t.error}</div>}
               {t.answer && <Md text={t.answer} />}
               {t.result && <Sources r={t.result} />}

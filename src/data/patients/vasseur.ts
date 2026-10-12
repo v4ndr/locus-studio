@@ -1,5 +1,5 @@
 import type { Dossier, Patient } from "@/domain/types";
-import { rec, P, journal, SOL, SYS } from "../build";
+import { rec, P, journal, LOCUS, SYS } from "../build";
 import { at, day } from "../clock";
 
 /** Jean-Pierre Vasseur, 67 ans — BPCO, ex-fumeur, épisode dépressif ; CR pneumo reçu ; dépistage colorectal en retard. */
@@ -102,7 +102,7 @@ const proposals = [
     references: [{ titre: "CR pneumologie Dr Ould-Kaci", editeur: "HCL", date: day(-4) }, { titre: "GOLD Report 2025", editeur: "GOLD" }],
     charge: { type: "medicament", date: day(0), lignes: [{ libelle: "SPIOLTO RESPIMAT 2,5/2,5 µg", dci: "tiotropium/olodatérol", posologie: "2 bouffées le matin", duree: "3 mois", ald: true }, { libelle: "VENTOLINE 100 µg", dci: "salbutamol", posologie: "2 bouffées si besoin", duree: "3 mois", ald: true }], mention: "Remplace Spiriva Respimat." },
     declencheur: { type: "document", recordId: documents[0].id, libelle: "CR pneumologie reçu avant-hier" },
-    autonomie: 1, etat: "a-valider", agent: "sol",
+    autonomie: 1, etat: "a-valider", agent: "locus",
   }, { status: "propose", at: at("17:02", -2) }),
   rec("proposal", ID, P.agent(0.9, [documents[0].id]), {
     action: "courrier", titre: "Certificat médical initial — maladie professionnelle (plaques pleurales, tableau 30B)",
@@ -110,20 +110,20 @@ const proposals = [
     references: [{ titre: "Tableau 30B — Affections professionnelles consécutives à l'inhalation de poussières d'amiante", editeur: "INRS" }],
     charge: { type: "certificat", titre: "Certificat médical initial — maladie professionnelle", destinataire: { nom: "CPAM du Rhône" }, date: day(0), corps: "Je soussignée, Dr Claire Laurent, certifie avoir examiné M. Jean-Pierre Vasseur, né le 27/02/1959, et constaté : plaques pleurales calcifiées bilatérales objectivées au scanner thoracique du " + day(-20) + " (Hôpital Louis-Pradel), chez un patient exposé professionnellement à l'amiante (chaudronnerie, 1978-1995).\n\nDate de première constatation : " + day(-20) + ".\nAffection susceptible de relever du tableau n° 30 B des maladies professionnelles.\n\nFait à Lyon, le " + day(0) + "." },
     declencheur: { type: "document", recordId: documents[0].id, libelle: "CR pneumologie reçu avant-hier" },
-    autonomie: 1, etat: "a-valider", agent: "sol",
+    autonomie: 1, etat: "a-valider", agent: "locus",
   }, { status: "propose", at: at("17:05", -2) }),
   rec("proposal", ID, P.agent(0.95, [carePlans[0].id]), {
     action: "rappel", titre: "Grippe à faire cet après-midi (vaccin disponible au cabinet)", justification: "BPCO + 67 ans : vaccination annuelle recommandée, en retard de 15 jours sur la saison [1]. Le pneumologue l'a rappelé.",
     references: [{ titre: "Calendrier des vaccinations 2026", editeur: "Ministère de la Santé" }],
     declencheur: { type: "echeance", recordId: carePlans[0].id, libelle: "Vaccination grippe due" },
-    autonomie: 2, etat: "executee", decision: { par: "sol", le: at("17:06", -2) }, agent: "sol",
+    autonomie: 2, etat: "executee", decision: { par: "locus", le: at("17:06", -2) }, agent: "locus",
   }, { status: "actif", at: at("17:06", -2) }),
   rec("proposal", ID, P.agent(0.9, [screenings[0].id]), {
     action: "signaler", titre: "Dépistage colorectal en retard d'un an, frère décédé d'un cancer colorectal à 64 ans",
     justification: "Un antécédent familial au 1er degré avant 65 ans sort du dépistage organisé : la HAS recommande une coloscopie, pas un test immunologique [1]. Le kit mentionné à la dernière consultation n'est donc pas la bonne réponse.",
     references: [{ titre: "Dépistage du cancer colorectal chez les personnes à risque élevé", editeur: "HAS" }],
     declencheur: { type: "echeance", recordId: screenings[0].id, libelle: "Dépistage colorectal en retard" },
-    autonomie: 0, etat: "a-valider", agent: "sol",
+    autonomie: 0, etat: "a-valider", agent: "locus",
   }, { status: "propose", at: at("17:08", -2) }),
 ];
 
@@ -148,9 +148,9 @@ export const dossierVasseur: Dossier = {
   records: [...Object.values(pb), ...meds, ...mesures, ...vaccins, ...documents, ...encounters, ...carePlans, ...screenings, appointment, ...proposals, briefing, summary],
   journal: [
     journal(ID, at("16:40", -2), SYS("MSSanté"), "document.receive", "CR pneumologie Dr Ould-Kaci", documents[0].id),
-    journal(ID, at("16:58", -2), SOL, "document.read", "CR lu : bithérapie, réhabilitation, MP amiante", documents[0].id),
-    journal(ID, at("17:02", -2), SOL, "proposal.create", "Ordonnance Spiolto", proposals[0].id),
-    journal(ID, at("17:05", -2), SOL, "proposal.create", "CMI maladie professionnelle", proposals[1].id),
-    journal(ID, at("17:08", -2), SOL, "proposal.create", "Signaler : coloscopie plutôt que kit", proposals[3].id),
+    journal(ID, at("16:58", -2), LOCUS, "document.read", "CR lu : bithérapie, réhabilitation, MP amiante", documents[0].id),
+    journal(ID, at("17:02", -2), LOCUS, "proposal.create", "Ordonnance Spiolto", proposals[0].id),
+    journal(ID, at("17:05", -2), LOCUS, "proposal.create", "CMI maladie professionnelle", proposals[1].id),
+    journal(ID, at("17:08", -2), LOCUS, "proposal.create", "Signaler : coloscopie plutôt que kit", proposals[3].id),
   ],
 };

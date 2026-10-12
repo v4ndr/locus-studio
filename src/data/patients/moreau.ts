@@ -1,5 +1,5 @@
 import type { Dossier, Patient } from "@/domain/types";
-import { rec, P, journal, SOL, SYS } from "../build";
+import { rec, P, journal, LOCUS, SYS } from "../build";
 import { at, day } from "../clock";
 
 /** Léa Moreau, 29 ans — asthme, grossesse découverte (test positif), demande de renouvellement par messagerie. */
@@ -65,7 +65,7 @@ const messages = [
   }, { at: at("22:15", -1) }),
   rec("message", ID, P.agent(0.9), {
     canal: "patient", threadId: "th_moreau_ventoline",
-    de: { type: "agent", nom: "Sol, pour le Dr Laurent" }, a: [{ type: "patient", nom: "Léa Moreau" }],
+    de: { type: "agent", nom: "Locus, pour le Dr Laurent" }, a: [{ type: "patient", nom: "Léa Moreau" }],
     date: at("07:25"),
     objet: "Re: Ventoline + une nouvelle 🙂",
     corps: "Bonjour Léa, et félicitations !\n\nOui : le Symbicort se poursuit tel quel pendant la grossesse — un asthme bien contrôlé est ce qui protège le mieux le bébé. La Ventoline aussi, si besoin.\n\nLe Dr Laurent vous propose un rendez-vous ce matin à 11h00 pour faire le point (asthme + début de grossesse). Elle préparera la déclaration de grossesse, le bilan de début de grossesse et l'ordonnance de Ventoline. Si vous ne pouvez pas, répondez ici et on trouve un autre créneau cette semaine.\n\nSol, pour le Dr Laurent",
@@ -80,12 +80,12 @@ const proposals = [
     justification: "Déclarée par la patiente (test positif). L'inscrire avant la consultation rend la grossesse visible au LAP : toute prescription sera vérifiée contre elle.",
     charge: { recordId: pb.grossesse.id, patch: { status: "actif" } },
     declencheur: { type: "message", recordId: messages[0].id, libelle: "Message de Léa Moreau hier soir" },
-    autonomie: 1, etat: "a-valider", agent: "sol",
+    autonomie: 1, etat: "a-valider", agent: "locus",
   }, { status: "propose", at: at("07:20") }),
   rec("proposal", ID, P.agent(0.9, [messages[0].id]), {
     action: "rdv", titre: "Rendez-vous proposé à 11h00", justification: "Grossesse débutante + asthme un peu moins contrôlé : à voir cette semaine, pas en urgence. Créneau de 30 min libre à 11h00.",
     declencheur: { type: "message", recordId: messages[0].id, libelle: "Message de Léa Moreau hier soir" },
-    autonomie: 2, etat: "executee", decision: { par: "sol", le: at("07:22") }, agent: "sol", resultatsIds: [appointment.id],
+    autonomie: 2, etat: "executee", decision: { par: "locus", le: at("07:22") }, agent: "locus", resultatsIds: [appointment.id],
   }, { status: "actif", at: at("07:22") }),
   rec("proposal", ID, P.agent(0.9, [messages[0].id]), {
     action: "message-patient", titre: "Répondre à Léa Moreau (poursuite du Symbicort, rendez-vous)",
@@ -93,7 +93,7 @@ const proposals = [
     references: [{ titre: "Asthme et grossesse", editeur: "CRAT", url: "https://www.lecrat.fr" }],
     charge: { recordId: messages[1].id, patch: { status: "actif" } },
     declencheur: { type: "message", recordId: messages[0].id, libelle: "Message de Léa Moreau hier soir" },
-    autonomie: 1, etat: "a-valider", agent: "sol",
+    autonomie: 1, etat: "a-valider", agent: "locus",
   }, { status: "propose", at: at("07:25") }),
   rec("proposal", ID, P.agent(0.92, [messages[0].id]), {
     action: "ordonnance", titre: "Bilan de début de grossesse + Ventoline",
@@ -101,14 +101,14 @@ const proposals = [
     references: [{ docId: "has-grossesse-2016", titre: "Suivi et orientation des femmes enceintes en fonction des situations à risque identifiées", editeur: "HAS", date: "2016" }],
     charge: { type: "biologie", date: day(0), lignes: [{ libelle: "Groupe sanguin ABO-Rh, RAI" }, { libelle: "Sérologie toxoplasmose" }, { libelle: "Sérologie rubéole" }, { libelle: "Sérologie syphilis (TPHA-VDRL)" }, { libelle: "Sérologie VIH (proposée)" }, { libelle: "Glycémie à jeun" }, { libelle: "NFS" }, { libelle: "Albuminurie, glycosurie" }], mention: "Échographie de datation à programmer entre 11 et 13 SA + 6 j." },
     declencheur: { type: "message", recordId: messages[0].id, libelle: "Message de Léa Moreau hier soir" },
-    autonomie: 1, etat: "a-valider", agent: "sol",
+    autonomie: 1, etat: "a-valider", agent: "locus",
   }, { status: "propose", at: at("07:27") }),
   rec("proposal", ID, P.agent(0.88), {
     action: "rappel", titre: "Vaccination coqueluche (2e trimestre) et grippe (dès maintenant, saison en cours)",
     justification: "Calendrier vaccinal 2026 : coqueluche entre 20 et 36 SA à chaque grossesse ; grippe recommandée à tout terme pendant la saison [1]. Rappel posé à 20 SA ; la grippe peut se faire ce matin.",
     references: [{ titre: "Calendrier des vaccinations 2026", editeur: "Ministère de la Santé" }],
     declencheur: { type: "echeance", libelle: "Grossesse ≈ 7 SA" },
-    autonomie: 2, etat: "executee", decision: { par: "sol", le: at("07:28") }, agent: "sol",
+    autonomie: 2, etat: "executee", decision: { par: "locus", le: at("07:28") }, agent: "locus",
   }, { status: "actif", at: at("07:28") }),
 ];
 
@@ -133,8 +133,8 @@ export const dossierMoreau: Dossier = {
   records: [...Object.values(pb), ...allergies, ...meds, ...mesures, ...vaccins, ...encounters, ...prescriptions, ...messages, appointment, ...proposals, briefing, summary],
   journal: [
     journal(ID, at("22:15", -1), SYS("Messagerie"), "message.receive", "Message de Léa Moreau", messages[0].id),
-    journal(ID, at("07:20"), SOL, "proposal.create", "Inscrire la grossesse", proposals[0].id),
-    journal(ID, at("07:22"), SOL, "appointment.create", "RDV 11h00 proposé (autonomie 2)", appointment.id),
-    journal(ID, at("07:28"), SOL, "reminder.create", "Rappel coqueluche à 20 SA", proposals[4].id),
+    journal(ID, at("07:20"), LOCUS, "proposal.create", "Inscrire la grossesse", proposals[0].id),
+    journal(ID, at("07:22"), LOCUS, "appointment.create", "RDV 11h00 proposé (autonomie 2)", appointment.id),
+    journal(ID, at("07:28"), LOCUS, "reminder.create", "Rappel coqueluche à 20 SA", proposals[4].id),
   ],
 };

@@ -1,5 +1,5 @@
 import type { Dossier, Patient } from "@/domain/types";
-import { rec, P, journal, SOL, SYS } from "../build";
+import { rec, P, journal, LOCUS, SYS } from "../build";
 import { at, day } from "../clock";
 
 /** Alain Roussel, 58 ans — HTA non contrôlée, automesures via Mon Espace Santé (tensiomètre connecté), courrier d'un confrère MSSanté ; RDV 16h00. */
@@ -67,16 +67,16 @@ const proposals = [
     references: [{ titre: "Courrier Dr Lefèvre", editeur: "Médecine du travail", date: day(-2) }, { titre: "Évaluation clinique et économique des dispositifs médicaux et prestations associées pour la prise en charge du SAHOS", editeur: "HAS", date: "2014" }],
     charge: { type: "adressage", titre: "Demande de polygraphie ventilatoire", destinataire: { nom: "Dr Samir Ould-Kaci", specialite: "Pneumologie — sommeil", mssante: "samir.ould-kaci@hcl.mssante.fr" }, date: day(0), corps: "Cher confrère,\n\nJe vous adresse M. Alain Roussel, 58 ans, artisan plombier, hypertendu non contrôlé sous périndopril/amlodipine 5/5 (automesure moyenne 157/95), IMC 31, pour suspicion de syndrome d'apnées du sommeil : ronflements, réveils nocturnes, somnolence diurne (Epworth 12) avec un endormissement au volant évité de justesse. Son activité implique une conduite quotidienne.\n\nMerci de votre avis et d'une polygraphie ventilatoire.\n\nBien confraternellement,\nDr Claire Laurent" },
     declencheur: { type: "document", recordId: documents[0].id, libelle: "Courrier du médecin du travail" },
-    autonomie: 1, etat: "a-valider", agent: "sol",
+    autonomie: 1, etat: "a-valider", agent: "locus",
   }, { status: "propose", at: at("09:22", -1) }),
   rec("proposal", ID, P.agent(0.86, auto.map((m) => m.id)), {
     action: "signaler", titre: "Automesure 6 jours : 157/95 en moyenne — HTA non contrôlée sous bithérapie",
     justification: "Règle des 3 respectée (12 mesures). Moyenne 157/95, cible < 135/85 [1]. Avant d'intensifier (ajout d'un thiazidique → trithérapie), vérifier l'observance (il « oubliait » l'amlodipine) et le sel. Le SAOS suspecté est une cause d'HTA résistante.",
     references: [{ docId: "has-hta-2016", titre: "Prise en charge de l'hypertension artérielle de l'adulte", editeur: "HAS", date: "2016" }],
     declencheur: { type: "echeance", libelle: "Automesures reçues de Mon Espace Santé" },
-    autonomie: 0, etat: "a-valider", agent: "sol",
+    autonomie: 0, etat: "a-valider", agent: "locus",
   }, { status: "propose", at: at("07:55") }),
-  rec("proposal", ID, P.agent(0.9, [documents[0].id]), { action: "message-confrere", titre: "Accuser réception au Dr Lefèvre (vu en consultation ce jour)", justification: "Réponse de courtoisie au médecin du travail, précisant que le patient est vu aujourd'hui et qu'une polygraphie est demandée. Partira après la consultation si vous validez l'adressage.", charge: { canal: "mssante", threadId: "th_roussel_lefevre", de: { type: "praticien", nom: "Dr Laurent" }, a: [{ type: "confrere", nom: "Dr Anne Lefèvre" }], date: day(0), objet: "Re: M. Roussel — somnolence et HTA", corps: "Chère consœur,\n\nMerci pour votre courrier. Je vois M. Roussel ce jour ; je l'adresse pour polygraphie ventilatoire et je reprends le traitement de son HTA. Je vous tiendrai informée du résultat, avec son accord, pour la question de l'aptitude à la conduite.\n\nBien confraternellement,\nDr Claire Laurent" }, declencheur: { type: "document", recordId: documents[0].id, libelle: "Courrier du médecin du travail" }, autonomie: 1, etat: "a-valider", agent: "sol" }, { status: "propose", at: at("09:25", -1) }),
+  rec("proposal", ID, P.agent(0.9, [documents[0].id]), { action: "message-confrere", titre: "Accuser réception au Dr Lefèvre (vu en consultation ce jour)", justification: "Réponse de courtoisie au médecin du travail, précisant que le patient est vu aujourd'hui et qu'une polygraphie est demandée. Partira après la consultation si vous validez l'adressage.", charge: { canal: "mssante", threadId: "th_roussel_lefevre", de: { type: "praticien", nom: "Dr Laurent" }, a: [{ type: "confrere", nom: "Dr Anne Lefèvre" }], date: day(0), objet: "Re: M. Roussel — somnolence et HTA", corps: "Chère consœur,\n\nMerci pour votre courrier. Je vois M. Roussel ce jour ; je l'adresse pour polygraphie ventilatoire et je reprends le traitement de son HTA. Je vous tiendrai informée du résultat, avec son accord, pour la question de l'aptitude à la conduite.\n\nBien confraternellement,\nDr Claire Laurent" }, declencheur: { type: "document", recordId: documents[0].id, libelle: "Courrier du médecin du travail" }, autonomie: 1, etat: "a-valider", agent: "locus" }, { status: "propose", at: at("09:25", -1) }),
 ];
 
 const briefing = rec("briefing", ID, P.agent(0.9, [documents[0].id]), {
@@ -100,8 +100,8 @@ export const dossierRoussel: Dossier = {
   records: [...Object.values(pb), ...meds, ...mesures, ...labs, ...documents, ...encounters, appointment, ...proposals, briefing, summary],
   journal: [
     journal(ID, at("09:05", -1), SYS("MSSanté"), "document.receive", "Courrier Dr Lefèvre (médecine du travail)", documents[0].id),
-    journal(ID, at("09:22", -1), SOL, "proposal.create", "Adressage polygraphie", proposals[0].id),
-    journal(ID, at("07:55"), SOL, "proposal.create", "Signaler : automesure 157/95", proposals[1].id),
+    journal(ID, at("09:22", -1), LOCUS, "proposal.create", "Adressage polygraphie", proposals[0].id),
+    journal(ID, at("07:55"), LOCUS, "proposal.create", "Signaler : automesure 157/95", proposals[1].id),
     journal(ID, at("20:35", -1), SYS("Mon Espace Santé"), "measure.receive", "Automesure tensionnelle reçue (tensiomètre connecté)", auto[auto.length - 1].id),
   ],
 };

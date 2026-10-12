@@ -1,22 +1,12 @@
-import { todayAppointments, inbox, pendingProposals, DOSSIERS, recordsOf, summaryOf, displayName } from "@/data";
-import { JourneeView } from "@/components/journee";
+import { buildWorld } from "@/fil/world.server";
+import { FilApp } from "@/components/fil/fil-app";
 
 export const dynamic = "force-static";
 
+/**
+ * L'écran unique : le fil, le composer (⌘K), la scène. Il n'y a plus de
+ * pages. Les anciens écrans restent en « vues héritées » (/journee, /inbox…).
+ */
 export default function Page() {
-  const agenda = todayAppointments().map(({ appointment, dossier, briefing }) => ({
-    appointment,
-    briefing,
-    patient: { id: dossier.patient.id, nom: displayName(dossier.patient), hue: dossier.patient.photoHue ?? 200, prenom: dossier.patient.prenomUsuel, nomUsage: dossier.patient.nomUsage, naissance: dossier.patient.ins.dateNaissance, ligne: summaryOf(dossier)?.enUneLigne ?? "" },
-    pending: recordsOf(dossier, "proposal").filter((p) => p.etat === "a-valider").length,
-  }));
-  const pend = pendingProposals().map(({ proposal, dossier }) => ({ proposal, patient: { id: dossier.patient.id, nom: displayName(dossier.patient) } }));
-  const box = inbox();
-  const stats = {
-    patients: DOSSIERS.length,
-    executees: DOSSIERS.flatMap((d) => recordsOf(d, "proposal")).filter((p) => p.etat === "executee").length,
-    inbox: box.length,
-    inboxUrgent: box.filter((i) => (i.kind === "message" ? i.record.triage?.urgence : i.record.lecture?.urgence) === "jour" || (i.kind === "message" ? i.record.triage?.urgence : i.record.lecture?.urgence) === "immediate").length,
-  };
-  return <JourneeView agenda={agenda} pending={pend} stats={stats} />;
+  return <FilApp world={buildWorld()} />;
 }

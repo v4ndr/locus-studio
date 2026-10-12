@@ -16,8 +16,8 @@ export function LocusView({ capabilities, mode, url, patients }: { capabilities:
   return (
     <div className="space-y-5">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight flex items-center gap-2"><Cpu className="h-5 w-5 text-primary" /> Locus, le backend</h1>
-        <p className="mt-1 text-sm text-muted-foreground max-w-3xl">Le studio est le bac à sable de <code className="font-mono">locus-core</code> : tout ce que Sol fait passe par Locus — ce que core sert aujourd'hui, et ce qu'on construit ici avant qu'il le serve. Chaque capacité dit honnêtement d'où elle vient.</p>
+        <h1 className="text-2xl font-semibold tracking-tight flex items-center gap-2"><Cpu className="h-5 w-5 text-primary" /> locus-core, le backend</h1>
+        <p className="mt-1 text-sm text-muted-foreground max-w-3xl">Le studio est le bac à sable de <code className="font-mono">locus-core</code> : tout ce que l'agent Locus fait passe par locus-core — ce que core sert aujourd'hui, et ce qu'on construit ici avant qu'il le serve. Chaque capacité dit honnêtement d'où elle vient.</p>
       </header>
 
       <div className="grid gap-4 md:grid-cols-3">
@@ -43,7 +43,7 @@ export function LocusView({ capabilities, mode, url, patients }: { capabilities:
       </div>
 
       <section>
-        <SectionTitle><Layers className="inline h-3 w-3" /> Les capacités de Sol — {capabilities.filter((c) => c.statut === "live").length} servies, {capabilities.filter((c) => c.statut === "compose").length} composées, {capabilities.filter((c) => c.statut === "projetee").length} projetées</SectionTitle>
+        <SectionTitle><Layers className="inline h-3 w-3" /> Les capacités de l'agent — {capabilities.filter((c) => c.statut === "live").length} servies, {capabilities.filter((c) => c.statut === "compose").length} composées, {capabilities.filter((c) => c.statut === "projetee").length} projetées</SectionTitle>
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {capabilities.map((c) => (
             <Card key={c.id} className={cn("p-3", c.statut === "projetee" && "border-dashed")}>

@@ -78,7 +78,7 @@ identifiants de règles `(16hex)` retirés), `answerShort`, `docs`, `chunks`,
 
 ## 5. `ehr_additions` → proposition
 
-Quand core renvoie `ehr_additions` (« Grossesse en cours »), le panneau Sol
+Quand core renvoie `ehr_additions` (« Grossesse en cours »), le panneau Locus
 propose d'inscrire le fait au dossier : une `Proposal` d'action
 `creer-enregistrement`, au niveau 1 (le praticien tranche). C'est le premier
 pont entre le dialogue et le dossier structuré.
