@@ -32,27 +32,27 @@ export function DossierView({ v, praticien }: { v: PatientView; praticien: { ini
   return (
     <div className="flex min-h-dvh flex-col">
       <Header praticien={praticien} patient={{ id: v.ref.id, nom: v.ref.nom, initials: v.ref.initials, meta: v.meta }} />
-      <main className="mx-auto flex w-full max-w-[720px] flex-1 flex-col gap-7 px-6 pb-8 pt-16">
-        <p className="m-0 text-2xl leading-[1.45] tracking-[-.01em]"><Rich text={v.prose} /></p>
+      <main className="mx-auto flex w-full max-w-[720px] flex-1 flex-col gap-7 px-4 pb-8 pt-10 sm:px-6 sm:pt-16">
+        <p className="m-0 text-[21px] leading-[1.45] tracking-[-.01em] sm:text-2xl"><Rich text={v.prose} /></p>
         <section className="flex flex-col">
           <span className="k px-1 pb-2.5">À noter</span>
           {v.aNoter.map((n, i) => (
             <div key={i} className={cn("flex items-center gap-3 border-t border-line-4 px-1 py-3 text-[15px]", i === v.aNoter.length - 1 && "border-b")}>
-              <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: n.dot === "accent" ? "#1A4DFF" : n.dot === "warn" ? "#D97706" : "#C7C6BF" }} />
+              <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: n.dot === "accent" ? "var(--accent)" : n.dot === "warn" ? "var(--warn-dot)" : "var(--gray-dot)" }} />
               <span className="flex-1">{n.texte}</span>
-              <span className="d min-w-[46px]" style={{ color: n.dot === "accent" ? "#1A4DFF" : n.dot === "warn" ? "#A35400" : undefined }}>{n.tag}</span>
+              <span className="d min-w-[46px]" style={{ color: n.dot === "accent" ? "var(--accent)" : n.dot === "warn" ? "var(--warn)" : undefined }}>{n.tag}</span>
             </div>
           ))}
         </section>
         <nav aria-label="Dossier complet" className="flex flex-wrap items-center gap-1.5">
           <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className="flex items-center gap-2 rounded-[10px] px-3 py-2 text-sm text-ink-3 hover:bg-hover"><I.chevron open={open} color="currentColor" /> Dossier</button>
           <span className="mx-1 h-[18px] w-px bg-line" />
-          {([["Documents", v.counts.documents, ""], ["Ordonnances", v.counts.ordonnances, "Ordonnance"], ["Biologie", v.counts.biologie, "Biologie"], ["Imagerie", v.counts.imagerie, "Imagerie"]] as const).map(([l, n, t]) => (
+          {([["Tout", v.counts.documents, ""], ["Ordonnances", v.counts.ordonnances, "Ordonnance"], ["Biologie", v.counts.biologie, "Biologie"], ["Imagerie", v.counts.imagerie, "Imagerie"]] as const).map(([l, n, t]) => (
             <Link key={l} href={`/p/${v.ref.id}/documents${t ? `?type=${encodeURIComponent(t)}` : ""}`} className="flex items-center gap-2 rounded-[10px] px-2.5 py-2 text-sm text-ink-3 hover:bg-hover">{l} <span className="d">{n}</span></Link>
           ))}
         </nav>
         {open && (
-          <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))" }}>
+          <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(min(300px, 100%), 1fr))" }}>
             <Card title="Antécédents">
               {v.dossier.antecedents.map((f, i) => <Li key={i} k={f.k} v={f.v} />)}
               {v.dossier.familiaux && <div className="li border-t border-soft pt-1.5 text-ink-3"><span className="flex-1"><b className="font-medium">Familiaux</b> · {v.dossier.familiaux}</span></div>}
@@ -62,7 +62,7 @@ export function DossierView({ v, praticien }: { v: PatientView; praticien: { ini
             <Card title="Traitements en cours">
               {v.dossier.traitements.length === 0 && <Li k="Aucun traitement de fond" />}
               {v.dossier.traitements.map((f, i) => <Li key={i} k={f.k} v={f.v} />)}
-              <Link href={`/p/${v.ref.id}/documents?type=Ordonnance`} className="text-[13px]" style={{ color: "#1A4DFF" }}>Toutes les ordonnances →</Link>
+              <Link href={`/p/${v.ref.id}/documents?type=Ordonnance`} className="text-[13px]" style={{ color: "var(--accent)" }}>Toutes les ordonnances →</Link>
             </Card>
             <Card title="Suivis en cours">
               {v.dossier.suivis.length === 0 && <Li k="Rien en cours" />}
@@ -72,20 +72,34 @@ export function DossierView({ v, praticien }: { v: PatientView; praticien: { ini
           </div>
         )}
       </main>
-      <Omni placeholder="Ordo, rendez-vous, mail, courrier, question… tout." onSubmit={ask} chips={v.chips.map((c) => ({ id: c.id, label: c.label, onClick: () => dispatch({ type: "cmd", patientId: v.ref.id, cmd: c.id }) }))} cta={<CtaLink href={`/p/${v.ref.id}/rencontre`}>+ Consultation</CtaLink>}>
+      <Omni placeholder="Ordo, rendez-vous, mail, courrier, question… tout." onSubmit={ask} suggestions={exemples(v)} chips={v.chips.map((c) => ({ id: c.id, label: c.label, onClick: () => dispatch({ type: "cmd", patientId: v.ref.id, cmd: c.id }) }))} cta={<CtaLink href={`/p/${v.ref.id}/rencontre`}>+ Consultation</CtaLink>}>
         {chip && !done && <ResultCard tool={chip.tool} title={chip.title} body={chip.body.replace(/\[\d+\]/g, "")} cta={chip.cta} onCta={() => { setDone(chip.id); setTimeout(() => { dispatch({ type: "cmd", patientId: v.ref.id, cmd: null }); setDone(null); }, 1400); }} onClose={() => dispatch({ type: "cmd", patientId: v.ref.id, cmd: null })} />}
-        {chip && done === chip.id && <div className="flex items-center gap-2.5 rounded-[14px] border border-line bg-paper px-[18px] py-3.5 text-sm" style={{ color: "#1F6B3A" }}><I.check />{chip.cta === "Envoyer" ? "Envoyé." : chip.cta === "Réserver" ? "Réservé, SMS envoyé." : "Signé et transmis."}</div>}
+        {chip && done === chip.id && <div className="flex items-center gap-2.5 rounded-[14px] border border-line bg-paper px-[18px] py-3.5 text-sm text-ok"><I.check />{chip.cta === "Envoyer" ? "Envoyé." : chip.cta === "Réserver" ? "Réservé, SMS envoyé." : "Signé et transmis."}</div>}
         {question && <LocusCard patientId={v.ref.id} question={question} onClose={() => dispatch({ type: "cmd", patientId: v.ref.id, cmd: null })} />}
       </Omni>
     </div>
   );
 }
 
+/** Les exemples du composer, adaptés au dossier ouvert. */
+function exemples(v: PatientView): { k: string; t: string }[] {
+  const prenom = v.ref.prenom;
+  const med = v.dossier.traitements[0]?.k.split(" · ")[0]?.toLowerCase();
+  return [
+    { k: "ordo", t: med ? `Renouvelle ${med} pour 3 mois` : "Ordonnance : paracétamol 1 g, 3/j si douleur, 5 jours" },
+    { k: "rdv", t: "Revoir dans 6 semaines, 20 minutes, un matin" },
+    { k: "mail", t: `Mail à ${prenom} : résultats rassurants, on en reparle au prochain rendez-vous` },
+    { k: "courrier", t: "Courrier au cardiologue : avis pour une HTA résistante" },
+    { k: "arrêt", t: "Arrêt de travail 5 jours, sorties libres" },
+    { k: "question", t: "Quelle est la dernière créatinine et son évolution ?" },
+  ];
+}
+
 function Card({ title, children }: { title: string; children: React.ReactNode }) {
   return <section className="card flex flex-col gap-2.5 px-5 py-[18px]"><span className="k">{title}</span>{children}</section>;
 }
 function Li({ k, v, muted, warn }: { k: string; v?: string; muted?: boolean; warn?: boolean }) {
-  return <div className="li"><span className={cn("flex-1", muted && "text-muted-2")}>{k}</span>{v && <span className="d" style={warn ? { color: "#A35400" } : undefined}>{v}</span>}</div>;
+  return <div className="li"><span className={cn("flex-1", muted && "text-muted-2")}>{k}</span>{v && <span className="d" style={warn ? { color: "var(--warn)" } : undefined}>{v}</span>}</div>;
 }
 
 /** Une question : Locus répond dans la carte, avec les sources. */
@@ -116,7 +130,7 @@ export function LocusCard({ patientId, question, onClose }: { patientId?: string
   return (
     <ResultCard tool="locus · répondre" title={question} cta="Verser au dossier" secondary="Préciser" onCta={onClose} onClose={onClose}>
       {!answer && !err && <div className="text-sm text-muted-2">{steps[steps.length - 1] ?? "Locus lit le dossier et les sources…"}</div>}
-      {err && <div className="text-sm" style={{ color: "#B3261E" }}>{err}</div>}
+      {err && <div className="text-sm text-rec-text">{err}</div>}
       {answer && <div className="max-h-[40vh] overflow-y-auto"><Md text={answer} /></div>}
       {res && n > 0 && <div className="text-xs text-muted-2">{n} source{n > 1 ? "s" : ""} : {res.docs.slice(0, 3).map((d) => d.title ?? d.id).join(" · ")}{res.rcp.length ? ` · RCP ${res.rcp.map((x) => x.dci).join(", ")}` : ""} · {res.via === "locus-core" ? `locus-core ${res.coreVersion}` : "simulation"}</div>}
     </ResultCard>

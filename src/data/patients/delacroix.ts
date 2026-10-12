@@ -431,7 +431,7 @@ const proposals = [
 
 const briefing = rec("briefing", ID, P.agent(0.92, [labs[0].id, documents[0].id, messages[0].id]), {
   appointmentId: appointment.id,
-  synthese: "Marguerite Delacroix, 74 ans, DT2 + HTA + FA sous apixaban. Le diabète dérive (HbA1c 8,1 %), le rein baisse (DFG 48, microalbuminurie nouvelle), la TA n'est pas à la cible. La cardio d'hier est rassurante. Sa fille vient avec elle et signale des palpitations et des oublis.",
+  synthese: "DT2 + HTA + FA sous apixaban. ==La biologie est arrivée== : le diabète dérive (HbA1c **8,1 %**), le rein baisse (DFG 48, microalbuminurie nouvelle). La cardio d'hier est rassurante. Sa fille signale des palpitations et des oublis.",
   depuisDerniereFois: [
     "Biologie du " + day(-2) + " : HbA1c 7,4 → 8,1 %, DFG 54 → 48, microalbuminurie 42 mg/g (nouvelle), LDL 1,12.",
     "CR cardiologie (Dr Rabier) : FA à faible charge, FEVG 58 %, apixaban inchangé, bisoprolol 2,5 mg laissé à votre appréciation.",

@@ -81,7 +81,7 @@ const proposals = [
 
 const briefing = rec("briefing", ID, P.agent(0.9, [documents[0].id]), {
   appointmentId: appointment.id,
-  synthese: "Alain Roussel, 58 ans, plombier, HTA non contrôlée (automesure 157/95 sous Coveram 5/5 depuis 3 semaines), obèse, LDL non à la cible. Le médecin du travail suspecte un SAOS avec somnolence au volant. Conduite professionnelle.",
+  synthese: "Plombier, ==HTA non contrôlée (automesure 157/95)== sous Coveram 5/5 depuis 3 semaines, obèse. ==Le médecin du travail suspecte un SAOS== avec somnolence au volant. Conduite professionnelle.",
   depuisDerniereFois: ["12 automesures reçues de Mon Espace Santé (tensiomètre connecté) : moyenne 157/95.", "Courrier du médecin du travail (" + day(-2) + ") : TA 164/100, Epworth 12, demande de polygraphie.", "Biologie du " + day(-18) + " : rein et K normaux, LDL 1,45, glycémie 1,08."],
   echeances: [{ libelle: "Renouvellement Coveram (1 mois) dû dans 10 jours" }, { libelle: "Dépistage colorectal : jamais fait (58 ans) — kit à remettre" }],
   questions: ["Observance réelle du Coveram ? Le comprimé unique a-t-il aidé ?", "Somnolence au volant : en parler franchement ; aptitude à la conduite en attendant la polygraphie.", "Intensifier maintenant (ajout indapamide → trithérapie) ou attendre l'observance et le SAOS ?", "Sel, alcool, activité physique."],

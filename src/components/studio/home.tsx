@@ -25,8 +25,12 @@ export function Home({ data }: { data: HomeData }) {
 
   const matin = data.agenda.filter((a) => !a.apresMidi);
   const aprem = data.agenda.filter((a) => a.apresMidi);
-  const rows = all ? data.agenda : matin;
-  const items: { href?: string }[] = open ? hits.map((h) => ({ href: `/p/${h.id}` })) : rows.map((r) => ({ href: r.libre ? undefined : `/p/${r.patientId}` }));
+  // Replié : les prochains seulement, à partir du rendez-vous en cours, quatre au plus.
+  const from = Math.max(0, data.agenda.findIndex((a) => a.prochain));
+  const prochains = data.agenda.slice(from, from + 4);
+  const rows = all ? data.agenda : prochains;
+  const reste = data.agenda.filter((a) => !a.libre).length - prochains.filter((a) => !a.libre).length;
+  const items: { href?: string }[] = open ? (hits.length ? hits.map((h) => ({ href: `/p/${h.id}` })) : EXEMPLES.map((e) => ({ href: e.href }))) : rows.map((r) => ({ href: r.libre ? undefined : `/p/${r.patientId}` }));
 
   React.useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -48,12 +52,12 @@ export function Home({ data }: { data: HomeData }) {
   return (
     <div className="flex min-h-dvh flex-col">
       <Header praticien={data.praticien} />
-      <main className="flex flex-1 flex-col items-center px-6 pb-12 pt-[14vh]">
+      <main className="flex flex-1 flex-col items-center px-4 pb-12 pt-[8vh] sm:px-6 sm:pt-[14vh]">
         <div className="flex w-full max-w-[680px] flex-col gap-7">
-          {!open && <h1 className="m-0 text-[28px] font-medium tracking-[-.02em]">Qui voyez-vous ?</h1>}
+          {!open && <h1 className="m-0 text-[26px] font-medium tracking-[-.02em] sm:text-[28px]">Qui voyez-vous ?</h1>}
           <div className={cn("overflow-hidden rounded-[14px] border border-line bg-paper", open ? "shadow-[0_8px_24px_rgba(17,17,17,.06)]" : "")} style={!open ? { boxShadow: "var(--shadow)" } : undefined}>
             <div className={cn("flex items-center gap-3.5 px-5 py-[18px]", open && "border-b border-line-2")} onClick={() => { inputRef.current?.focus(); setOpen(true); }}>
-              <I.search color={open ? "#111" : "#6B6B66"} />
+              <I.search color={open ? "var(--ink)" : "var(--muted-2)"} />
               <label htmlFor="q" className="sr-only">Recherche</label>
               <input id="q" ref={inputRef} value={q} onChange={(e) => { setQ(e.target.value); setSel(0); setOpen(true); }} onFocus={() => setOpen(true)} placeholder="Nom, date de naissance, ou une demande…" className="flex-1 bg-transparent text-[17px] text-ink outline-none placeholder:text-muted-3" />
               <Kbd>{open ? "esc" : "⌘K"}</Kbd>
@@ -61,8 +65,18 @@ export function Home({ data }: { data: HomeData }) {
             {open && (
               <div className="p-2.5">
                 <div className="k px-3 py-2">Patients</div>
-                {hits.length === 0 && <div className="px-3 py-3 text-sm text-muted-2">{q ? "Aucun patient. Essayez un nom, une date de naissance." : "Tapez un nom, une date de naissance, ou une demande."}</div>}
+                {hits.length === 0 && q && <div className="px-3 py-3 text-sm text-muted-2">Aucun patient. Essayez un nom, une date de naissance.</div>}
                 {hits.map((h, i) => <PatientRow key={h.id} p={h} active={i === sel} first={i === 0} data={data} onHover={() => setSel(i)} />)}
+                {hits.length === 0 && !q && (
+                  <>
+                    <div className="px-3 pb-2 text-sm text-muted-2">Un nom, une date de naissance, ou directement une demande :</div>
+                    {EXEMPLES.map((e, i) => (
+                      <Link key={e.t} href={e.href} onMouseEnter={() => setSel(i)} className={cn("flex items-center gap-3 rounded-[10px] px-3 py-2.5 text-sm text-ink hover:text-ink", i === sel ? "bg-accent-soft-2" : "hover:bg-hover")}>
+                        <span className="d w-[72px] shrink-0 text-[10px]">{e.k}</span><span className="min-w-0 flex-1 truncate">{e.t}</span>{i === sel && <Kbd>⏎</Kbd>}
+                      </Link>
+                    ))}
+                  </>
+                )}
                 <div className="k px-3 pb-2 pt-3.5">Actions</div>
                 <div className="flex items-center gap-3 rounded-[10px] px-3 py-3 text-sm text-ink-2"><I.card /><span className="flex-1">Lire la carte Vitale pour confirmer</span><Kbd>⌘V</Kbd></div>
                 <div className="flex items-center gap-3 rounded-[10px] px-3 py-3 text-sm text-ink-2"><I.plus /><span className="flex-1">Nouveau patient{q ? ` « ${q.slice(0, 1).toUpperCase() + q.slice(1, 10)}${q.length > 10 ? "…" : ""} »` : ""}</span></div>
@@ -73,20 +87,26 @@ export function Home({ data }: { data: HomeData }) {
           {!open && (
             <>
               <div className="flex flex-wrap gap-2">
-                <span className="kbd text-xs" style={{ padding: "6px 10px", borderRadius: 8 }}>Lire la carte Vitale</span>
-                <Link href="/inbox" className="kbd text-xs" style={{ padding: "6px 10px", borderRadius: 8 }}>Courriers non lus · {data.courriersNonLus}</Link>
-                <Link href="/inbox" className="kbd text-xs" style={{ padding: "6px 10px", borderRadius: 8 }}>Résultats bio · {data.bioNonLues}</Link>
+                <Pill href="/inbox/courriers" label="Courriers" n={data.courriersNonLus} />
+                <Pill href="/inbox/bio" label="Résultats bio" n={data.bioNonLues} />
+                <Pill href="/inbox/messages" label="Messages" n={data.messagesNonLus} />
               </div>
               <section className="flex flex-col gap-1">
-                <div className="k px-3.5 pb-2">Agenda · ce matin</div>
-                {matin.map((r, i) => <Slot key={r.heure + r.patientId} r={r} active={sel === i} onHover={() => setSel(i)} />)}
+                {!all && (
+                  <>
+                    <div className="k px-3.5 pb-2">Agenda · à venir</div>
+                    {prochains.map((r, i) => <Slot key={r.heure + r.patientId} r={r} active={sel === i} onHover={() => setSel(i)} />)}
+                  </>
+                )}
                 {all && (
                   <>
+                    <div className="k px-3.5 pb-2">Ce matin</div>
+                    {matin.map((r, i) => <Slot key={r.heure + r.patientId} r={r} active={sel === i} onHover={() => setSel(i)} />)}
                     <div className="k px-3.5 pb-2 pt-4">Cet après-midi</div>
                     {aprem.map((r, i) => <Slot key={r.heure + r.patientId} r={r} active={sel === matin.length + i} onHover={() => setSel(matin.length + i)} />)}
                   </>
                 )}
-                <button type="button" onClick={() => setAll((v) => !v)} aria-expanded={all} className="mt-1.5 self-start rounded-[10px] px-3.5 py-2.5 text-sm text-ink-3 hover:bg-hover">{all ? "Replier" : `Voir tout l'agenda · ${data.agenda.filter((a) => !a.libre).length} rendez-vous`}</button>
+                <button type="button" onClick={() => setAll((v) => !v)} aria-expanded={all} className="mt-1.5 self-start rounded-[10px] px-3.5 py-2.5 text-sm text-ink-3 hover:bg-hover">{all ? "Replier" : `Voir tout l'agenda · ${reste} autre${reste > 1 ? "s" : ""} rendez-vous`}</button>
               </section>
             </>
           )}
@@ -101,25 +121,39 @@ export function Home({ data }: { data: HomeData }) {
   );
 }
 
+/** Les trois boîtes, en pastilles : le compte des non-lus, triés par Locus. */
+function Pill({ href, label, n }: { href: string; label: string; n: number }) {
+  return <Link href={href} className="flex items-center gap-2 rounded-lg border border-line bg-paper px-2.5 py-1.5 text-xs text-ink hover:bg-hover hover:text-ink"><span>{label}</span>{n > 0 ? <span className="d rounded-[5px] bg-accent-soft px-1.5 text-[11px]" style={{ color: "var(--accent)" }}>{n}</span> : <span className="d text-[11px]">0</span>}</Link>;
+}
+
+/** Ce qu'on peut demander directement depuis l'accueil, sans ouvrir un dossier. */
+const EXEMPLES: { k: string; t: string; href: string }[] = [
+  { k: "ordo", t: "Renouvelle l'ordonnance de Claire Moreau pour 3 mois", href: "/p/pat_cmoreau" },
+  { k: "rdv", t: "Rendez-vous Lucas Petit, rappel vaccin, dans un mois", href: "/p/pat_petit" },
+  { k: "courriers", t: "Qu'est-ce qui est arrivé ce matin ?", href: "/inbox/courriers" },
+  { k: "bio", t: "Les résultats hors norme de la semaine", href: "/inbox/bio" },
+  { k: "message", t: "Réponds à la pharmacie pour M. Bernard", href: "/inbox/messages" },
+];
+
 function Slot({ r, active, onHover }: { r: HomeData["agenda"][number]; active: boolean; onHover: () => void }) {
-  const inner = <><span className="k w-12" style={r.prochain ? { color: "#1A4DFF" } : undefined}>{r.heure}</span><span className={cn("flex-1 text-[15px]", r.prochain && "font-medium")}>{r.nom}</span><span className="text-[13px] text-muted-2">{r.motif}</span></>;
-  const cls = cn("flex items-center gap-4 rounded-[10px] px-3.5 py-3", active ? "bg-hover" : "hover:bg-hover");
-  if (r.libre) return <div className={cls} onMouseEnter={onHover}>{inner}</div>;
-  return <Link href={`/p/${r.patientId}`} className={cls} onMouseEnter={onHover} style={{ color: "#111" }}>{inner}</Link>;
+  const inner = <><span className="k w-12 shrink-0" style={r.prochain ? { color: "var(--accent)" } : undefined}>{r.heure}</span><span className={cn("min-w-0 flex-1 truncate text-[15px]", r.prochain && "font-medium")}>{r.nom}</span><span className="hidden text-[13px] text-muted-2 sm:inline">{r.motif}</span></>;
+  const cls = cn("flex items-center gap-3 rounded-[10px] px-3.5 py-3 text-ink hover:text-ink sm:gap-4", active ? "bg-hover" : "hover:bg-hover");
+  if (r.libre) return <div className={cn(cls, "text-muted-2")} onMouseEnter={onHover}>{inner}</div>;
+  return <Link href={`/p/${r.patientId}`} className={cls} onMouseEnter={onHover}>{inner}</Link>;
 }
 
 function PatientRow({ p, active, first, data, onHover }: { p: PatientRef; active: boolean; first: boolean; data: HomeData; onHover: () => void }) {
   const fam = data.patients.filter((x) => x.id !== p.id && x.nomUsage === p.nomUsage);
   return (
     <>
-      <Link href={`/p/${p.id}`} onMouseEnter={onHover} className={cn("flex items-center gap-4 rounded-[10px] px-3 py-3.5", active ? "bg-accent-soft-2" : "hover:bg-hover")} style={{ color: "#111" }}>
+      <Link href={`/p/${p.id}`} onMouseEnter={onHover} className={cn("flex items-center gap-3 rounded-[10px] px-3 py-3.5 text-ink hover:text-ink sm:gap-4", active ? "bg-accent-soft-2" : "hover:bg-hover")}>
         <Avatar initials={p.initials} accent={first} />
         <span className="flex flex-1 flex-col gap-[3px]"><span className={cn("text-[15px]", first && "font-medium")}>{p.nom}</span><span className="text-[13px] text-muted">{p.age} ans · né{/^(Marguerite|Léa|Inès|Sophie|Claire|Monique|Nadia|Emma|Thi|Aminata|Hélène|Josiane)/.test(p.prenom) ? "e" : ""} le {p.naissance}{p.profession ? ` · ${p.profession}` : ""}</span></span>
-        {p.ins === "qualifiee" && <span className="flex items-center gap-1.5 text-xs" style={{ color: "#1F6B3A" }}><I.check />INS qualifiée</span>}
+        {p.ins === "qualifiee" && <span className="hidden items-center gap-1.5 text-xs text-ok sm:flex"><I.check />INS qualifiée</span>}
         {active && <Kbd>⏎</Kbd>}
       </Link>
       {first && fam.slice(0, 1).map((f) => (
-        <Link key={f.id} href={`/p/${f.id}`} className="flex items-center gap-4 rounded-[10px] px-3 py-3.5 hover:bg-hover" style={{ color: "#111" }}>
+        <Link key={f.id} href={`/p/${f.id}`} className="flex items-center gap-3 rounded-[10px] px-3 py-3.5 text-ink hover:bg-hover hover:text-ink sm:gap-4">
           <Avatar initials={f.initials} />
           <span className="flex flex-1 flex-col gap-[3px]"><span className="text-[15px]">{f.nom}</span><span className="text-[13px] text-muted">{f.age} ans · même nom</span></span>
         </Link>

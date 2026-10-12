@@ -67,7 +67,7 @@ const proposals = [
 
 const briefing = rec("briefing", ID, P.agent(0.92, [messages[0].id]), {
   appointmentId: appointment.id,
-  synthese: "Inès, 8 ans, 26,5 kg, allergie arachide (Epipen), eczéma léger, antécédent d'otites. Angine fébrile depuis hier soir (39,2, pas de toux). TROD à faire ; ordonnance amoxicilline prête si positif.",
+  synthese: "8 ans, 26,5 kg, allergie arachide (Epipen), eczéma léger. ==Angine fébrile depuis hier soir== (39,2, pas de toux). ==TROD à faire== ; ordonnance amoxicilline prête si positif.",
   depuisDerniereFois: ["Message de la mère à 7h12 ; paracétamol donné à 6h30.", "Rendez-vous pris à 15h00."],
   echeances: [{ libelle: "Vaccins : à jour (rappel 6 ans fait). Prochain : 11-13 ans (dTcaP + HPV)." }, { libelle: "Bilan de santé 8-9 ans (examen obligatoire) : dû dans 6 mois" }],
   questions: ["TROD. Si négatif : symptomatique seul, école quand apyrétique.", "Peser (dernière pesée il y a 3 mois) pour ajuster les doses.", "Certificat d'absence scolaire si la mère le demande."],

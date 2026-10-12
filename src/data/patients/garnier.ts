@@ -104,7 +104,7 @@ const proposals = [
 
 const briefing = rec("briefing", ID, P.agent(0.9, [messages[0].id]), {
   appointmentId: appointment.id,
-  synthese: "Julien Garnier, 42 ans, chauffeur-livreur, fumeur, en surpoids, père diabétique. Lombalgie aiguë depuis 2 jours après port de charge, sans drapeau rouge déclaré. Demande un arrêt. Deuxième épisode (2023, résolu en 3 semaines).",
+  synthese: "Chauffeur-livreur, fumeur, en surpoids, père diabétique. ==Lombalgie aiguë depuis 2 jours== après port de charge, sans drapeau rouge déclaré. ==Demande un arrêt==. Deuxième épisode (2023).",
   depuisDerniereFois: ["Message ce matin 6h40 : lombalgie, ibuprofène en automédication, demande d'arrêt.", "Rendez-vous pris par Locus à 10h00."],
   echeances: [{ libelle: "Glycémie à jeun + lipides : prévus il y a 40 jours, non prescrits" }, { libelle: "Dépistage colorectal : non éligible (< 50 ans)" }],
   questions: ["Drapeaux rouges à vérifier à l'examen : déficit moteur, Lasègue, troubles sphinctériens, fièvre, perte de poids.", "Durée d'arrêt : 4 jours proposés ; port de charges au travail — aménagement possible ?", "Tabac : « avant 45 ans » — relancer les substituts ?", "Kiné si persistance > 2 semaines."],

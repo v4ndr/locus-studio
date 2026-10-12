@@ -75,6 +75,8 @@ Sept patients écrits à la main, avec un fil complet et une situation du jour :
 | Sophie Marchand, 54 ans | cystite récidivante par messagerie — l'agent peut presque tout faire ; mammographie en retard |
 | Alain Roussel, 58 ans | HTA non contrôlée (automesures connectées), courrier du médecin du travail (SAOS suspecté) |
 
-Douze patients secondaires (`src/data/patients/secondaires.ts`) décrits en
-quelques lignes et dépliés par un générateur, pour peupler l'agenda, les
-routines et la recherche — une patientèle française, avec ses minorités.
+Quatorze patients secondaires (`src/data/patients/seeds.ts`, construits par `secondaires.ts`) décrits en
+à la même profondeur que les héros (antécédents, traitements, biologies,
+documents avec leur texte, consultations, briefing, propositions, rencontre,
+messages) et dépliés par un générateur — une patientèle française, avec ses
+minorités.

@@ -129,7 +129,7 @@ const proposals = [
 
 const briefing = rec("briefing", ID, P.agent(0.92, [documents[0].id]), {
   appointmentId: appointment.id,
-  synthese: "Jean-Pierre Vasseur, 67 ans, BPCO GOLD 2 en lente dégradation, dépression en amélioration sous sertraline (M4). Le pneumologue propose bithérapie + réhabilitation + déclaration MP amiante. Frère décédé d'un cancer colorectal : coloscopie, pas de kit.",
+  synthese: "BPCO GOLD 2 en lente dégradation, dépression en amélioration sous sertraline. ==Le pneumologue propose bithérapie==, réhabilitation et déclaration MP amiante. Frère décédé d'un cancer colorectal : ==coloscopie, pas de kit==.",
   depuisDerniereFois: ["CR pneumo (" + day(-4) + ") : VEMS 58 %, emphysème, plaques pleurales, proposition Spiolto + réhabilitation.", "Pas de message du patient."],
   echeances: [{ libelle: "Grippe : en retard de 15 jours — vaccin au cabinet", carePlanId: carePlans[0].id }, { libelle: "Coloscopie (risque élevé) : jamais faite" }, { libelle: "Renouvellement sertraline/BPCO dû dans 50 jours" }],
   questions: ["Humeur : PHQ-9 de contrôle ; sertraline bien tolérée ?", "Réhabilitation respiratoire : prêt à s'engager 2-3 séances/semaine pendant 8 semaines ?", "Maladie professionnelle : lui expliquer le CMI et la démarche CPAM.", "Coloscopie : annoncer que l'antécédent du frère change la règle."],

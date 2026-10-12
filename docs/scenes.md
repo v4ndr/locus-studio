@@ -63,5 +63,5 @@ La table complète, filtrable par type, cherchable, avec l'omni-saisie en bas
 
 Les autres patients du jour suivent le même parcours ; leur dictée n'est pas
 scriptée (les documents générés viennent de ce que Locus avait préparé avant
-la rencontre). Les écrans de la première version restent en vues héritées
-(`/journee`, `/inbox`, `/patients`, `/agents`, `/routines`, `/locus`).
+la rencontre). Les écrans de la première version ont été retirés : tout se
+construit désormais depuis cette base.

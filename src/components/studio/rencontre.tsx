@@ -34,7 +34,7 @@ export function RencontreView({ v, praticien }: { v: PatientView; praticien: { i
       if (at < 0 || at + m.texte.length > shown) continue;
       detected.add(m.actionId);
       nodes.push(text.slice(last, at));
-      nodes.push(<mark key={m.actionId} style={p.muted ? { color: "#111" } : undefined}>{m.texte}</mark>);
+      nodes.push(<mark key={m.actionId} style={p.muted ? { color: "var(--ink)" } : undefined}>{m.texte}</mark>);
       last = at + m.texte.length;
     }
     nodes.push(text.slice(last));
@@ -46,17 +46,17 @@ export function RencontreView({ v, praticien }: { v: PatientView; praticien: { i
   return (
     <div className="flex min-h-dvh flex-col">
       <Header praticien={praticien} patient={{ id: v.ref.id, nom: v.ref.nom, initials: v.ref.initials, meta: "08:14" }} back={`/p/${v.ref.id}`} />
-      <main className="mx-auto flex w-full max-w-[760px] flex-1 flex-col gap-5 px-6 pb-8 pt-12">
+      <main className="mx-auto flex w-full max-w-[760px] flex-1 flex-col gap-5 px-4 pb-8 pt-8 sm:px-6 sm:pt-12">
         <div className="flex flex-wrap items-center gap-2.5">
           <span className={cn("h-2.5 w-2.5 rounded-full", paused ? "bg-gray-dot" : "bg-rec animate-pulse-soft")} />
-          <span className="k" style={{ color: paused ? undefined : "#B3261E" }}>{paused ? "Pause" : "Dictée"}</span>
+          <span className="k" style={{ color: paused ? undefined : "var(--rec-text)" }}>{paused ? "Pause" : "Dictée"}</span>
           <span className="flex-1" />
           <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className="flex items-center gap-2 rounded-full border border-accent-line bg-paper px-3.5 py-[9px] text-sm hover:border-accent"><span className="h-[7px] w-[7px] rounded-full bg-accent" />{count} action{count > 1 ? "s" : ""} détectée{count > 1 ? "s" : ""}</button>
         </div>
         {open && (
           <div className="rounded-[14px] border border-line-3 bg-paper px-[18px] py-2">
             {r.actions.filter((a) => done || detected.has(a.id)).map((a, i) => (
-              <div key={a.id} className={cn("flex gap-3 py-2 text-sm leading-[1.4]", i > 0 && "border-t border-soft")}><span className="d w-[30px] shrink-0 text-[11px]">{a.code}</span><span style={a.statut === "attente" ? { color: "#6B6B66" } : undefined}>{a.titre} · {a.ligne}</span></div>
+              <div key={a.id} className={cn("flex gap-3 py-2 text-sm leading-[1.4]", i > 0 && "border-t border-soft")}><span className="d w-[30px] shrink-0 text-[11px]">{a.code}</span><span style={a.statut === "attente" ? { color: "var(--muted-2)" } : undefined}>{a.titre} · {a.ligne}</span></div>
             ))}
             {count === 0 && <div className="py-2 text-sm text-muted-2">Rien encore.</div>}
           </div>
