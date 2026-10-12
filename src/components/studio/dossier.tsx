@@ -55,6 +55,7 @@ export function DossierView({ v, praticien }: { v: PatientView; praticien: { ini
         </section>
         <nav aria-label="Dossier complet" className="flex flex-wrap items-center gap-1.5">
           <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className="flex items-center gap-2 rounded-[10px] px-3 py-2 text-sm text-ink-3 hover:bg-hover"><I.chevron open={open} color="currentColor" /> Dossier</button>
+          <Link href={`/p/${v.ref.id}/note`} className="flex items-center gap-2 rounded-[10px] px-2.5 py-2 text-sm text-ink-3 hover:bg-hover">Note</Link>
           <span className="mx-1 h-[18px] w-px bg-line" />
           {([["Tout", v.counts.documents, ""], ["Ordonnances", v.counts.ordonnances, "Ordonnance"], ["Biologie", v.counts.biologie, "Biologie"], ["Imagerie", v.counts.imagerie, "Imagerie"]] as const).map(([l, n, t]) => (
             <Link key={l} href={`/p/${v.ref.id}/documents${t ? `?type=${encodeURIComponent(t)}` : ""}`} className="flex items-center gap-2 rounded-[10px] px-2.5 py-2 text-sm text-ink-3 hover:bg-hover">{l} <span className="d">{n}</span></Link>

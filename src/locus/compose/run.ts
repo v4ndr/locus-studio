@@ -3,6 +3,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { SYSTEM, buildContext } from "./context";
 import { TOOLS, executeTool, type ToolCtx } from "./tools";
 import { simulateCompose } from "./simulation";
+import { resolvePatient } from "./patient";
 import type { ComposeEvent, ComposeInput, ComposePlan } from "./contract";
 
 /**
@@ -28,8 +29,9 @@ export async function* compose(input: ComposeInput): AsyncGenerator<ComposeEvent
   const client = new Anthropic();
   const { contexte } = buildContext(input);
   const queue: ComposeEvent[] = [];
-  const ctx: ToolCtx = { input, actions: [], references: [], locus: 0, patientId: input.patientId, emit: (ev) => queue.push(ev) };
-  const messages: Anthropic.MessageParam[] = [{ role: "user", content: `${contexte}\n\n## Demande du médecin\n${input.texte}` }];
+  const ctx: ToolCtx = { input, actions: [], references: [], locus: 0, patient: resolvePatient(input), emit: (ev) => queue.push(ev) };
+  const demande = input.ecran === "note" ? `## Note de consultation du jour (dictée ou rédigée par le médecin)\n${input.note ?? input.texte}\n\n## Consigne\n${input.texte === input.note || !input.texte ? "Décline cette note en actions : inscris au dossier ce qu'elle établit (problème, traitement, mesure, allergie), prépare ce qu'elle prescrit ou demande (ordonnances, arrêt, courrier, rendez-vous, message), et termine par une synthèse de deux phrases qui tiendrait lieu de conclusion." : input.texte}` : `## Demande du médecin\n${input.texte}`;
+  const messages: Anthropic.MessageParam[] = [{ role: "user", content: `${contexte}\n\n${demande}` }];
   let synthese = "";
 
   yield { step: "reflexion", titre: "Je lis le dossier et la demande" };

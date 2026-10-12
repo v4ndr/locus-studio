@@ -1,6 +1,7 @@
 import "server-only";
-import { DOSSIERS, getDossier, displayName, recordsOf } from "@/data";
+import { DOSSIERS } from "@/data";
 import { executeTool, type ToolCtx } from "./tools";
+import { resolvePatient, fromDataset } from "./patient";
 import { norm } from "@/lib/norm";
 import type { ComposeEvent, ComposeInput, ComposePlan } from "./contract";
 
@@ -34,35 +35,57 @@ function delaiJours(t: string): number | undefined {
 
 export async function* simulateCompose(input: ComposeInput): AsyncGenerator<ComposeEvent> {
   const queue: ComposeEvent[] = [];
-  const ctx: ToolCtx = { input, actions: [], references: [], locus: 0, patientId: input.patientId, emit: (ev) => queue.push(ev) };
+  const ctx: ToolCtx = { input, actions: [], references: [], locus: 0, patient: resolvePatient(input), emit: (ev) => queue.push(ev) };
   const flush = function* () { while (queue.length) yield queue.shift()!; };
   const call = async (name: string, arg: Record<string, unknown>) => executeTool(name, arg, ctx);
-  const t = norm(input.texte);
+  const note = input.ecran === "note";
+  const t = norm(note ? `${input.note ?? ""}\n${input.texte}` : input.texte);
   const phrases: string[] = [];
 
   yield { step: "reflexion", titre: "Je lis le dossier et la demande" };
   await sleep(300);
 
   // Depuis l'accueil : le patient nommé devient le contexte.
-  if (!ctx.patientId) {
+  if (!ctx.patient) {
     const pid = trouvePatient(input.texte);
-    if (pid) { yield { step: "reflexion", titre: "J'ouvre le dossier" }; await call("ouvrir", { cible: "patient", patientId: pid }); yield* flush(); }
+    if (pid) { ctx.patient = fromDataset(pid); yield { step: "reflexion", titre: "J'ouvre le dossier" }; await call("ouvrir", { cible: "patient", patientId: pid }); yield* flush(); }
   }
-  const d = ctx.patientId ? getDossier(ctx.patientId) : undefined;
-  const prenom = d?.patient.prenomUsuel ?? "";
-  const meds = d ? recordsOf(d, "medication").filter((m) => m.status === "actif" && m.type === "chronique") : [];
+  const d = ctx.patient;
+  const prenom = d?.prenom ?? "";
+  const meds = d ? d.meds.filter((m) => m.chronique) : [];
   const duree = /(\d+)\s*mois/.exec(t)?.[1] ?? "3";
 
+  // Une note de consultation : ce qu'elle établit va au dossier, le reste suit les mêmes règles.
+  if (note && d && input.note) {
+    yield { step: "reflexion", titre: "Je lis la note" }; await sleep(350);
+    const concl = /conclusion\s*:?\s*([^\n]+)/i.exec(input.note)?.[1] ?? /diagnostic\s*:?\s*([^\n]+)/i.exec(input.note)?.[1] ?? input.note.split(/\n|\. /).find((l) => l.trim().length > 12)?.trim() ?? "Consultation";
+    const motif = /motif\s*:?\s*([^\n]+)/i.exec(input.note)?.[1]?.trim();
+    await call("inscrire_au_dossier", { type: "probleme", libelle: concl.slice(0, 90), detail: motif ? `Motif : ${motif}` : undefined, justification: "Conclusion de la note du jour." });
+    const mesures = [...input.note.matchAll(/\b(TA|PA|tension)\s*:?\s*(\d{2,3}\s*\/\s*\d{2,3})|\b(poids)\s*:?\s*(\d{2,3}(?:[.,]\d)?)\s*kg|\b(temp[ée]rature|T°)\s*:?\s*(\d{2}(?:[.,]\d)?)|\b(sat|SpO2)\s*:?\s*(\d{2})\s*%/gi)];
+    for (const m of mesures.slice(0, 3)) await call("inscrire_au_dossier", { type: "mesure", libelle: m[0].replace(/\s+/g, " "), justification: "Mesure relevée dans la note." });
+    yield* flush();
+    phrases.push(`${concl.replace(/\.$/, "")}.`);
+  }
+
   // Ordonnance : renouvellement des chroniques, ou une ligne lue dans la demande.
-  if (/ordo|renouvel|prescri/.test(t) && d) {
+  const DRUGS = /(parac[ée]tamol|ibuprof[èe]ne|amoxicilline|dolip?rane|az?ithromycine|pr[ée]dnisolone|cortico|om[ée]prazole|k[ée]toprof[èe]ne|tramadol|lévothyroxine|levothyroxine|metformine|ramipril|amlodipine|atorvastatine|salbutamol|ventoline)\s*(\d+\s*(?:mg|g|µg|mcg))?/gi;
+  const drugsNote = note && input.note ? [...input.note.matchAll(DRUGS)] : [];
+  if ((/ordo|renouvel|prescri/.test(t) || drugsNote.length) && d) {
     yield { step: "reflexion", titre: "Je rédige l'ordonnance" }; await sleep(350);
     const nommes = meds.filter((m) => t.includes(norm(m.dci).slice(0, 6)));
-    const lignes = (nommes.length ? nommes : /renouvel/.test(t) ? meds : []).map((m) => ({ libelle: `${m.dci}${m.dosage ? " " + m.dosage : ""}`, posologie: m.posologie, duree: `${duree} mois` }));
+    const lignes: { libelle: string; posologie?: string; duree?: string }[] = (nommes.length ? nommes : /renouvel/.test(t) ? meds : []).map((m) => ({ libelle: `${m.dci}${m.dosage ? " " + m.dosage : ""}`, posologie: m.posologie, duree: `${duree} mois` }));
+    if (!lignes.length && drugsNote.length) {
+      for (const m of drugsNote) {
+        const apres = input.note!.slice(m.index! + m[0].length, m.index! + m[0].length + 60);
+        const duree = /(\d+)\s*(j|jour|jours|sem|semaine|semaines|mois)/.exec(apres);
+        lignes.push({ libelle: `${m[1].toLowerCase()}${m[2] ? " " + m[2] : ""}`, posologie: /si douleur|si besoin/i.test(apres) ? "1 prise si douleur, max 3/j" : /matin et soir|2\s*\/\s*j/i.test(apres) ? "1 prise matin et soir" : /3\s*\/\s*j|3 fois/i.test(apres) ? "1 prise 3 fois par jour" : "selon la note", duree: duree ? `${duree[1]} ${duree[2].startsWith("j") ? "jours" : duree[2].startsWith("s") ? "semaines" : "mois"}` : undefined });
+      }
+    }
     if (!lignes.length) {
       const m = /(parac[ée]tamol|ibuprof[èe]ne|amoxicilline|dolip?rane)\s*(\d+\s*(?:mg|g))?/.exec(t);
-      lignes.push(m ? { libelle: `${m[1]}${m[2] ? " " + m[2] : ""}`, posologie: /si douleur|si besoin/.test(t) ? "1 prise si douleur, max 3/j" : "1 prise matin et soir", duree: /(\d+)\s*(j|jour)/.test(t) ? `${/(\d+)\s*(j|jour)/.exec(t)![1]} jours` : "5 jours" } : { libelle: input.texte.replace(/^(ordo(nnance)?|prescri[st]?)\s*:?\s*/i, ""), posologie: "à préciser", duree: `${duree} mois` });
+      lignes.push(m ? { libelle: `${m[1]}${m[2] ? " " + m[2] : ""}`, posologie: /si douleur|si besoin/.test(t) ? "1 prise si douleur, max 3/j" : "1 prise matin et soir", duree: /(\d+)\s*(j|jour)/.test(t) ? `${/(\d+)\s*(j|jour)/.exec(t)![1]} jours` : "5 jours" } : { libelle: (note ? /(?:ordo(?:nnance)?|prescri[st]?|traitement)\s*:?\s*([^\n.]+)/i.exec(input.note ?? "")?.[1] : undefined) ?? input.texte.replace(/^(ordo(nnance)?|prescri[st]?)\s*:?\s*/i, ""), posologie: "à préciser", duree: `${duree} mois` });
     }
-    await call("proposer_ordonnance", { type: /kin[ée]|s[ée]ance/.test(t) ? "paramedical" : /bio|nfs|tsh|cr[ée]at|hba1c/.test(t) ? "biologie" : /scanner|irm|radio|[ée]cho/.test(t) ? "imagerie" : "medicament", lignes, justification: nommes.length || /renouvel/.test(t) ? "Renouvellement des traitements de fond, sans changement." : "Rédigée depuis la demande ; à relire avant signature." });
+    await call("proposer_ordonnance", { type: /kin[ée]|s[ée]ance/.test(t) ? "paramedical" : /bio|nfs|tsh|cr[ée]at|hba1c/.test(t) ? "biologie" : /scanner|irm|radio|[ée]cho/.test(t) ? "imagerie" : "medicament", lignes, justification: nommes.length || /renouvel/.test(t) ? "Renouvellement des traitements de fond, sans changement." : note ? "Prescrite dans la conduite à tenir de la note." : "Rédigée depuis la demande ; à relire avant signature." });
     yield* flush();
     phrases.push(`Ordonnance prête${/renouvel/.test(t) ? " : renouvellement sans changement" : ""}.`);
   }
@@ -76,12 +99,11 @@ export async function* simulateCompose(input: ComposeInput): AsyncGenerator<Comp
   // Message au patient (ou autre).
   if (/mail|message|sms|previens|explique|rassur|reponds/.test(t) && d) {
     yield { step: "reflexion", titre: "Je rédige le message" }; await sleep(350);
-    const lab = recordsOf(d, "lab").sort((a, b) => b.prelevementLe.localeCompare(a.prelevementLe))[0];
-    const normaux = lab && lab.resultats.every((r) => r.flag === "normal");
+    const normaux = d.lastLabNormal === true;
     const a = /pharmac/.test(t) ? "pharmacie" : /confr|cardio|neuro|gyn|pneumo|special/.test(t) ? "confrere" : /secret/.test(t) ? "secretariat" : "patient";
     const corps = a === "patient"
       ? `Bonjour ${prenom}, ${normaux ? "vos derniers résultats sont rassurants, tout est dans la norme" : "j'ai bien reçu vos résultats et je les ai regardés"}. ${/rdv|rendez|prochain/.test(t) ? "On en reparle au prochain rendez-vous." : "N'hésitez pas à m'écrire si vous avez une question."} Bien à vous, Dr Vandepitterie`
-      : a === "pharmacie" ? `Bonjour, vous pouvez délivrer en dépannage ; l'ordonnance renouvelée vous arrive par MSSanté. Merci. Dr Vandepitterie` : `Cher confrère, je vous adresse ${displayName(d.patient)} pour avis. Les éléments du dossier suivent. Bien confraternellement, Dr Vandepitterie`;
+      : a === "pharmacie" ? `Bonjour, vous pouvez délivrer en dépannage ; l'ordonnance renouvelée vous arrive par MSSanté. Merci. Dr Vandepitterie` : `Cher confrère, je vous adresse ${d.nom} pour avis. Les éléments du dossier suivent. Bien confraternellement, Dr Vandepitterie`;
     await call("proposer_message", { a, objet: normaux ? "Vos résultats" : /rappel/.test(t) ? "Rappel" : "Message du cabinet", corps, justification: normaux ? "Dernière biologie sans anomalie." : "Rédigé depuis la demande." });
     yield* flush();
     phrases.push("Message rédigé.");
@@ -91,22 +113,22 @@ export async function* simulateCompose(input: ComposeInput): AsyncGenerator<Comp
     yield { step: "reflexion", titre: "Je rédige le courrier" }; await sleep(350);
     const spe = /cardio/.test(t) ? "cardiologie" : /neuro/.test(t) ? "neurologie" : /gyn/.test(t) ? "gynécologie" : /rhumat/.test(t) ? "rhumatologie" : /pneumo/.test(t) ? "pneumologie" : /dermat/.test(t) ? "dermatologie" : "spécialiste";
     const motif = input.texte.replace(/.*(?:pour|:)\s*/i, "");
-    await call("proposer_courrier", { type: "adressage", destinataire: `Dr — ${spe}`, specialite: spe, titre: `Adressage en ${spe}`, corps: `Cher confrère,\n\nJe vous adresse ${displayName(d.patient)} pour ${motif}.\n\nAntécédents et traitements : voir la synthèse jointe.\n\nBien confraternellement,\nDr Vandepitterie`, justification: "Adressage demandé ; les éléments du dossier sont joints." });
+    await call("proposer_courrier", { type: "adressage", destinataire: `Dr — ${spe}`, specialite: spe, titre: `Adressage en ${spe}`, corps: `Cher confrère,\n\nJe vous adresse ${d.nom} pour ${motif}.\n\nAntécédents et traitements : voir la synthèse jointe.\n\nBien confraternellement,\nDr Vandepitterie`, justification: "Adressage demandé ; les éléments du dossier sont joints." });
     yield* flush();
     phrases.push(`Courrier d'adressage en ${spe} rédigé.`);
   }
   // Arrêt de travail.
   if (/arret|aat/.test(t) && d) {
     yield { step: "reflexion", titre: "Je prépare l'arrêt" }; await sleep(300);
-    await call("proposer_arret", { jours: delaiJours(t) ?? 5, sorties: /libre/.test(t) ? "libres" : /autoris/.test(t) ? "oui" : "non", prolongation: /prolong/.test(t), motif: recordsOf(d, "problem").find((p) => p.enAvant && p.evolution === "chronique")?.libelle ?? "Motif à préciser", justification: "Durée et sorties telles que dictées." });
+    const jArret = /arr[êe]t[^.\n]*?(\d+)\s*(j|jour|jours|sem|semaine|semaines)/.exec(t);
+    await call("proposer_arret", { jours: jArret ? Number(jArret[1]) * (/^sem/.test(jArret[2]) ? 7 : 1) : delaiJours(t) ?? 5, sorties: /libre/.test(t) ? "libres" : /autoris/.test(t) ? "oui" : "non", prolongation: /prolong/.test(t), motif: d.chronique ?? "Motif à préciser", justification: "Durée et sorties telles que dictées." });
     yield* flush();
     phrases.push("Arrêt préparé, à relire.");
   }
   // Verser au dossier.
-  if (/verse|inscri|au dossier/.test(t) && d) {
+  if (/verse|inscri|au dossier/.test(t) && d && !note) {
     yield { step: "reflexion", titre: "J'inscris au dossier" }; await sleep(300);
-    const doc = recordsOf(d, "document").sort((a, b) => b.recuLe.localeCompare(a.recuLe))[0];
-    await call("inscrire_au_dossier", { type: "note", libelle: doc ? `Faits extraits : ${doc.titre}` : "Note", detail: doc?.lecture?.resume ?? "", justification: "Lecture du document par Locus, versée au dossier." });
+    await call("inscrire_au_dossier", { type: "note", libelle: "Faits extraits du document ouvert", detail: "", justification: "Lecture du document par Locus, versée au dossier." });
     yield* flush();
     phrases.push("Faits inscrits au dossier.");
   }
@@ -114,10 +136,10 @@ export async function* simulateCompose(input: ComposeInput): AsyncGenerator<Comp
   if (/courrier(s)? non lus|arrive ce matin|boite|reception/.test(t) && !ctx.actions.length) { await call("ouvrir", { cible: "boite", boite: /bio|result/.test(t) ? "bio" : /message/.test(t) ? "messages" : "courriers" }); yield* flush(); }
   if (/hors norme|resultats? bio/.test(t) && !ctx.actions.length) { await call("ouvrir", { cible: "boite", boite: "bio" }); yield* flush(); }
   if (/message|pharmacie/.test(t) && !d && !ctx.actions.length) { await call("ouvrir", { cible: "boite", boite: "messages" }); yield* flush(); }
-  if (/(toutes? les|les) (tsh|creat|hba1c|ldl|bio)/.test(t) && d && !ctx.actions.length) { await call("ouvrir", { cible: "documents", patientId: d.patient.id, type: "Biologie" }); yield* flush(); }
+  if (/(toutes? les|les) (tsh|creat|hba1c|ldl|bio)/.test(t) && d && !d.local && !ctx.actions.length) { await call("ouvrir", { cible: "documents", patientId: d.id, type: "Biologie" }); yield* flush(); }
 
   // Une question : Locus répond, et la réponse devient une synthèse (plus un contrôle si elle en implique un).
-  if (!ctx.actions.filter((a) => a.kind !== "naviguer").length && (/\?|quel|quelle|combien|pourquoi|comment|faut-il|dernier|derniere|evolution|conduite|cible|dose/.test(t) || ctx.actions.length === 0)) {
+  if (!note && !ctx.actions.filter((a) => a.kind !== "naviguer").length && (/\?|quel|quelle|combien|pourquoi|comment|faut-il|dernier|derniere|evolution|conduite|cible|dose/.test(t) || ctx.actions.length === 0)) {
     yield { step: "reflexion", titre: "Je consulte Locus" };
     const out = await call("locus_retrieve", { question: input.texte });
     yield* flush();

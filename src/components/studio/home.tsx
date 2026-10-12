@@ -5,6 +5,8 @@ import Link from "next/link";
 import type { HomeData, PatientRef } from "@/studio/types";
 import { Header, Kbd, I, Avatar } from "./chrome";
 import { ComposeCard, useCompose } from "./compose";
+import { useCabinet, ageDe } from "@/store/cabinet";
+import { initials } from "@/lib/format";
 import { norm } from "@/lib/norm";
 import { cn } from "@/lib/cn";
 
@@ -17,13 +19,16 @@ export function Home({ data }: { data: HomeData }) {
   const [sel, setSel] = React.useState(0);
   const inputRef = React.useRef<HTMLInputElement>(null);
   const composer = useCompose();
+  const cab = useCabinet();
+  // Les dossiers créés sur ce poste rejoignent la patientèle de la palette.
+  const patients = React.useMemo<PatientRef[]>(() => [...cab.patients.map((p) => ({ id: p.id, nom: `${p.prenomUsuel} ${p.nomUsage}`, prenom: p.prenomUsuel, nomUsage: p.nomUsage, initials: initials(p.prenomUsuel, p.nomUsage), hue: (p.nomUsage.length * 37) % 360, age: ageDe(p.naissance), naissance: p.naissance.split("-").reverse().join("/"), profession: p.profession?.toLowerCase(), ins: "provisoire" })), ...data.patients], [cab.patients, data.patients]);
 
   const hits = React.useMemo(() => {
     const t = norm(q);
     if (!t) return [];
     const words = t.split(/\s+/).filter(Boolean);
-    return data.patients.filter((p) => { const hay = norm(`${p.nomUsage} ${p.prenom} ${p.naissance} ${p.profession ?? ""}`); return words.every((w) => hay.includes(w)); }).sort((a, b) => (a.rdv ? 0 : 1) - (b.rdv ? 0 : 1)).slice(0, 5);
-  }, [q, data.patients]);
+    return patients.filter((p) => { const hay = norm(`${p.nomUsage} ${p.prenom} ${p.naissance} ${p.profession ?? ""}`); return words.every((w) => hay.includes(w)); }).sort((a, b) => (a.rdv ? 0 : 1) - (b.rdv ? 0 : 1)).slice(0, 5);
+  }, [q, patients]);
 
   const matin = data.agenda.filter((a) => !a.apresMidi);
   const aprem = data.agenda.filter((a) => a.apresMidi);
@@ -34,7 +39,8 @@ export function Home({ data }: { data: HomeData }) {
   const reste = data.agenda.filter((a) => !a.libre).length - prochains.filter((a) => !a.libre).length;
   // Dans la palette : les patients trouvés, puis « Demander à Locus » ; vide : les exemples.
   const askRow = open && q.trim().length > 1;
-  const items: { href?: string; ask?: boolean }[] = open ? (q ? [...hits.map((h) => ({ href: `/p/${h.id}` })), ...(askRow ? [{ ask: true }] : [])] : EXEMPLES.map((e) => ({ href: e.href }))) : rows.map((r) => ({ href: r.libre ? undefined : `/p/${r.patientId}` }));
+  const hrefOf = (id: string) => (id.startsWith("loc_") ? `/d/${id}` : `/p/${id}`);
+  const items: { href?: string; ask?: boolean }[] = open ? (q ? [...hits.map((h) => ({ href: hrefOf(h.id) })), ...(askRow ? [{ ask: true }] : [])] : EXEMPLES.map((e) => ({ href: e.href }))) : rows.map((r) => ({ href: r.libre ? undefined : `/p/${r.patientId}` }));
   const demander = React.useCallback((texte: string) => { setOpen(false); setQ(""); inputRef.current?.blur(); composer.run({ texte, ecran: "home" }); }, [composer]);
 
   React.useEffect(() => {
@@ -92,7 +98,7 @@ export function Home({ data }: { data: HomeData }) {
                 )}
                 <div className="k px-3 pb-2 pt-3.5">Actions</div>
                 <div className="flex items-center gap-3 rounded-[10px] px-3 py-3 text-sm text-ink-2"><I.card /><span className="flex-1">Lire la carte Vitale pour confirmer</span><Kbd>⌘V</Kbd></div>
-                <div className="flex items-center gap-3 rounded-[10px] px-3 py-3 text-sm text-ink-2"><I.plus /><span className="flex-1">Nouveau patient{q ? ` « ${q.slice(0, 1).toUpperCase() + q.slice(1, 10)}${q.length > 10 ? "…" : ""} »` : ""}</span></div>
+                <Link href={`/nouveau${q ? `?q=${encodeURIComponent(q)}` : ""}`} className="flex items-center gap-3 rounded-[10px] px-3 py-3 text-sm text-ink-2 hover:bg-hover hover:text-ink"><I.plus /><span className="flex-1">Nouveau patient{q ? ` « ${q.slice(0, 1).toUpperCase() + q.slice(1, 24)}${q.length > 24 ? "…" : ""} »` : ""} · sans carte Vitale</span></Link>
               </div>
             )}
           </div>
@@ -104,6 +110,8 @@ export function Home({ data }: { data: HomeData }) {
                 <Pill href="/inbox/courriers" label="Courriers" n={data.courriersNonLus} />
                 <Pill href="/inbox/bio" label="Résultats bio" n={data.bioNonLues} />
                 <Pill href="/inbox/messages" label="Messages" n={data.messagesNonLus} />
+                <Pill href="/d" label="Cabinet local" n={cab.patients.length} />
+                <Link href="/nouveau" className="flex items-center gap-1.5 rounded-lg border border-dashed border-line px-2.5 py-1.5 text-xs text-ink-2 hover:bg-hover hover:text-ink"><I.plus /> Nouveau patient</Link>
               </div>
               <section className="flex flex-col gap-1">
                 {!all && (
@@ -160,10 +168,11 @@ function PatientRow({ p, active, first, data, onHover }: { p: PatientRef; active
   const fam = data.patients.filter((x) => x.id !== p.id && x.nomUsage === p.nomUsage);
   return (
     <>
-      <Link href={`/p/${p.id}`} onMouseEnter={onHover} className={cn("flex items-center gap-3 rounded-[10px] px-3 py-3.5 text-ink hover:text-ink sm:gap-4", active ? "bg-accent-soft-2" : "hover:bg-hover")}>
+      <Link href={p.id.startsWith("loc_") ? `/d/${p.id}` : `/p/${p.id}`} onMouseEnter={onHover} className={cn("flex items-center gap-3 rounded-[10px] px-3 py-3.5 text-ink hover:text-ink sm:gap-4", active ? "bg-accent-soft-2" : "hover:bg-hover")}>
         <Avatar initials={p.initials} accent={first} />
         <span className="flex flex-1 flex-col gap-[3px]"><span className={cn("text-[15px]", first && "font-medium")}>{p.nom}</span><span className="text-[13px] text-muted">{p.age} ans · né{/^(Marguerite|Léa|Inès|Sophie|Claire|Monique|Nadia|Emma|Thi|Aminata|Hélène|Josiane)/.test(p.prenom) ? "e" : ""} le {p.naissance}{p.profession ? ` · ${p.profession}` : ""}</span></span>
         {p.ins === "qualifiee" && <span className="hidden items-center gap-1.5 text-xs text-ok sm:flex"><I.check />INS qualifiée</span>}
+        {p.ins === "provisoire" && <span className="hidden text-xs text-muted-2 sm:inline">dossier local</span>}
         {active && <Kbd>⏎</Kbd>}
       </Link>
       {first && fam.slice(0, 1).map((f) => (

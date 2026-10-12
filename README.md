@@ -51,6 +51,26 @@ ANTHROPIC_API_KEY=sk-ant-…   # vide → composeur à règles : même plan, com
 Le code : `src/locus/compose/` (contrat, contexte, outils, boucle, règles) et
 `src/components/studio/compose.tsx` (la carte du plan).
 
+## Le cabinet local : tester en conditions réelles
+
+Pour une journée de consultation avec de faux noms, sans carte Vitale et sans
+base : les dossiers créés vivent dans le navigateur (localStorage) et
+s'exportent en JSON.
+
+| Route | Ce qu'on y fait |
+|---|---|
+| `/nouveau` | créer un dossier : identité déclarative, antécédents, allergies, traitements (une ligne chacun) |
+| `/d` | le cabinet local : la liste, export / import JSON |
+| `/d/[id]` | le dossier : overview, fiche modifiable, les notes, le composer ; **+ Note** ouvre l'éditeur |
+| `/p/[id]/note` | la même note libre pour un patient du jeu de données |
+
+La **note** s'écrit ou se dicte (ou on colle la sortie d'un scribe), puis
+`⌘⏎` la **décline en actions** : ce qu'elle établit va au dossier, ce qu'elle
+prescrit devient ordonnance, arrêt, courrier, rendez-vous, message — à signer
+d'un geste. Un **chrono** mesure la saisie, la composition et la validation,
+pour comparer à la montre. Le composer reçoit le dossier local avec la demande
+(le serveur n'a pas de base) et le projette comme un `patient_ehr`.
+
 Le scénario complet est dans [`docs/scenes.md`](docs/scenes.md) (patiente :
 Claire Moreau). Les sept ruptures sont dans [`src/data/manifeste.ts`](src/data/manifeste.ts).
 Les 22 dossiers sont tous écrits à la même profondeur : antécédents, traitements,
@@ -90,7 +110,7 @@ L'agent du cabinet s'appelle **Locus**. Il signe « Locus, pour le Dr Vandepitte
 ```
 src/
 ├── studio/                types et projection serveur du parcours (accueil, vue patient, document, boîtes)
-├── components/studio/     chrome (en-tête, omni-saisie, carte de résultat, thème), home, dossier, rencontre, actions, signature, documents, document, inbox
+├── components/studio/     chrome, home, dossier, rencontre, actions, signature, documents, document, inbox, compose (la carte du plan), note (l'éditeur + chrono), local (patient sans carte Vitale, cabinet local)
 ├── domain/types.ts        le modèle du dossier — UNE enveloppe pour tout, provenance de 1re classe
 ├── data/                  le jeu de données : cabinet, horloge fixe (jeudi 15 oct. 2026), 19 patients
 │   ├── patients/          8 patients « héros » écrits à la main (dont Claire Moreau, la patiente du design), 14 autres décrits dans seeds.ts et construits par secondaires.ts
@@ -105,7 +125,8 @@ src/
 │   └── capabilities.ts    le registre : ce que core sert, ce que le studio compose, ce qui est projeté
 ├── app/                   Next 16 App Router — `/`, `/p/[id]/*`, `/inbox/[box]`, BFF (/api/locus/*, /api/compose)
 ├── components/            l'interface (Tailwind v4, Geist, aucun kit)
-└── store/rencontre.tsx    l'état de session (réponses, signatures, carte ouverte), persisté en localStorage
+├── store/rencontre.tsx    l'état de session (réponses, signatures), persisté en localStorage
+└── store/cabinet.tsx      le cabinet local : patients créés sans carte Vitale, notes, chrono, export JSON
 docs/
 ├── scenes.md              la rencontre en cinq temps, écran par écran
 ├── manifeste-v1.md        la première version du manifeste (un meilleur LGC), conservée

@@ -1,11 +1,10 @@
 import "server-only";
 import type Anthropic from "@anthropic-ai/sdk";
-import { getDossier, displayName, recordsOf } from "@/data";
+import { getDossier, displayName } from "@/data";
 import { at } from "@/data/clock";
 import { documentView } from "@/studio/view.server";
 import { retrieveStream } from "@/locus/client.server";
-import { toPatientEhr } from "@/locus/ehr";
-import { now } from "@/data/clock";
+import { fromDataset, type PatientCtx } from "./patient";
 import type { ComposeAction, ComposeRef, ComposeInput } from "./contract";
 
 /**
@@ -21,7 +20,7 @@ export interface ToolCtx {
   references: ComposeRef[];
   locus: number;
   /** Le patient résolu pendant la composition (depuis l'accueil, `ouvrir` le fixe). */
-  patientId?: string;
+  patient?: PatientCtx;
   emit: (ev: { step: "outil"; nom: string; detail: string } | { step: "action"; action: ComposeAction }) => void;
 }
 
@@ -91,9 +90,11 @@ let seq = 0;
 const nid = () => `c${++seq}`;
 
 export async function executeTool(name: string, input: Record<string, unknown>, ctx: ToolCtx): Promise<string> {
-  const pid = (typeof input.patientId === "string" && input.patientId) || ctx.patientId || ctx.input.patientId;
-  const d = pid ? getDossier(pid) : undefined;
-  const prenomNom = d ? displayName(d.patient) : "le patient";
+  // Un patientId explicite (depuis l'accueil) l'emporte ; sinon le patient de la composition.
+  const explicit = typeof input.patientId === "string" && input.patientId && input.patientId !== ctx.patient?.id ? fromDataset(input.patientId) : undefined;
+  const pt = explicit ?? ctx.patient;
+  const pid = pt?.id;
+  const prenomNom = pt?.nom ?? "le patient";
   const push = (a: ComposeAction) => { ctx.actions.push(a); ctx.emit({ step: "action", action: a }); };
   const s = (v: unknown) => (typeof v === "string" ? v : v === undefined || v === null ? "" : String(v));
 
@@ -102,7 +103,7 @@ export async function executeTool(name: string, input: Record<string, unknown>, 
       ctx.locus += 1;
       ctx.emit({ step: "outil", nom: "locus", detail: s(input.question) });
       let answer = ""; let docs: { title?: string; source_name?: string; year?: number; url?: string }[] = []; let err = "";
-      for await (const ev of retrieveStream({ query: s(input.question), patient_ehr: d ? toPatientEhr(d, now()) : undefined, mode: "rapide" })) {
+      for await (const ev of retrieveStream({ query: s(input.question), patient_ehr: pt?.ehr, mode: "rapide" })) {
         if (ev.step === "reflexion") ctx.emit({ step: "outil", nom: "locus", detail: ev.titre });
         else if (ev.step === "done") { answer = ev.payload.answer; docs = ev.payload.docs; }
         else if (ev.step === "answer" && !answer) answer = ev.answer;
@@ -117,7 +118,7 @@ export async function executeTool(name: string, input: Record<string, unknown>, 
       return `${renum.slice(0, 3500)}\n\nRéférences :\n${refs.map((r, i) => `[${base + i + 1}] ${r.titre} — ${r.editeur}${r.annee ? ` (${r.annee})` : ""}`).join("\n")}`;
     }
     case "lire_document": {
-      if (!pid) return "Aucun patient ouvert.";
+      if (!pid || pt?.local) return "Aucun document lisible pour ce patient.";
       const doc = documentView(pid, s(input.docId));
       if (!doc) return "Document introuvable.";
       ctx.emit({ step: "outil", nom: "dossier", detail: `Je lis « ${doc.titre} »` });
@@ -128,7 +129,7 @@ export async function executeTool(name: string, input: Record<string, unknown>, 
       const lignes = (Array.isArray(input.lignes) ? input.lignes : []) as { libelle?: string; posologie?: string; duree?: string; renouvellement?: number; ald?: boolean }[];
       if (!lignes.length) return "Aucune ligne : rien à préparer.";
       // Garde-fou allergies : on ne bloque pas, on signale dans l'action.
-      const allergies = d ? recordsOf(d, "allergy").map((a) => a.substance.toLowerCase()) : [];
+      const allergies = (pt?.allergies ?? []).map((a) => a.toLowerCase());
       const alerte = lignes.map((l) => (l.libelle ?? "").toLowerCase()).find((lib) => allergies.some((a) => a.split(/[ (]/)[0] && lib.includes(a.split(/[ (]/)[0])));
       const fields = lignes.map((l) => ({ k: l.libelle ?? "", v: [l.posologie, l.duree, l.renouvellement ? `renouvelable ${l.renouvellement}×` : undefined, l.ald ? "ALD" : undefined].filter(Boolean).join(" · ") }));
       push({ id: nid(), kind: "ordonnance", code: RX_CODE[type] ?? "Rx", titre: `${RX_LABEL[type] ?? "Ordonnance"} · ${lignes.map((l) => l.libelle).join(", ")}`, ligne: `${prenomNom} · ${lignes.length} ligne${lignes.length > 1 ? "s" : ""}${alerte ? ` · ⚠ allergie au dossier : ${alerte}` : ""}`, destination: "patient · e-ordo", statut: "relire", fields, justification: s(input.justification), charge: input });
@@ -164,8 +165,8 @@ export async function executeTool(name: string, input: Record<string, unknown>, 
     case "ouvrir": {
       const cible = s(input.cible);
       let href = "/"; let titre = "Accueil";
-      const p = pid && getDossier(pid);
-      if (cible === "patient" && p) { href = `/p/${p.patient.id}`; titre = `Dossier de ${displayName(p.patient)}`; ctx.patientId = p.patient.id; }
+      const p = pt && !pt.local && pid ? getDossier(pid) : undefined;
+      if (cible === "patient" && pt) { href = pt.href; titre = `Dossier de ${pt.nom}`; ctx.patient = pt; }
       else if (cible === "document" && p && input.docId) { href = `/p/${p.patient.id}/documents/${s(input.docId)}?from=dossier`; titre = `Document ${s(input.docId)}`; }
       else if (cible === "documents" && p) { href = `/p/${p.patient.id}/documents${input.type ? `?type=${encodeURIComponent(s(input.type))}` : ""}`; titre = `${s(input.type) || "Tout"} · ${displayName(p.patient)}`; }
       else if (cible === "boite") { href = `/inbox/${s(input.boite) || "courriers"}`; titre = { courriers: "Courriers", bio: "Résultats bio", messages: "Messages" }[s(input.boite)] ?? "Courriers"; }
@@ -173,7 +174,7 @@ export async function executeTool(name: string, input: Record<string, unknown>, 
       else if (cible === "rencontre" && p) { href = `/p/${p.patient.id}/rencontre`; titre = `Rencontre · ${displayName(p.patient)}`; }
       else return "Cible introuvable : précise le patient (patientId) ou le document (docId).";
       push({ id: nid(), kind: "naviguer", code: "→", titre, ligne: href, destination: "écran", statut: "pret", fields: [], href });
-      return `Ouvert : ${titre}${ctx.patientId ? ` (patientId=${ctx.patientId})` : ""}.`;
+      return `Ouvert : ${titre}${ctx.patient ? ` (patientId=${ctx.patient.id})` : ""}.`;
     }
     default:
       return `Outil inconnu : ${name}`;
