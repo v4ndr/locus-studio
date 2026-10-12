@@ -24,7 +24,8 @@ export function RencontreProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = React.useReducer(reducer, {});
   const hydrated = React.useRef(false);
   React.useEffect(() => { try { const raw = localStorage.getItem(KEY); if (raw) dispatch({ type: "hydrate", state: JSON.parse(raw) }); } catch {} hydrated.current = true; }, []);
-  React.useEffect(() => { if (!hydrated.current) return; try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {} }, [state]);
+  // On persiste les décisions (réponses, signatures), pas la carte ouverte : elle appartient à l'écran du moment.
+  React.useEffect(() => { if (!hydrated.current) return; try { localStorage.setItem(KEY, JSON.stringify(Object.fromEntries(Object.entries(state).map(([k, v]) => [k, { answers: v.answers, signed: v.signed }])))); } catch {} }, [state]);
   return <Ctx.Provider value={{ state, dispatch }}>{children}</Ctx.Provider>;
 }
 

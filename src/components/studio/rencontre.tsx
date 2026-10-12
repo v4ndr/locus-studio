@@ -61,7 +61,7 @@ export function RencontreView({ v, praticien }: { v: PatientView; praticien: { i
             {count === 0 && <div className="py-2 text-sm text-muted-2">Rien encore.</div>}
           </div>
         )}
-        <div className="text-lg leading-[1.8] text-[#1C1C1A]">
+        <div className="text-lg leading-[1.8] text-ink">
           {rendered.map((p, i) => !p.empty && <p key={i} className={cn("m-0 mb-4", p.muted && "text-muted-3")}>{p.nodes}{p.caret && <span className="caret" />}</p>)}
           {n === 0 && <p className="m-0 text-muted-3">…<span className="caret" /></p>}
         </div>

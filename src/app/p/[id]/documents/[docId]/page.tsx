@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { DOSSIERS } from "@/data";
-import { patientView, documentView, homeData } from "@/studio/view.server";
+import { patientView, documentView, homeData, inboxView } from "@/studio/view.server";
 import { DocumentView } from "@/components/studio/document";
 
 export const dynamic = "force-static";
@@ -14,5 +14,7 @@ export default async function Page({ params }: { params: Promise<{ id: string; d
   const v = patientView(id);
   const doc = documentView(id, docId);
   if (!v || !doc) notFound();
-  return <DocumentView v={v} doc={doc} praticien={homeData().praticien} />;
+  // La boîte d'où ce document peut venir : un courrier ou une bio ont une liste de voisins dans la réception.
+  const boite = doc.source === "document" ? inboxView("courriers") : doc.source === "lab" ? inboxView("bio") : undefined;
+  return <DocumentView v={v} doc={doc} boite={boite?.rows} boiteKind={boite?.kind} praticien={homeData().praticien} />;
 }

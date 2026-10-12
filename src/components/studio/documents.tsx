@@ -44,7 +44,7 @@ function Inner({ v, praticien }: { v: PatientView; praticien: { initials: string
         </div>
         <div className="rounded-[14px] border border-line-3 bg-paper">
           <div className="tr tr-head"><span className="k">Date</span><span className="k">Type</span><span className="k">Document</span><span className="k">Émetteur</span><span /></div>
-          {rows.map((r, i) => <Link key={r.id} href={`/p/${v.ref.id}/documents/${r.id}`} className={cn("tr text-ink hover:bg-bg hover:text-ink", i > 0 && "border-t border-soft")}><span className="d">{r.date}</span><span className="text-[13px] text-ink-3">{r.type}</span><span className="min-w-0 truncate">{r.titre}</span><span className="truncate text-[13px] text-muted-2">{r.de}</span><I.chevron /></Link>)}
+          {rows.map((r, i) => <Link key={r.id} href={`/p/${v.ref.id}/documents/${r.id}?from=dossier${type !== "Tous" ? `&type=${encodeURIComponent(type)}` : ""}`} className={cn("tr text-ink hover:bg-bg hover:text-ink", i > 0 && "border-t border-soft")}><span className="d">{r.date}</span><span className="text-[13px] text-ink-3">{r.type}</span><span className="min-w-0 truncate">{r.titre}</span><span className="truncate text-[13px] text-muted-2">{r.de}</span><I.chevron /></Link>)}
           {rows.length === 0 && <div className="px-4 py-3 text-sm text-muted-2">Aucun document.</div>}
         </div>
       </main>
