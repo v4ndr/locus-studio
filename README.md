@@ -1,10 +1,40 @@
 # locus-studio — le LGC agentique
 
 Un cabinet de médecine générale **AI-native**, construit comme un vrai produit
-web, pour explorer les usages de demain : le médecin tranche, l'agent fait le
-reste. Projet de recherche ouvert, sans prétention réglementaire — toutes les
-dépendances externes (SESAM-Vitale, INSi, MSSanté, DMP, ordonnance numérique,
-LAP) sont **mockées** ; le backend clinique, lui, est réel : **[locus-core](https://github.com/v4ndr/locus-core)**.
+web, pour montrer l'avenir, adoptable ou non tout de suite : **il n'y a plus de
+pages, il y a un fil et une commande**. Le médecin dit ; l'agent (qui s'appelle
+Locus) compose ; le médecin signe. Projet de recherche ouvert, sans prétention
+réglementaire — toutes les dépendances externes (SESAM-Vitale, INSi, MSSanté,
+DMP, ordonnance numérique, LAP) sont **mockées** ; le backend clinique, lui,
+est réel : **[locus-core](https://github.com/v4ndr/locus-core)**.
+
+## L'écran unique (`/`)
+
+Sombre, une seule entrée, trois zones : le **fil** du cabinet (tout ce qui se
+passe, tous patients confondus, dans le temps), le **composer** (⌘K : un nom,
+une question, une action, une consigne) et la **scène** (la vue générée ou
+l'objet à signer). Pas de menu, pas d'onglet, pas de formulaire.
+
+```
+ma matinée                         → l'ordre des décisions, pas des heures
+@Delacroix où en est son rein      → une courbe avec les décisions qui l'ont jalonnée
+signe l'ordonnance                 → l'objet préparé par Locus, vérifié LAP, à signer
+plutôt 1 mois pour la dapagliflozine → corriger en parlant
+consultation Delacroix             → l'écoute ambiante jouée, la note qui s'écrit, à provenance
+clôture                            → codage, FSE, DMP, ordonnances, rendez-vous : un geste
+mes diabétiques en retard          → une table de patientèle, avec l'action prête
+qu'est-ce que Locus a fait ce matin → ses sessions, avec leur état
+consigne : chez les plus de 75 ans, propose toujours la consultation longue une fois par an
+Metformine et DFG à 48 : que faire ? → locus-core répond avec les sources
+stop                               → Locus s'arrête ; « reprends »
+```
+
+Les trois scènes de démonstration (la matinée, la consultation, l'après) sont
+écrites dans [`docs/scenes.md`](docs/scenes.md) ; les sept ruptures dans
+[`/manifeste`](src/data/manifeste.ts). Les écrans de la première version
+(journée, réception, dossier à colonnes…) restent en **vues héritées**
+(`/journee`, `/inbox`, `/patients`, `/agents`, `/routines`, `/locus`) : un
+meilleur LGC, pas l'avenir.
 
 Trois rôles pour ce dépôt :
 
@@ -43,20 +73,20 @@ Scripts : `dev`, `build`, `start`, `typecheck`, `test`.
 
 ---
 
-## Ce qu'on y trouve
+## Les vues héritées
 
 | Écran | Le parti pris qu'il incarne |
 |---|---|
-| **Journée** `/` | L'accueil est la journée *préparée* : agenda, brief par patient (ce qui a changé, ce qui est dû, quoi demander), décisions à prendre. Pas un calendrier. |
+| **Journée** `/journee` | L'accueil est la journée *préparée* : agenda, brief par patient (ce qui a changé, ce qui est dû, quoi demander), décisions à prendre. Pas un calendrier. |
 | **Réception** `/inbox` | Biologies, courriers, messages lus avant vous : urgence proposée, résumé, faits extraits, réponse rédigée. L'ordre est l'urgence, pas l'heure. |
-| **Dossier** `/patients/[id]` | Trois colonnes : l'*état* du patient (résumé vivant, problèmes, traitement, mesures, suivi), le *fil* (tout, filtrable, avec la provenance en couleur), et *Sol* (propositions + question à Locus contextualisée par le dossier). Un onglet montre exactement ce que Locus « voit » (`patient_ehr`). |
+| **Dossier** `/patients/[id]` | Trois colonnes : l'*état* du patient (résumé vivant, problèmes, traitement, mesures, suivi), le *fil* (tout, filtrable, avec la provenance en couleur), et *Locus* (propositions + question à Locus contextualisée par le dossier). Un onglet montre exactement ce que Locus « voit » (`patient_ehr`). |
 | **Consultation** `/patients/[id]/consultation` | L'écoute ambiante jouée : la transcription défile, la note se structure (motif / histoire / examen / conclusion / CAT), chaque phrase renvoie au tour d'où elle vient, les propositions tombent (ordonnance vérifiée LAP, codage DRC, FSE, courrier). À la clôture : tout part. |
-| **Sol** `/agents` | La file de travail de l'agent, ce qu'il a fait, la politique d'autonomie (observe / prépare / agit, avec verrous), le journal append-only. |
+| **Locus** `/agents` | La file de travail de l'agent, ce qu'il a fait, la politique d'autonomie (observe / prépare / agit, avec verrous), le journal append-only. |
 | **Routines** `/routines` | Des agents sur la patientèle entière : règles lisibles, calculées en direct (diabétiques sans HbA1c, dépistages, grippe, renouvellements). |
 | **Locus** `/locus` | Le registre des capacités (servies / composées / projetées), l'état du backend, un bac à sable retrieve, une unité logique (CHA₂DS₂-VASc via `/v2/logic/compute`). |
 | **Manifeste** `/manifeste` | Les quinze prises de parti. |
 
-L'agent du cabinet s'appelle **Sol**. Il signe « Sol, pour le Dr Laurent ».
+L'agent du cabinet s'appelle **Locus**. Il signe « Locus, pour le Dr Laurent ».
 
 ---
 
@@ -64,6 +94,9 @@ L'agent du cabinet s'appelle **Sol**. Il signe « Sol, pour le Dr Laurent ».
 
 ```
 src/
+├── fil/                   l'écran unique : types (World, FilEntry, Scene, Intent), intent.ts (le composer
+│                          comprend sans modèle), world.server.ts (projection du jeu de données), store
+├── components/fil/        fil-app (l'orchestrateur), composer, stream, scenes, consult-scene
 ├── domain/types.ts        le modèle du dossier — UNE enveloppe pour tout, provenance de 1re classe
 ├── data/                  le jeu de données : cabinet, horloge fixe (jeudi 15 oct. 2026), 19 patients
 │   ├── patients/          7 patients « héros » écrits à la main (fil riche), 12 secondaires générés
@@ -75,10 +108,12 @@ src/
 │   ├── ehr.ts             la projection dossier → patient_ehr
 │   ├── simulation.ts      le mode à sec
 │   └── capabilities.ts    le registre : ce que core sert, ce que le studio compose, ce qui est projeté
-├── app/                   Next 16 App Router — pages + BFF (/api/locus/*, /api/patients)
+├── app/                   Next 16 App Router — `/` (l'écran unique), vues héritées, BFF (/api/locus/*)
 ├── components/            l'interface (Tailwind v4, lucide, aucun kit)
 └── store/studio.tsx       l'état de session (décisions, vus, autonomie), persisté en localStorage
 docs/
+├── scenes.md              les trois scènes jouées dans l'écran unique
+├── manifeste-v1.md        la première version du manifeste (un meilleur LGC), conservée
 ├── integration-locus.md   le contrat, les modes, les capacités projetées avec leur spec
 ├── modele-de-donnees.md   le dossier, enregistrement par enregistrement
 └── recherche/             agentic healthcare (monde) · LGC français (marché, dossier, interop, IA)

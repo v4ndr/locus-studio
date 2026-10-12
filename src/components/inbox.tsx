@@ -40,7 +40,7 @@ export function InboxView({ items, pendingTotal }: { items: InboxEntry[]; pendin
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Réception</h1>
-          <p className="mt-1 text-sm text-muted-foreground max-w-2xl">Biologies, courriers, messages : tout ce qui est arrivé, lu et trié par Sol. L'ordre est l'urgence qu'il propose, pas l'heure d'arrivée. Chaque élément vient avec ce qu'il a compris et ce qu'il a préparé.</p>
+          <p className="mt-1 text-sm text-muted-foreground max-w-2xl">Biologies, courriers, messages : tout ce qui est arrivé, lu et trié par Locus. L'ordre est l'urgence qu'il propose, pas l'heure d'arrivée. Chaque élément vient avec ce qu'il a compris et ce qu'il a préparé.</p>
         </div>
         <div className="flex rounded-md border p-0.5 text-xs">
           {([["tous", "Tout"], ["lab", "Biologie"], ["document", "Documents"], ["message", "Messages"]] as const).map(([k, l]) => (
@@ -95,7 +95,7 @@ function Detail({ entry, onVu, etatDe }: { entry: InboxEntry; onVu: () => void; 
 
         {(lecture || (entry.kind === "message" && (entry.record as Message).triage)) && (
           <div className="mt-3 rounded-lg bg-agent-soft/60 p-3 agent-glow">
-            <div className="flex items-center gap-1.5 text-micro font-semibold uppercase tracking-wider text-agent"><Sparkles className="h-3 w-3" /> Ce que Sol a compris</div>
+            <div className="flex items-center gap-1.5 text-micro font-semibold uppercase tracking-wider text-agent"><Sparkles className="h-3 w-3" /> Ce que Locus a compris</div>
             <p className="mt-1 text-sm">{lecture?.resume ?? (entry.record as Message).triage?.resume}</p>
             {lecture && lecture.pointsAttention.length > 0 && (
               <ul className="mt-2 space-y-1 text-sm">{lecture.pointsAttention.map((p, i) => <li key={i} className="flex gap-2"><AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-warning" /><span>{p}</span></li>)}</ul>
@@ -115,14 +115,14 @@ function Detail({ entry, onVu, etatDe }: { entry: InboxEntry; onVu: () => void; 
 
         {entry.reply && (
           <div className="mt-3">
-            <SectionTitle>Réponse préparée par Sol</SectionTitle>
+            <SectionTitle>Réponse préparée par Locus</SectionTitle>
             <MessagePreview m={entry.reply} />
           </div>
         )}
       </Card>
       {entry.proposals.length > 0 && (
         <div>
-          <SectionTitle>Ce que Sol propose — {entry.proposals.filter((p) => etatDe(p) === "a-valider").length} à trancher</SectionTitle>
+          <SectionTitle>Ce que Locus propose — {entry.proposals.filter((p) => etatDe(p) === "a-valider").length} à trancher</SectionTitle>
           <div className="space-y-2">{entry.proposals.map((p) => <ProposalCard key={p.id} proposal={p} compact defaultOpen />)}</div>
         </div>
       )}

@@ -54,10 +54,10 @@ export function DossierView({ dossier: d, ehr }: { dossier: Dossier; ehr: string
           <Timeline d={d} />
         </section>
 
-        {/* Colonne 3 — Sol */}
+        {/* Colonne 3 — Locus */}
         <aside className="space-y-3">
           <div className="flex rounded-md border p-0.5 text-xs">
-            <button onClick={() => setTab("sol")} className={cn("flex-1 rounded px-2 py-1", tab === "sol" ? "bg-muted font-medium" : "text-muted-foreground")}><Sparkles className="mr-1 inline h-3 w-3" />Sol {pending.length > 0 && <span className="ml-1 rounded-full bg-agent px-1.5 text-micro text-agent-foreground">{pending.length}</span>}</button>
+            <button onClick={() => setTab("sol")} className={cn("flex-1 rounded px-2 py-1", tab === "sol" ? "bg-muted font-medium" : "text-muted-foreground")}><Sparkles className="mr-1 inline h-3 w-3" />Locus {pending.length > 0 && <span className="ml-1 rounded-full bg-agent px-1.5 text-micro text-agent-foreground">{pending.length}</span>}</button>
             <button onClick={() => setTab("ehr")} className={cn("flex-1 rounded px-2 py-1", tab === "ehr" ? "bg-muted font-medium" : "text-muted-foreground")}><Code2 className="mr-1 inline h-3 w-3" />Ce que Locus voit</button>
           </div>
           {tab === "sol" ? (
@@ -94,7 +94,7 @@ function SummaryCard({ summary, changed }: { summary?: Extract<DossierRecord, { 
           <ul className="mt-1 space-y-0.5 text-sm">{summary.enCeMoment.map((x, i) => <li key={i} className="flex gap-2"><Dot tone="agent" /><span className="-mt-0.5">{x}</span></li>)}</ul>
         </div>
       )}
-      <div className="mt-2 text-micro text-muted-foreground">Tenu par Sol · validé {summary.derniereValidation ? fmtRelative(summary.derniereValidation) : "jamais"}</div>
+      <div className="mt-2 text-micro text-muted-foreground">Tenu par Locus · validé {summary.derniereValidation ? fmtRelative(summary.derniereValidation) : "jamais"}</div>
     </Card>
   );
 }
@@ -109,8 +109,8 @@ function Problems({ problems }: { problems: Problem[] }) {
     <Card className="p-3">
       <SectionTitle>Problèmes</SectionTitle>
       <ul className="space-y-1 text-sm">
-        {group("medical").concat(group("psycho-social"), group("gyneco-obstetrical")).map((x) => <li key={x.id} className="flex items-start gap-2"><Dot tone={x.evolution === "chronique" ? "primary" : "muted"} /><span className="-mt-0.5"><span>{x.libelle}</span>{x.cim10 && <span className="ml-1.5 font-mono text-micro text-muted-foreground">{x.cim10}</span>}{x.depuis && <span className="ml-1 text-micro text-muted-foreground">depuis {x.depuis.slice(0, 4)}</span>}{x.provenance.origin === "agent" && !x.provenance.validatedBy && <Badge tone="agent" className="ml-1">Sol</Badge>}</span></li>)}
-        {proposes.map((x) => <li key={x.id} className="flex items-start gap-2 rounded bg-agent-soft/60 px-1.5 py-0.5"><Sparkles className="mt-0.5 h-3 w-3 shrink-0 text-agent" /><span className="-mt-0.5">{x.libelle} <span className="text-micro text-agent">proposé par Sol</span></span></li>)}
+        {group("medical").concat(group("psycho-social"), group("gyneco-obstetrical")).map((x) => <li key={x.id} className="flex items-start gap-2"><Dot tone={x.evolution === "chronique" ? "primary" : "muted"} /><span className="-mt-0.5"><span>{x.libelle}</span>{x.cim10 && <span className="ml-1.5 font-mono text-micro text-muted-foreground">{x.cim10}</span>}{x.depuis && <span className="ml-1 text-micro text-muted-foreground">depuis {x.depuis.slice(0, 4)}</span>}{x.provenance.origin === "agent" && !x.provenance.validatedBy && <Badge tone="agent" className="ml-1">Locus</Badge>}</span></li>)}
+        {proposes.map((x) => <li key={x.id} className="flex items-start gap-2 rounded bg-agent-soft/60 px-1.5 py-0.5"><Sparkles className="mt-0.5 h-3 w-3 shrink-0 text-agent" /><span className="-mt-0.5">{x.libelle} <span className="text-micro text-agent">proposé par Locus</span></span></li>)}
       </ul>
       {(group("chirurgical").length + group("familial").length + group("mode-de-vie").length) > 0 && (
         <div className="mt-2 space-y-1 border-t pt-2 text-xs text-muted-foreground">
@@ -233,7 +233,7 @@ function Admin({ p }: { p: Dossier["patient"] }) {
       <div><span className="text-foreground/70">Droits</span> {p.couverture.regime}{p.couverture.mutuelle ? ` · ${p.couverture.mutuelle.nom}` : ""} · vérifiés {p.couverture.droitsVerifiesLe ? fmtRelative(p.couverture.droitsVerifiesLe) : "—"}</div>
       <div><span className="text-foreground/70">Médecin traitant</span> {p.couverture.medecinTraitant?.nom ?? "non déclaré"}</div>
       {p.personneConfiance && <div><span className="text-foreground/70">Personne de confiance</span> {p.personneConfiance.nom} ({p.personneConfiance.lien})</div>}
-      <div><span className="text-foreground/70">Consentements</span> MES {p.consentement.monEspaceSante ? "oui" : "non"} · DMP {p.consentement.dmpAlimentation ? "oui" : "non"} · Sol peut écrire au patient : {p.consentement.messagerieAgent}</div>
+      <div><span className="text-foreground/70">Consentements</span> MES {p.consentement.monEspaceSante ? "oui" : "non"} · DMP {p.consentement.dmpAlimentation ? "oui" : "non"} · Locus peut écrire au patient : {p.consentement.messagerieAgent}</div>
     </Card>
   );
 }
@@ -245,7 +245,7 @@ function Admin({ p }: { p: Dossier["patient"] }) {
 type Item = { id: string; at: string; kind: string; node: React.ReactNode; origin: DossierRecord["provenance"]["origin"] };
 
 const KINDS: { key: string; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
-  { key: "encounter", label: "Consultations", icon: Stethoscope }, { key: "lab", label: "Biologie", icon: FlaskConical }, { key: "document", label: "Documents", icon: FileText }, { key: "message", label: "Messages", icon: MessageSquare }, { key: "prescription", label: "Ordonnances", icon: Pill }, { key: "letter", label: "Courriers", icon: Mail }, { key: "proposal", label: "Sol", icon: Sparkles },
+  { key: "encounter", label: "Consultations", icon: Stethoscope }, { key: "lab", label: "Biologie", icon: FlaskConical }, { key: "document", label: "Documents", icon: FileText }, { key: "message", label: "Messages", icon: MessageSquare }, { key: "prescription", label: "Ordonnances", icon: Pill }, { key: "letter", label: "Courriers", icon: Mail }, { key: "proposal", label: "Locus", icon: Sparkles },
 ];
 
 function Timeline({ d }: { d: Dossier }) {
@@ -279,7 +279,7 @@ function Timeline({ d }: { d: Dossier }) {
           const active = on.has(k.key);
           return <button key={k.key} onClick={() => setOn((s) => { const n2 = new Set(s); if (n2.has(k.key)) n2.delete(k.key); else n2.add(k.key); return n2; })} className={cn("flex items-center gap-1 rounded-full border px-2 py-0.5 text-micro", active ? "bg-card" : "bg-muted text-muted-foreground line-through")}><k.icon className="h-3 w-3" />{k.label} {n}</button>;
         })}
-        <span className="ml-auto text-micro text-muted-foreground">le plus récent d'abord · provenance : <Dot tone="primary" /> praticien <Dot tone="agent" /> Sol <Dot tone="muted" /> reçu</span>
+        <span className="ml-auto text-micro text-muted-foreground">le plus récent d'abord · provenance : <Dot tone="primary" /> praticien <Dot tone="agent" /> Locus <Dot tone="muted" /> reçu</span>
       </div>
       <ol className="relative space-y-2 border-l pl-4 ml-2">
         {shown.map((i) => (
@@ -342,12 +342,12 @@ function SickItem({ s }: { s: SickLeave }) {
   return <Frame icon={ClipboardList} title={`Arrêt de travail du ${fmtDate(s.du)} au ${fmtDate(s.au)}`} at={s.du} badge={s.teletransmis ? <Badge tone="success">AAT télétransmis</Badge> : undefined} />;
 }
 function ExecItem({ p }: { p: Proposal }) {
-  return <Frame icon={Sparkles} title={p.titre} at={p.createdAt} tone="agent" badge={<Badge tone="agent">fait par Sol</Badge>}><p className="text-sm">{p.justification}</p></Frame>;
+  return <Frame icon={Sparkles} title={p.titre} at={p.createdAt} tone="agent" badge={<Badge tone="agent">fait par Locus</Badge>}><p className="text-sm">{p.justification}</p></Frame>;
 }
 function VacItem({ v }: { v: Vaccination }) {
   return <Frame icon={Syringe} title={`Vaccin ${v.valences.join(" / ")}${v.nomCommercial ? ` — ${v.nomCommercial}` : ""}`} at={v.date} />;
 }
 function ApptItem({ a }: { a: Appointment }) {
-  return <Frame icon={CalendarClock} title={`Rendez-vous — ${a.motif}`} at={a.debut} badge={a.prisPar === "agent" ? <Badge tone="agent">pris par Sol</Badge> : undefined} />;
+  return <Frame icon={CalendarClock} title={`Rendez-vous — ${a.motif}`} at={a.debut} badge={a.prisPar === "agent" ? <Badge tone="agent">pris par Locus</Badge> : undefined} />;
 }
 

@@ -49,7 +49,7 @@ export function ProposalCard({ proposal, patient, compact, defaultOpen }: { prop
             <span className="text-micro text-muted-foreground">· {fmtRelative(proposal.createdAt)}</span>
             <EtatBadge etat={etat} />
             {verrou && <Badge tone="outline"><Lock className="h-2.5 w-2.5" /> signature requise</Badge>}
-            <span className="ml-auto text-micro text-muted-foreground" title="Niveau d'autonomie appliqué">Sol {AUTONOMY_LABEL[proposal.autonomie]}</span>
+            <span className="ml-auto text-micro text-muted-foreground" title="Niveau d'autonomie appliqué">Locus {AUTONOMY_LABEL[proposal.autonomie]}</span>
           </div>
           <button onClick={() => setOpen((v) => !v)} className="mt-0.5 flex w-full items-start gap-2 text-left">
             <span className="text-sm font-medium leading-snug">{proposal.titre}</span>
@@ -77,7 +77,7 @@ export function ProposalCard({ proposal, patient, compact, defaultOpen }: { prop
                 </div>
               ) : (
                 <div className="text-micro text-muted-foreground">
-                  {etat === "executee" ? "Exécuté par Sol" : etat === "validee" ? "Validé par Dr Laurent" : etat === "modifiee" ? "Modifié puis validé par Dr Laurent" : etat === "rejetee" ? "Rejeté par Dr Laurent — Sol retient la correction" : etat}
+                  {etat === "executee" ? "Exécuté par Locus" : etat === "validee" ? "Validé par Dr Laurent" : etat === "modifiee" ? "Modifié puis validé par Dr Laurent" : etat === "rejetee" ? "Rejeté par Dr Laurent — Locus retient la correction" : etat}
                   {proposal.decision?.le && ` · ${fmtRelative(proposal.decision.le)}`}
                 </div>
               )}

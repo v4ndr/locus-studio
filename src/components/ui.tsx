@@ -46,7 +46,7 @@ export function Badge({ className, tone = "muted", children }: { className?: str
 }
 
 export function Card({ className, children, agent }: { className?: string; children: React.ReactNode; agent?: boolean }) {
-  return <div className={cn("rounded-lg border bg-card text-card-foreground", agent && "agent-glow border-transparent", className)}>{children}</div>;
+  return <div className={cn("rounded-lg border border-border/70 bg-card text-card-foreground", agent && "agent-glow border-transparent", className)}>{children}</div>;
 }
 
 export function SectionTitle({ children, right, className }: { children: React.ReactNode; right?: React.ReactNode; className?: string }) {

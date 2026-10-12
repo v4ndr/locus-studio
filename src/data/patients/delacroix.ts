@@ -1,5 +1,5 @@
 import type { Dossier, Patient } from "@/domain/types";
-import { rec, P, journal, SOL, LAURENT, SYS } from "../build";
+import { rec, P, journal, LOCUS, LAURENT, SYS } from "../build";
 import { at, day } from "../clock";
 
 /**
@@ -124,6 +124,28 @@ const labs = [
     vuLe: at("10:00", -85),
   }, { at: at("09:00", -94) }),
 ];
+
+labs.push(
+  rec("lab", ID, P.import("hprim"), {
+    laboratoire: "Laboratoire Biogroup — Lyon Jean-Macé", prelevementLe: day(-370), recuLe: at("09:00", -369), vuLe: at("10:00", -360),
+    resultats: [
+      { loinc: "4548-4", libelle: "HbA1c", valeur: 7.0, unite: "%", refMin: 4, refMax: 6, flag: "haut" },
+      { loinc: "2160-0", libelle: "Créatinine", valeur: 84, unite: "µmol/L", refMin: 45, refMax: 84, flag: "normal" },
+      { loinc: "62238-1", libelle: "DFG (CKD-EPI)", valeur: 61, unite: "mL/min/1,73m²", refMin: 60, flag: "normal" },
+      { loinc: "13457-7", libelle: "LDL-cholestérol", valeur: 1.05, unite: "g/L", refMax: 0.7, flag: "haut" },
+      { loinc: "14959-1", libelle: "Microalbuminurie (RAC)", valeur: 18, unite: "mg/g", refMax: 30, flag: "normal" },
+    ],
+  }, { at: at("09:00", -369) }),
+  rec("lab", ID, P.import("hprim"), {
+    laboratoire: "Laboratoire Biogroup — Lyon Jean-Macé", prelevementLe: day(-730), recuLe: at("09:00", -729), vuLe: at("10:00", -720),
+    resultats: [
+      { loinc: "4548-4", libelle: "HbA1c", valeur: 6.9, unite: "%", refMin: 4, refMax: 6, flag: "haut" },
+      { loinc: "2160-0", libelle: "Créatinine", valeur: 79, unite: "µmol/L", refMin: 45, refMax: 84, flag: "normal" },
+      { loinc: "62238-1", libelle: "DFG (CKD-EPI)", valeur: 66, unite: "mL/min/1,73m²", refMin: 60, flag: "normal" },
+      { loinc: "13457-7", libelle: "LDL-cholestérol", valeur: 0.92, unite: "g/L", refMax: 0.7, flag: "haut" },
+    ],
+  }, { at: at("09:00", -729) }),
+);
 
 const documents = [
   rec("document", ID, P.import("mssante"), {
@@ -304,7 +326,7 @@ const messages = [
   rec("message", ID, P.agent(0.9), {
     canal: "patient",
     threadId: "th_delacroix_anne",
-    de: { type: "agent", nom: "Sol, pour le Dr Laurent" },
+    de: { type: "agent", nom: "Locus, pour le Dr Laurent" },
     a: [{ type: "patient", nom: "Anne Delacroix" }],
     date: at("07:50"),
     objet: "Re: Maman — avant le rendez-vous de demain",
@@ -344,7 +366,7 @@ const proposals = [
     declencheur: { type: "lab", recordId: labs[0].id, libelle: "Biologie reçue ce matin" },
     autonomie: 1,
     etat: "a-valider",
-    agent: "sol",
+    agent: "locus",
     traceId: "tr_sim_8f2a",
   }, { status: "propose", at: at("07:44") }),
   rec("proposal", ID, P.agent(0.88, [labs[0].id]), {
@@ -356,7 +378,7 @@ const proposals = [
     declencheur: { type: "lab", recordId: labs[0].id, libelle: "Biologie reçue ce matin" },
     autonomie: 1,
     etat: "a-valider",
-    agent: "sol",
+    agent: "locus",
   }, { status: "propose", at: at("07:42") }),
   rec("proposal", ID, P.agent(0.86, [documents[0].id, messages[0].id]), {
     action: "signaler",
@@ -366,7 +388,7 @@ const proposals = [
     declencheur: { type: "document", recordId: documents[0].id, libelle: "CR cardiologie reçu hier" },
     autonomie: 0,
     etat: "a-valider",
-    agent: "sol",
+    agent: "locus",
   }, { status: "propose", at: at("07:46") }),
   rec("proposal", ID, P.agent(0.93, [carePlans[0].id]), {
     action: "courrier",
@@ -383,7 +405,7 @@ const proposals = [
     declencheur: { type: "echeance", recordId: carePlans[0].id, libelle: "Fond d'œil dû depuis 3 mois" },
     autonomie: 1,
     etat: "a-valider",
-    agent: "sol",
+    agent: "locus",
   }, { status: "propose", at: at("07:47") }),
   rec("proposal", ID, P.agent(0.9, [messages[0].id]), {
     action: "message-patient",
@@ -393,7 +415,7 @@ const proposals = [
     declencheur: { type: "message", recordId: messages[0].id, libelle: "Message d'Anne Delacroix hier soir" },
     autonomie: 1,
     etat: "a-valider",
-    agent: "sol",
+    agent: "locus",
   }, { status: "propose", at: at("07:50") }),
   rec("proposal", ID, P.agent(0.97, [labs[0].id]), {
     action: "alimenter-dmp",
@@ -402,8 +424,8 @@ const proposals = [
     declencheur: { type: "lab", recordId: labs[0].id, libelle: "Biologie reçue ce matin" },
     autonomie: 2,
     etat: "executee",
-    decision: { par: "sol", le: at("07:31") },
-    agent: "sol",
+    decision: { par: "locus", le: at("07:31") },
+    agent: "locus",
   }, { status: "actif", at: at("07:31") }),
 ];
 
@@ -451,15 +473,15 @@ export const dossierDelacroix: Dossier = {
   ],
   journal: [
     journal(ID, at("07:30"), SYS("HPRIM"), "lab.receive", "Biologie Biogroup reçue (10 résultats)", labs[0].id),
-    journal(ID, at("07:31"), SOL, "dmp.feed", "Biologie déposée dans Mon Espace Santé avec résumé patient", labs[0].id),
-    journal(ID, at("07:42"), SOL, "proposal.create", "Inscrire MRC stade 3a", proposals[1].id),
-    journal(ID, at("07:44"), SOL, "proposal.create", "Ordonnance : dapagliflozine + metformine plafonnée", proposals[0].id),
-    journal(ID, at("07:46"), SOL, "proposal.create", "Signaler : bisoprolol à discuter", proposals[2].id),
-    journal(ID, at("07:47"), SOL, "proposal.create", "Courrier : adressage ophtalmologie", proposals[3].id),
-    journal(ID, at("07:50"), SOL, "message.draft", "Réponse à Anne Delacroix rédigée", messages[1].id),
-    journal(ID, at("07:52"), SOL, "briefing.create", "Briefing de la consultation de 9h30", briefing.id),
+    journal(ID, at("07:31"), LOCUS, "dmp.feed", "Biologie déposée dans Mon Espace Santé avec résumé patient", labs[0].id),
+    journal(ID, at("07:42"), LOCUS, "proposal.create", "Inscrire MRC stade 3a", proposals[1].id),
+    journal(ID, at("07:44"), LOCUS, "proposal.create", "Ordonnance : dapagliflozine + metformine plafonnée", proposals[0].id),
+    journal(ID, at("07:46"), LOCUS, "proposal.create", "Signaler : bisoprolol à discuter", proposals[2].id),
+    journal(ID, at("07:47"), LOCUS, "proposal.create", "Courrier : adressage ophtalmologie", proposals[3].id),
+    journal(ID, at("07:50"), LOCUS, "message.draft", "Réponse à Anne Delacroix rédigée", messages[1].id),
+    journal(ID, at("07:52"), LOCUS, "briefing.create", "Briefing de la consultation de 9h30", briefing.id),
     journal(ID, at("17:12", -1), SYS("MSSanté"), "document.receive", "CR cardiologie Dr Rabier", documents[0].id),
-    journal(ID, at("17:15", -1), SOL, "document.read", "CR cardiologie lu : FA faible charge, apixaban inchangé", documents[0].id),
+    journal(ID, at("17:15", -1), LOCUS, "document.read", "CR cardiologie lu : FA faible charge, apixaban inchangé", documents[0].id),
     journal(ID, at("10:25", -85), LAURENT, "fse.send", "FSE G 30 € télétransmise", encounters[0].id),
     journal(ID, at("10:21", -85), LAURENT, "prescription.sign", "Ordonnance numérique biologie signée", prescriptions[1].id),
     journal(ID, at("10:20", -85), LAURENT, "prescription.sign", "Ordonnance numérique médicaments signée (5 lignes)", prescriptions[0].id),

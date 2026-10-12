@@ -1,5 +1,5 @@
 import type { Dossier, Patient } from "@/domain/types";
-import { rec, P, journal, SOL, SYS } from "../build";
+import { rec, P, journal, LOCUS, SYS } from "../build";
 import { at, day } from "../clock";
 
 /** Inès Perrin, 8 ans — angine fébrile, parent inquiet par messagerie ; vaccins à jour. */
@@ -50,7 +50,7 @@ const messages = [
   }, { at: at("07:12") }),
   rec("message", ID, P.agent(0.93), {
     canal: "patient", threadId: "th_perrin_angine",
-    de: { type: "agent", nom: "Sol, pour le Dr Laurent" }, a: [{ type: "patient", nom: "Camille Perrin" }],
+    de: { type: "agent", nom: "Locus, pour le Dr Laurent" }, a: [{ type: "patient", nom: "Camille Perrin" }],
     date: at("07:42"),
     objet: "Re: Inès — fièvre et gorge",
     corps: "Bonjour Madame,\n\nOui, venez ce matin : rendez-vous à 15h00 avec le Dr Laurent (le premier créneau enfant). Elle fera un test rapide de la gorge pour savoir si un antibiotique est nécessaire — dans la plupart des angines chez l'enfant, ce n'est pas le cas.\n\nD'ici là : paracétamol 15 mg/kg soit 400 mg (une dose de 26 kg sur la pipette) toutes les 6 h si besoin, à boire régulièrement, pas d'ibuprofène. Si elle a du mal à respirer, à avaler sa salive, ou si elle est très abattue, appelez le 15.\n\nSol, pour le Dr Laurent",
@@ -60,9 +60,9 @@ const messages = [
 const appointment = rec("appointment", ID, P.agent(0.95, [messages[0].id]), { debut: at("15:00"), dureeMin: 15, type: "cabinet", motif: "Angine fébrile — TROD", praticien: "pr_laurent", etat: "prevu", prisPar: "agent", preparationId: `${ID}.briefing.1` }, { at: at("07:41") });
 
 const proposals = [
-  rec("proposal", ID, P.agent(0.95, [messages[0].id]), { action: "rdv", titre: "Rendez-vous ajouté à 15h00 (premier créneau enfant)", justification: "Angine fébrile chez une enfant de 8 ans sans signe de gravité : consultation le jour même pour TROD [1].", references: [{ docId: "has-angine-2021", titre: "Choix et durées d'antibiothérapie — Angine", editeur: "HAS", date: "2021" }], declencheur: { type: "message", recordId: messages[0].id, libelle: "Message de la mère à 7h12" }, autonomie: 2, etat: "executee", decision: { par: "sol", le: at("07:41") }, agent: "sol", resultatsIds: [appointment.id] }, { status: "actif", at: at("07:41") }),
-  rec("proposal", ID, P.agent(0.93, [messages[0].id]), { action: "message-patient", titre: "Répondre à la mère (rendez-vous, paracétamol 400 mg, signes d'alerte)", justification: "Posologie calculée sur le dernier poids connu (26,5 kg → 15 mg/kg ≈ 400 mg) ; pas d'AINS dans l'angine [1]. Allergie arachide sans rapport.", references: [{ docId: "has-angine-2021", titre: "Angine — HAS 2021", editeur: "HAS" }], charge: { recordId: messages[1].id, patch: { status: "actif" } }, declencheur: { type: "message", recordId: messages[0].id, libelle: "Message de la mère à 7h12" }, autonomie: 1, etat: "a-valider", agent: "sol" }, { status: "propose", at: at("07:42") }),
-  rec("proposal", ID, P.agent(0.9), { action: "ordonnance", titre: "Si TROD positif : amoxicilline 50 mg/kg/j en 2 prises, 6 jours (pré-rempli, non signé)", justification: "Angine à SGA de l'enfant : amoxicilline 6 jours [1]. 26,5 kg → 1 300 mg/j soit 650 mg ×2, suspension 500 mg/5 mL : 6,5 mL matin et soir. Pas d'allergie aux bêta-lactamines connue. Ne s'active que si le TROD est positif.", references: [{ docId: "has-angine-2021", titre: "Angine — HAS 2021", editeur: "HAS" }, { docId: "rcp-amoxicilline", titre: "RCP Amoxicilline — 4.2 Posologie", editeur: "ANSM" }], charge: { type: "medicament", date: day(0), lignes: [{ libelle: "AMOXICILLINE 500 mg/5 mL susp. buvable", dci: "amoxicilline", cis: "63296986", posologie: "6,5 mL matin et soir (50 mg/kg/j)", duree: "6 jours" }, { libelle: "PARACÉTAMOL 2,4 % sirop", dci: "paracétamol", posologie: "15 mg/kg (26 kg sur la pipette) toutes les 6 h si fièvre", duree: "5 jours" }] }, declencheur: { type: "agenda", recordId: appointment.id, libelle: "Consultation de 15h00" }, autonomie: 1, etat: "a-valider", agent: "sol" }, { status: "propose", at: at("07:44") }),
+  rec("proposal", ID, P.agent(0.95, [messages[0].id]), { action: "rdv", titre: "Rendez-vous ajouté à 15h00 (premier créneau enfant)", justification: "Angine fébrile chez une enfant de 8 ans sans signe de gravité : consultation le jour même pour TROD [1].", references: [{ docId: "has-angine-2021", titre: "Choix et durées d'antibiothérapie — Angine", editeur: "HAS", date: "2021" }], declencheur: { type: "message", recordId: messages[0].id, libelle: "Message de la mère à 7h12" }, autonomie: 2, etat: "executee", decision: { par: "locus", le: at("07:41") }, agent: "locus", resultatsIds: [appointment.id] }, { status: "actif", at: at("07:41") }),
+  rec("proposal", ID, P.agent(0.93, [messages[0].id]), { action: "message-patient", titre: "Répondre à la mère (rendez-vous, paracétamol 400 mg, signes d'alerte)", justification: "Posologie calculée sur le dernier poids connu (26,5 kg → 15 mg/kg ≈ 400 mg) ; pas d'AINS dans l'angine [1]. Allergie arachide sans rapport.", references: [{ docId: "has-angine-2021", titre: "Angine — HAS 2021", editeur: "HAS" }], charge: { recordId: messages[1].id, patch: { status: "actif" } }, declencheur: { type: "message", recordId: messages[0].id, libelle: "Message de la mère à 7h12" }, autonomie: 1, etat: "a-valider", agent: "locus" }, { status: "propose", at: at("07:42") }),
+  rec("proposal", ID, P.agent(0.9), { action: "ordonnance", titre: "Si TROD positif : amoxicilline 50 mg/kg/j en 2 prises, 6 jours (pré-rempli, non signé)", justification: "Angine à SGA de l'enfant : amoxicilline 6 jours [1]. 26,5 kg → 1 300 mg/j soit 650 mg ×2, suspension 500 mg/5 mL : 6,5 mL matin et soir. Pas d'allergie aux bêta-lactamines connue. Ne s'active que si le TROD est positif.", references: [{ docId: "has-angine-2021", titre: "Angine — HAS 2021", editeur: "HAS" }, { docId: "rcp-amoxicilline", titre: "RCP Amoxicilline — 4.2 Posologie", editeur: "ANSM" }], charge: { type: "medicament", date: day(0), lignes: [{ libelle: "AMOXICILLINE 500 mg/5 mL susp. buvable", dci: "amoxicilline", cis: "63296986", posologie: "6,5 mL matin et soir (50 mg/kg/j)", duree: "6 jours" }, { libelle: "PARACÉTAMOL 2,4 % sirop", dci: "paracétamol", posologie: "15 mg/kg (26 kg sur la pipette) toutes les 6 h si fièvre", duree: "5 jours" }] }, declencheur: { type: "agenda", recordId: appointment.id, libelle: "Consultation de 15h00" }, autonomie: 1, etat: "a-valider", agent: "locus" }, { status: "propose", at: at("07:44") }),
 ];
 
 const briefing = rec("briefing", ID, P.agent(0.92, [messages[0].id]), {
@@ -86,7 +86,7 @@ export const dossierPerrin: Dossier = {
   records: [...Object.values(pb), ...allergies, ...meds, ...mesures, ...vaccins, ...messages, appointment, ...proposals, briefing, summary],
   journal: [
     journal(ID, at("07:12"), SYS("Messagerie"), "message.receive", "Message de Camille Perrin", messages[0].id),
-    journal(ID, at("07:41"), SOL, "appointment.create", "RDV 15h00 pris (autonomie 2)", appointment.id),
-    journal(ID, at("07:44"), SOL, "proposal.create", "Ordonnance conditionnelle (TROD +)", proposals[2].id),
+    journal(ID, at("07:41"), LOCUS, "appointment.create", "RDV 15h00 pris (autonomie 2)", appointment.id),
+    journal(ID, at("07:44"), LOCUS, "proposal.create", "Ordonnance conditionnelle (TROD +)", proposals[2].id),
   ],
 };

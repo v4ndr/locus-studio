@@ -31,14 +31,14 @@ export function JourneeView({ agenda, pending, stats }: { agenda: Slot[]; pendin
           <div className="text-micro uppercase tracking-wider text-muted-foreground font-semibold">Jeudi 15 octobre 2026 · Dr Claire Laurent</div>
           <h1 className="text-2xl font-semibold tracking-tight">Votre journée, préparée.</h1>
           <p className="mt-1 text-sm text-muted-foreground max-w-2xl">
-            Sol a lu ce qui est arrivé cette nuit, préparé chaque consultation et rédigé ce qu'il pouvait. Il vous reste <span className="font-medium text-foreground">{allPending.length} décision{allPending.length > 1 ? "s" : ""}</span> à prendre avant 8h30 — rien à remplir.
+            Locus a lu ce qui est arrivé cette nuit, préparé chaque consultation et rédigé ce qu'il pouvait. Il vous reste <span className="font-medium text-foreground">{allPending.length} décision{allPending.length > 1 ? "s" : ""}</span> à prendre avant 8h30 — rien à remplir.
           </p>
         </div>
         <div className="flex flex-wrap gap-2 text-micro">
           <Stat label="consultations" value={agenda.length} />
           <Stat label="à trancher" value={allPending.length} tone="agent" />
           <Stat label="reçus non lus" value={stats.inbox} tone={stats.inboxUrgent ? "warning" : undefined} />
-          <Stat label="faits par Sol" value={stats.executees} tone="success" />
+          <Stat label="faits par Locus" value={stats.executees} tone="success" />
         </div>
       </header>
 
@@ -58,7 +58,7 @@ export function JourneeView({ agenda, pending, stats }: { agenda: Slot[]; pendin
                       <span className="flex items-center gap-1.5 text-sm font-medium">{s.patient.nom} <TypeIcon className="h-3 w-3 text-muted-foreground" /></span>
                       <span className="block truncate text-micro text-muted-foreground">{s.appointment.motif}</span>
                     </span>
-                    {s.appointment.prisPar === "agent" && <Badge tone="agent" className="hidden sm:inline-flex"><Sparkles className="h-2.5 w-2.5" /> ajouté par Sol</Badge>}
+                    {s.appointment.prisPar === "agent" && <Badge tone="agent" className="hidden sm:inline-flex"><Sparkles className="h-2.5 w-2.5" /> ajouté par Locus</Badge>}
                     {s.briefing && <Badge tone="primary" className="hidden sm:inline-flex">brief</Badge>}
                     {s.pending > 0 && <span className="rounded-full bg-agent px-1.5 text-micro font-semibold text-agent-foreground">{s.pending}</span>}
                     <ChevronRight className={cn("h-4 w-4 text-muted-foreground", active && "text-primary")} />
@@ -67,7 +67,7 @@ export function JourneeView({ agenda, pending, stats }: { agenda: Slot[]; pendin
               );
             })}
           </ol>
-          <div className="mt-3 rounded-lg border border-dashed px-3 py-2 text-micro text-muted-foreground flex items-center gap-2"><Clock className="h-3 w-3" /> 12h00–14h00 : pas de rendez-vous. Sol propose d'y caler les 3 patients qui ont demandé un créneau cette semaine. <Link href="/agents" className="text-primary hover:underline">Voir</Link></div>
+          <div className="mt-3 rounded-lg border border-dashed px-3 py-2 text-micro text-muted-foreground flex items-center gap-2"><Clock className="h-3 w-3" /> 12h00–14h00 : pas de rendez-vous. Locus propose d'y caler les 3 patients qui ont demandé un créneau cette semaine. <Link href="/agents" className="text-primary hover:underline">Voir</Link></div>
         </section>
 
         <section className="space-y-4">
@@ -76,9 +76,9 @@ export function JourneeView({ agenda, pending, stats }: { agenda: Slot[]; pendin
       </div>
 
       <section>
-        <SectionTitle right={<Link href="/agents" className="text-micro text-primary hover:underline">tout le travail de Sol</Link>}>À trancher maintenant — {allPending.length}</SectionTitle>
+        <SectionTitle right={<Link href="/agents" className="text-micro text-primary hover:underline">tout le travail de Locus</Link>}>À trancher maintenant — {allPending.length}</SectionTitle>
         {allPending.length === 0 ? (
-          <Card className="p-6 text-center text-sm text-muted-foreground"><CheckCircle2 className="mx-auto mb-2 h-6 w-6 text-success" />Rien à trancher. Sol vous préviendra.</Card>
+          <Card className="p-6 text-center text-sm text-muted-foreground"><CheckCircle2 className="mx-auto mb-2 h-6 w-6 text-success" />Rien à trancher. Locus vous préviendra.</Card>
         ) : (
           <div className="grid gap-4 xl:grid-cols-3">
             {(["À signer", "À valider", "À regarder"] as const).map((g) => (
@@ -94,11 +94,11 @@ export function JourneeView({ agenda, pending, stats }: { agenda: Slot[]; pendin
       <section className="grid gap-4 md:grid-cols-3">
         <Card className="p-4">
           <div className="flex items-center gap-2 text-sm font-medium"><Inbox className="h-4 w-4 text-primary" /> Réception</div>
-          <p className="mt-1 text-sm text-muted-foreground">{stats.inbox} éléments reçus non lus, triés par Sol ; {stats.inboxUrgent} à voir aujourd'hui.</p>
+          <p className="mt-1 text-sm text-muted-foreground">{stats.inbox} éléments reçus non lus, triés par Locus ; {stats.inboxUrgent} à voir aujourd'hui.</p>
           <Link href="/inbox"><Button size="sm" variant="outline" className="mt-2">Ouvrir</Button></Link>
         </Card>
         <Card className="p-4">
-          <div className="flex items-center gap-2 text-sm font-medium"><Sparkles className="h-4 w-4 text-agent" /> Cette nuit, Sol a</div>
+          <div className="flex items-center gap-2 text-sm font-medium"><Sparkles className="h-4 w-4 text-agent" /> Cette nuit, Locus a</div>
           <ul className="mt-1 space-y-0.5 text-sm text-muted-foreground">
             <li>· lu 3 documents et 1 biologie reçus</li><li>· trié 6 messages, pris 3 rendez-vous</li><li>· préparé {agenda.filter((a) => a.briefing).length} briefings</li><li>· déposé 1 résultat dans Mon Espace Santé</li>
           </ul>
@@ -134,10 +134,10 @@ function BriefingCard({ slot }: { slot: Slot }) {
           {b.depuisDerniereFois.length > 0 && <Block title="Depuis la dernière fois" items={b.depuisDerniereFois} />}
           {b.echeances.length > 0 && <Block title="Ce qui est dû" items={b.echeances.map((e) => e.libelle)} tone="warning" />}
           {b.questions.length > 0 && <Block title="À poser" items={b.questions} />}
-          <div className="text-micro text-muted-foreground">Briefing de Sol · confiance {Math.round((b.provenance.confidence ?? 0) * 100)} % · {b.propositionsIds.length} proposition{b.propositionsIds.length > 1 ? "s" : ""} pré-remplie{b.propositionsIds.length > 1 ? "s" : ""}</div>
+          <div className="text-micro text-muted-foreground">Briefing de Locus · confiance {Math.round((b.provenance.confidence ?? 0) * 100)} % · {b.propositionsIds.length} proposition{b.propositionsIds.length > 1 ? "s" : ""} pré-remplie{b.propositionsIds.length > 1 ? "s" : ""}</div>
         </div>
       ) : (
-        <p className="mt-3 text-sm text-muted-foreground">Pas de briefing : rien de nouveau depuis la dernière consultation. Sol ouvrira le dossier à l'heure du rendez-vous.</p>
+        <p className="mt-3 text-sm text-muted-foreground">Pas de briefing : rien de nouveau depuis la dernière consultation. Locus ouvrira le dossier à l'heure du rendez-vous.</p>
       )}
     </Card>
   );

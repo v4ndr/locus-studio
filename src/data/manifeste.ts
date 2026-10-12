@@ -1,19 +1,56 @@
 export interface Parti { titre: string; texte: string; studio: string; ailleurs: string }
 
-export const PRISES_DE_PARTI: Parti[] = [
-  { titre: "L'écran d'accueil est la journée préparée, pas l'agenda.", texte: "On n'ouvre pas un logiciel pour voir des créneaux. On l'ouvre pour savoir ce qui a changé, ce qui est dû, et ce qui attend une décision. L'agent a travaillé la nuit ; le matin, il rend compte.", studio: "La page Journée : agenda à gauche, brief du patient sélectionné à droite, décisions à prendre en dessous.", ailleurs: "Heidi II « Home » (journée pré-chartée), Ambience Patient Summary, Epic Visit Topics, Granola Briefs." },
-  { titre: "Le dossier est un état continu ; la note est une vue.", texte: "La consultation n'est pas l'atome. L'atome est l'enregistrement, avec sa provenance. Le résumé vivant, la liste des problèmes, le traitement sont des projections de ce fil, maintenues par l'agent et validées par le médecin.", studio: "Un seul type d'enveloppe pour tout (`BaseRecord`), un résumé vivant qui signale ce qui a changé depuis votre validation, un fil filtrable par provenance.", ailleurs: "healthcare.digital « the encounter is the atom is the problem », Ambience « highlight what changed », Hudes (KevinMD)." },
-  { titre: "Review, not write.", texte: "L'unité de travail du médecin est le brouillon à signer, jamais la page blanche. Note, ordonnance, courrier, arrêt, réponse au patient, codage : tout arrive pré-fait, avec la justification et les sources. Il corrige ou signe.", studio: "La `Proposal` : action, justification sourcée, charge (l'enregistrement complet), déclencheur, niveau d'autonomie. Partout la même carte.", ailleurs: "Dragon Copilot « Documents », Abridge lettres post-visite, Cursor/Devin (la PR comme unité), Attio « Agent drafts »." },
-  { titre: "La provenance est de première classe.", texte: "Quand la moitié du dossier est écrite par des agents, un dossier qui ne distingue pas « le médecin a dit », « l'agent a lu dans le courrier » et « le patient a déclaré » n'est plus lisible. Chaque enregistrement dit d'où il vient et qui l'a validé.", studio: "`provenance.origin` (praticien / agent / patient / import / système), confiance, validation ; pastilles de couleur dans le fil ; « linked evidence » de la note vers la transcription.", ailleurs: "Abridge Linked Evidence, Corti provenance « boîte noire », affaire Pieces / Texas AG." },
-  { titre: "Trois niveaux d'autonomie, réglés par action, avec des verrous.", texte: "Observe, prépare, agit. L'administratif réversible peut être fait seul ; l'ordonnance et l'arrêt de travail ne montent jamais au-dessus de « prépare ». Une signature est une signature.", studio: "La page Sol › Autonomie : la politique par type d'action, les verrous, et le niveau appliqué visible sur chaque proposition.", ailleurs: "Epic Penny (auto-code si confiance haute), Heidi « configurable friction », Oracle « queue suggested actions », incidents Instinct." },
-  { titre: "L'agent est un collègue nommé, délégué, jamais responsable.", texte: "Il a un prénom, une file de travail, un journal. On lui délègue ; on ne lui assigne pas. Il se déclare agent quand il écrit au patient. Et chaque rejet est une correction qu'il retient.", studio: "Sol : file « à trancher », « fait », journal append-only ; signature « Sol, pour le Dr Laurent » dans les messages.", ailleurs: "Linear Agent Interaction Guidelines (« an agent cannot be held accountable »), Hippocratic « nurse orders AI agent »." },
-  { titre: "Inbox-first : l'ordre est l'urgence, pas l'heure.", texte: "Biologies, courriers, messages : tout est lu avant vous, résumé, extrait, trié. L'objectif n'est pas « inbox zéro », c'est que rien ne vous ait échappé et que chaque élément vienne avec ce qu'il faut en faire.", studio: "La Réception : urgence proposée, lecture de l'agent (résumé, faits extraits, points d'attention), propositions attachées, réponse rédigée.", ailleurs: "Epic In Basket (1 M de brouillons/mois), AMA « inbox zero is the wrong goal », Lifen (classification)." },
-  { titre: "Routines sur la patientèle, pas seulement sur le patient.", texte: "« Chaque dimanche, les diabétiques sans HbA1c depuis six mois. » Une règle en français, un moment, une action, une autonomie. L'agent passe sur tout le panel et rend compte. C'est aussi la mécanique du Forfait Médecin Traitant.", studio: "La page Routines : cinq routines calculées en direct sur le jeu de données, et le champ pour en écrire une.", ailleurs: "Heidi Routines, Notion Custom Agents, Attio Workflows, téléservice amelipro « Suivi prévention »." },
-  { titre: "Les téléservices disparaissent de l'écran.", texte: "INS, FSE, SCOR, AAT, DMP, ordonnance numérique, MSSanté : ce sont des effets de bord de la clôture d'une consultation, pas des écrans. L'agent les exécute ; le médecin voit un reçu.", studio: "À la clôture : codage proposé, FSE télétransmise, dépôts Mon Espace Santé listés. Tout est mocké ; les objets d'échange sont modélisés.", ailleurs: "Ségur vague 2 (alimentation automatique, PSC unique), plaintes URPS sur INSi et DMP, grève de janvier 2026." },
-  { titre: "La preuve est toujours à un clic.", texte: "Chaque affirmation de l'agent renvoie à une recommandation, un RCP, un document du dossier ou un tour de la transcription. Pas de confiance sans source.", studio: "Renvois [n] partout, rubriques RCP via `/v2/drugs`, sources de locus-core dépliables sous chaque réponse.", ailleurs: "Locus (la traçabilité à la source est sa raison d'être), Abridge, OpenEvidence." },
-  { titre: "Un seul modèle d'actions pour l'UI, l'agent et l'API.", texte: "Ce que l'interface sait faire, l'agent sait le faire par la même capacité, avec les mêmes permissions et le même journal. Pas de « chat à côté » : le chat est une entrée parmi d'autres vers les mêmes actions.", studio: "Le registre des capacités (`src/locus/capabilities.ts`) et la `Proposal` comme unité d'exécution ; le fil Locus produit des propositions, pas du texte.", ailleurs: "Builder.io « agent-native architecture », athenahealth MCP, Corti MCP/A2A." },
-  { titre: "La mémoire du cabinet est l'actif.", texte: "Préférences implicites, corrections, modèles de courriers, protocoles locaux : une correction n'est jamais refaite deux fois. Le logiciel apprend le cabinet.", studio: "Projeté : les rejets sont tracés comme corrections ; la mémoire n'est pas encore modélisée.", ailleurs: "Heidi memory, Sierra Agent Data Platform, Attio Universal Context, Granola Recipes." },
-  { titre: "Le médecin programme son cabinet en français.", texte: "Pas de configuration, pas de formulaires : des routines et des consignes écrites comme on parle. Le logiciel est malléable.", studio: "Le champ « Nouvelle routine » ; projeté dans locus-core.", ailleurs: "Canvas Studio, Epic Agent Factory, Harvey Agent Builder, Every « gardening over engineering »." },
-  { titre: "Le patient parle à l'agent, dans le périmètre que le médecin fixe.", texte: "La messagerie n'est plus une fonctionnalité, c'est l'entrée principale. L'agent trie, répond à la logistique seul, prépare le clinique, et prend rendez-vous. Le consentement du patient fixe jusqu'où il peut aller.", studio: "`consentement.messagerieAgent` (aucune / logistique / clinique-validé / clinique) sur chaque patient ; rendez-vous pris par Sol marqués comme tels.", ailleurs: "Doctolib assistant téléphonique, Epic Emmie, Hippocratic AI, Instinct (l'agent joignable là où on est déjà)." },
-  { titre: "Tout est mocké, rien n'est faux.", texte: "Sesam-Vitale, INSi, MSSanté, DMP, ordonnance numérique, LAP : les objets d'échange sont fidèles, les connecteurs sont des simulations. C'est un projet de recherche : il doit être vrai sur les usages, pas sur les certificats.", studio: "Les types dans `src/domain/types.ts` ; aucune dépendance externe ; un backend réel optionnel (locus-core).", ailleurs: "Le choix inverse de tous les éditeurs référencés Ségur — et c'est le point." },
+/**
+ * Le manifeste, deuxième version. La première décrivait un meilleur LGC :
+ * une journée préparée, une boîte triée, un dossier à trois colonnes. C'était
+ * encore un logiciel à écrans, et les éditeurs en place y arriveront dans
+ * deux versions. Celle-ci décrit l'avenir, adoptable ou non tout de suite :
+ * il n'y a plus d'écrans, il y a un fil et une commande.
+ */
+export const RUPTURES: Parti[] = [
+  {
+    titre: "Il n'y a plus de pages. Il y a un fil et une commande.",
+    texte: "Un logiciel de cabinet, c'est aujourd'hui une collection d'écrans entre lesquels on circule : l'agenda, la boîte, le dossier, l'ordonnance, la facturation. L'avenir n'en a aucun. Il y a le fil du cabinet, où tout ce qui se passe s'inscrit dans le temps, tous patients confondus ; et une commande, Cmd+K, par laquelle tout entre : un nom, une question, une action, une consigne. On ne navigue plus. On dit.",
+    studio: "L'écran unique : le fil au centre, le composer en bas, la scène à droite. Les anciens écrans restent accessibles en « vues héritées », pour la comparaison.",
+    ailleurs: "Instinct : aucune nouvelle interface, un seul fil continu, pas de projets ni d'espaces. Dragon Copilot : « not locked into one interface ». Oracle Health : voice-first, « removing clicks ».",
+  },
+  {
+    titre: "Le composer est conversationnel, mais il ne répond pas par du texte.",
+    texte: "On parle au cabinet comme à un collègue : « renouvelle Delacroix et ajoute la dapagliflozine », « où en est son rein ? », « réponds à la mère d'Inès ». Mais la réponse n'est pas un paragraphe : c'est un objet signable ou une vue. Une ordonnance vérifiée, un courrier prêt, une courbe. Le clavier n'écrit jamais rien de clinique ; il commande. La souris signe.",
+    studio: "Le composer reconnaît l'intention (patient, action, question, consigne) et la scène rend l'objet. Corriger se fait en parlant : « plutôt 3 mois », « retire la statine ».",
+    ailleurs: "Cursor et Devin : l'unité de travail est le diff relu, pas le texte écrit. Granola : la note est le lieu du calcul, pas le chat. Attio : « Agent drafts ».",
+  },
+  {
+    titre: "Les vues sont générées, pas dessinées.",
+    texte: "« Mes diabétiques en retard » rend une table avec, par ligne, l'action prête. « Sa tension » rend une courbe avec les décisions qui l'ont jalonnée. « Ma matinée » rend l'ordre des décisions, pas l'ordre des heures. Aucune de ces vues n'existe comme écran : elles sont rendues depuis l'état du patient ou du cabinet, puis jetées. Le dossier n'est plus un lieu qu'on visite, c'est une mémoire qu'on interroge.",
+    studio: "La scène : matinée, état d'un patient, courbe, table de patientèle, réponse sourcée, consultation en cours. Chacune est une projection du même jeu de données.",
+    ailleurs: "Epic Ergo : « une interface qui se plie aux besoins du clinicien à l'instant t ». Hebbia Matrix : la grille est l'agent. healthcare.digital : un état patient continu dont la note est un document généré à la demande.",
+  },
+  {
+    titre: "Le fil est le même pour le médecin, l'agent et le patient.",
+    texte: "Le patient écrit à l'agent dans son fil ; le médecin voit ce qui le concerne dans le sien ; la consultation est un segment du fil à trois voix. L'agent répond seul à la logistique, prépare le clinique, et signe de son nom. La messagerie n'est pas une fonctionnalité. C'est le substrat.",
+    studio: "Les messages des patients et les réponses de Locus sont des entrées du fil comme les autres ; la consultation s'y inscrit tour par tour ; « réponds » produit un message signable.",
+    ailleurs: "Instinct : group chats, « trusted person network ». Epic Emmie et Art : le même agent côté patient et côté clinicien. Hippocratic : l'agent se commande comme un acte.",
+  },
+  {
+    titre: "L'agent travaille entre deux messages, et le dit.",
+    texte: "Il a un ordinateur. Il lit ce qui arrive, appelle le laboratoire, remplit amelipro, relance, prend rendez-vous, dépose au DMP, et rend compte dans le fil : en cours, en attente, fait, échoué. Le médecin n'ouvre pas le logiciel pour voir s'il y a du nouveau ; le fil le lui dit, au bon moment, avant la consultation et pas la veille au soir.",
+    studio: "Les sessions de Locus : chaque signature déclenche un travail visible (transmission, dépôt, envoi), avec son état. Locus poste de lui-même avant un rendez-vous.",
+    ailleurs: "Instinct : un ordinateur cloud persistant qui continue entre deux messages, et qui appelle. Heidi II : computer use sur les 4 à 6 systèmes d'un cabinet. Linear : sessions d'agent avec états visibles.",
+  },
+  {
+    titre: "Le médecin programme son cabinet en phrases.",
+    texte: "« Jamais d'antibiotique sans TROD chez l'enfant. » « Mes renouvellements sont bizone si ALD. » « Relance les HbA1c à six mois. » Ce ne sont pas des paramètres : ce sont des consignes, écrites dans le fil, versionnées, lisibles, appliquées partout, par l'agent, dès la prochaine proposition. Le logiciel est malléable.",
+    studio: "« consigne : … » dans le composer. Les consignes sont listées, et le fil montre quand l'une d'elles s'applique.",
+    ailleurs: "Canvas Studio : les cliniciens programment leurs workflows en langage naturel. Every : « the agent handles the how, developers only name the what ». Sierra Journeys : objectifs et garde-fous en prose.",
+  },
+  {
+    titre: "Ce qui sort du cabinet se signe. Ce qui entre est une donnée, jamais une consigne.",
+    texte: "L'agent a toute la latitude sur le réversible. Mais une ordonnance, un arrêt, un courrier, un message au patient partent avec un geste du médecin, toujours. Et ce qu'un patient, un laboratoire ou un confrère écrit est un fait à inscrire, jamais un ordre à exécuter. C'est la seule friction qu'on garde, et elle fait le produit.",
+    studio: "Les verrous (ordonnance, arrêt) ; le bouton Signer ; Cmd+K peut arrêter Locus à tout moment ; les messages entrants n'ont aucun pouvoir sur les consignes.",
+    ailleurs: "Les incidents Instinct la semaine du lancement (e-mail envoyé sans approbation, injection par e-mail). Linear : « an agent cannot be held accountable ». Corti : « safer autonomy », règles déterministes avant chaque action.",
+  },
 ];
+
+/** Compatibilité : la première version du manifeste reste lisible dans `docs/manifeste-v1.md`. */
+export const PRISES_DE_PARTI = RUPTURES;

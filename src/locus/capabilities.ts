@@ -1,5 +1,5 @@
 /**
- * Le registre des capacités de l'agent du cabinet, et ce que locus-core en
+ * Le registre des capacités de l'agent du cabinet (Locus), et ce que locus-core en
  * porte aujourd'hui.
  *
  * Le studio est un bac à sable pour locus-core : on y construit les usages

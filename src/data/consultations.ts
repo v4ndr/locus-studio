@@ -3,7 +3,7 @@ import { day } from "./clock";
 
 /**
  * Les consultations scriptées : ce que l'écoute ambiante entendrait, et ce
- * que Sol en ferait, tour après tour. C'est la simulation de la capacité
+ * que Locus en ferait, tour après tour. C'est la simulation de la capacité
  * « scribe » (projetée dans locus-core) : la transcription est jouée, la
  * note se structure, les propositions tombent.
  *
@@ -73,7 +73,7 @@ export function genericScript(patientId: string, motif: string, prenom: string):
     motif,
     steps: [
       { turn: t("medecin", 0, `Bonjour ${prenom}. Qu'est-ce qui vous amène ?`), note: [{ section: "motifs", text: motif }] },
-      { turn: t("patient", 5, "…"), note: [{ section: "histoire", text: "(transcription en cours — la consultation n'est pas scriptée dans le jeu de données ; Sol structurerait ici l'anamnèse)" }] },
+      { turn: t("patient", 5, "…"), note: [{ section: "histoire", text: "(transcription en cours — la consultation n'est pas scriptée dans le jeu de données ; Locus structurerait ici l'anamnèse)" }] },
       { turn: t("medecin", 30, "Je vous examine."), note: [{ section: "examen", text: "(examen)" }] },
     ],
     cloture: { codes: [], acte: "G", montant: 30, tiersPayant: false, dmp: ["Note de consultation"] },

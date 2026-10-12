@@ -38,9 +38,9 @@ export function ConsultationView({ patient, ligne, script, briefing, existing, s
     setGenerated((g) => {
       const fresh = s.proposals!.filter((_, i) => !g.some((x) => x.id === `live.${patient.id}.${step}.${i}`)).map((p, i) => ({
         id: `live.${patient.id}.${step}.${i}`, kind: "proposal" as const, patientId: patient.id, schema: 1 as const, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
-        provenance: { origin: "agent" as const, actor: "sol", confidence: 0.9 }, status: "propose" as const,
+        provenance: { origin: "agent" as const, actor: "locus", confidence: 0.9 }, status: "propose" as const,
         action: p.action, titre: p.titre, justification: p.justification, references: p.references, charge: p.charge,
-        declencheur: { type: "encounter" as const, libelle: `Dit à ${fmtT(s.turn.t)}` }, autonomie: p.autonomie, etat: (p.autonomie === 2 ? "executee" : "a-valider") as Proposal["etat"], agent: "sol",
+        declencheur: { type: "encounter" as const, libelle: `Dit à ${fmtT(s.turn.t)}` }, autonomie: p.autonomie, etat: (p.autonomie === 2 ? "executee" : "a-valider") as Proposal["etat"], agent: "locus",
       }));
       return [...g, ...fresh];
     });
@@ -72,7 +72,7 @@ export function ConsultationView({ patient, ligne, script, briefing, existing, s
           {!scripted && <Badge tone="outline">consultation non scriptée dans le jeu de données</Badge>}
           <span className="font-mono tabular-nums">{step >= 0 ? fmtT(script.steps[step].turn.t) : "00:00"}</span>
           <span>· {script.motif}</span>
-          {playing && <span className="flex items-center gap-1 text-agent"><span className="h-2 w-2 rounded-full bg-agent animate-pulse-soft" /> Sol écoute et écrit</span>}
+          {playing && <span className="flex items-center gap-1 text-agent"><span className="h-2 w-2 rounded-full bg-agent animate-pulse-soft" /> Locus écoute et écrit</span>}
         </div>
       </Card>
 
@@ -81,8 +81,8 @@ export function ConsultationView({ patient, ligne, script, briefing, existing, s
           <SectionTitle>Transcription</SectionTitle>
           {step < 0 ? (
             <Card className="p-4 text-sm text-muted-foreground space-y-2">
-              <p>La consultation n'a pas commencé. Pendant qu'elle a lieu, Sol écoute, écrit la note dans les cases du milieu, et pose à droite ce qu'il propose d'en faire. Rien n'est signé sans vous.</p>
-              {briefing && <div className="rounded-md bg-agent-soft/60 p-3 agent-glow"><div className="text-micro font-semibold uppercase tracking-wider text-agent">Le brief de Sol</div><p className="mt-1 text-foreground/90">{briefing.synthese}</p><ul className="mt-2 space-y-0.5">{briefing.questions.map((q, i) => <li key={i}>· {q}</li>)}</ul></div>}
+              <p>La consultation n'a pas commencé. Pendant qu'elle a lieu, Locus écoute, écrit la note dans les cases du milieu, et pose à droite ce qu'il propose d'en faire. Rien n'est signé sans vous.</p>
+              {briefing && <div className="rounded-md bg-agent-soft/60 p-3 agent-glow"><div className="text-micro font-semibold uppercase tracking-wider text-agent">Le brief de Locus</div><p className="mt-1 text-foreground/90">{briefing.synthese}</p><ul className="mt-2 space-y-0.5">{briefing.questions.map((q, i) => <li key={i}>· {q}</li>)}</ul></div>}
             </Card>
           ) : (
             <ol className="space-y-1.5">
@@ -97,7 +97,7 @@ export function ConsultationView({ patient, ligne, script, briefing, existing, s
         </section>
 
         <section>
-          <SectionTitle right={<span className="text-micro text-muted-foreground flex items-center gap-1"><Link2 className="h-3 w-3" /> survoler une phrase → le tour d'où elle vient</span>}>Note de consultation — écrite par Sol</SectionTitle>
+          <SectionTitle right={<span className="text-micro text-muted-foreground flex items-center gap-1"><Link2 className="h-3 w-3" /> survoler une phrase → le tour d'où elle vient</span>}>Note de consultation — écrite par Locus</SectionTitle>
           <Card agent={playing} className="divide-y">
             {SECTIONS.map((sec) => {
               const lines = note[sec.key] ?? [];
@@ -123,14 +123,14 @@ export function ConsultationView({ patient, ligne, script, briefing, existing, s
             {closed && (
               <div className="px-3 py-3 text-sm">
                 <div className="flex items-center gap-2 font-medium text-success"><CheckCircle2 className="h-4 w-4" /> Consultation clôturée</div>
-                <ul className="mt-1 space-y-0.5 text-muted-foreground"><li>· Note signée, codée {script.cloture.codes.map((c) => c.libelle).join(" + ") || "—"}</li><li>· FSE {script.cloture.acte} {script.cloture.montant} € télétransmise{script.cloture.tiersPayant ? " (tiers payant AMO)" : ""}</li><li className="flex items-center gap-1"><Database className="h-3 w-3" /> Mon Espace Santé : {script.cloture.dmp.join(", ")}</li><li>· Résumé vivant mis à jour par Sol</li></ul>
+                <ul className="mt-1 space-y-0.5 text-muted-foreground"><li>· Note signée, codée {script.cloture.codes.map((c) => c.libelle).join(" + ") || "—"}</li><li>· FSE {script.cloture.acte} {script.cloture.montant} € télétransmise{script.cloture.tiersPayant ? " (tiers payant AMO)" : ""}</li><li className="flex items-center gap-1"><Database className="h-3 w-3" /> Mon Espace Santé : {script.cloture.dmp.join(", ")}</li><li>· Résumé vivant mis à jour par Locus</li></ul>
               </div>
             )}
           </Card>
         </section>
 
         <aside>
-          <SectionTitle>Pendant la consultation, Sol propose</SectionTitle>
+          <SectionTitle>Pendant la consultation, Locus propose</SectionTitle>
           <div className="space-y-2">
             {generated.length === 0 && existing.length === 0 && <Card className="p-3 text-sm text-muted-foreground">Rien encore.</Card>}
             {[...generated].reverse().map((p) => <ProposalCard key={p.id} proposal={p} compact defaultOpen />)}

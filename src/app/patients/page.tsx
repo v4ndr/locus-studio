@@ -15,7 +15,7 @@ export default function Page() {
       <PatientsCounts inbox={inbox().length} proposals={pendingProposals().length} />
       <header>
         <h1 className="text-2xl font-semibold tracking-tight">Patients</h1>
-        <p className="mt-1 text-sm text-muted-foreground">{rows.length} dossiers. Chaque ligne est le résumé vivant que Sol maintient — pas la dernière consultation. <span className="font-mono text-micro">⌘K</span> pour chercher.</p>
+        <p className="mt-1 text-sm text-muted-foreground">{rows.length} dossiers. Chaque ligne est le résumé vivant que Locus maintient — pas la dernière consultation. <span className="font-mono text-micro">⌘K</span> pour chercher.</p>
       </header>
       <ul className="divide-y rounded-lg border bg-card">
         {rows.map(({ p, sum, pending, chroniques, rdv }) => (
