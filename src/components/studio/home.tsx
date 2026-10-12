@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { HomeData, PatientRef } from "@/studio/types";
 import { Header, Kbd, I, Avatar } from "./chrome";
+import { ComposeCard, useCompose } from "./compose";
 import { norm } from "@/lib/norm";
 import { cn } from "@/lib/cn";
 
@@ -15,6 +16,7 @@ export function Home({ data }: { data: HomeData }) {
   const [all, setAll] = React.useState(false);
   const [sel, setSel] = React.useState(0);
   const inputRef = React.useRef<HTMLInputElement>(null);
+  const composer = useCompose();
 
   const hits = React.useMemo(() => {
     const t = norm(q);
@@ -30,7 +32,10 @@ export function Home({ data }: { data: HomeData }) {
   const prochains = data.agenda.slice(from, from + 4);
   const rows = all ? data.agenda : prochains;
   const reste = data.agenda.filter((a) => !a.libre).length - prochains.filter((a) => !a.libre).length;
-  const items: { href?: string }[] = open ? (hits.length ? hits.map((h) => ({ href: `/p/${h.id}` })) : EXEMPLES.map((e) => ({ href: e.href }))) : rows.map((r) => ({ href: r.libre ? undefined : `/p/${r.patientId}` }));
+  // Dans la palette : les patients trouvés, puis « Demander à Locus » ; vide : les exemples.
+  const askRow = open && q.trim().length > 1;
+  const items: { href?: string; ask?: boolean }[] = open ? (q ? [...hits.map((h) => ({ href: `/p/${h.id}` })), ...(askRow ? [{ ask: true }] : [])] : EXEMPLES.map((e) => ({ href: e.href }))) : rows.map((r) => ({ href: r.libre ? undefined : `/p/${r.patientId}` }));
+  const demander = React.useCallback((texte: string) => { setOpen(false); setQ(""); inputRef.current?.blur(); composer.run({ texte, ecran: "home" }); }, [composer]);
 
   React.useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -39,12 +44,13 @@ export function Home({ data }: { data: HomeData }) {
       if (document.activeElement === inputRef.current || !open) {
         if (e.key === "ArrowDown") { e.preventDefault(); setSel((s) => Math.min(items.length - 1, s + 1)); }
         if (e.key === "ArrowUp") { e.preventDefault(); setSel((s) => Math.max(0, s - 1)); }
-        if (e.key === "Enter" && items[sel]?.href && (open || document.activeElement === document.body)) { e.preventDefault(); router.push(items[sel].href!); }
+        if (e.key === "Enter" && items[sel]?.ask && open) { e.preventDefault(); demander(q.trim()); }
+        else if (e.key === "Enter" && items[sel]?.href && (open || document.activeElement === document.body)) { e.preventDefault(); router.push(items[sel].href!); }
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [items, sel, open, router]);
+  }, [items, sel, open, router, q, demander]);
 
   const first = hits[0];
   const context = first?.rdv ? `RDV ${first.rdv} · motif agenda : ${data.agenda.find((a) => a.patientId === first.id)?.motif.toLowerCase()} · patient${first.nom.endsWith("e") ? "e" : ""} reconnu${first.nom.endsWith("e") ? "e" : ""} depuis l'agenda.` : null;
@@ -65,8 +71,15 @@ export function Home({ data }: { data: HomeData }) {
             {open && (
               <div className="p-2.5">
                 <div className="k px-3 py-2">Patients</div>
-                {hits.length === 0 && q && <div className="px-3 py-3 text-sm text-muted-2">Aucun patient. Essayez un nom, une date de naissance.</div>}
+                {hits.length === 0 && q && <div className="px-3 py-3 text-sm text-muted-2">Aucun patient à ce nom.</div>}
                 {hits.map((h, i) => <PatientRow key={h.id} p={h} active={i === sel} first={i === 0} data={data} onHover={() => setSel(i)} />)}
+                {askRow && (
+                  <button type="button" onMouseEnter={() => setSel(hits.length)} onClick={() => demander(q.trim())} className={cn("flex w-full items-center gap-3 rounded-[10px] px-3 py-3 text-left text-sm text-ink", sel === hits.length ? "bg-accent-soft-2" : "hover:bg-hover")}>
+                    <span className="flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-full bg-accent-soft text-[11px] font-semibold" style={{ color: "var(--accent)" }}>⌘K</span>
+                    <span className="flex min-w-0 flex-1 flex-col gap-[3px]"><span className="text-[15px]">Demander à Locus</span><span className="truncate text-[13px] text-muted">« {q} » — une ordonnance, un rendez-vous, un message, une question : il compose, vous validez.</span></span>
+                    {sel === hits.length && <Kbd>⏎</Kbd>}
+                  </button>
+                )}
                 {hits.length === 0 && !q && (
                   <>
                     <div className="px-3 pb-2 text-sm text-muted-2">Un nom, une date de naissance, ou directement une demande :</div>
@@ -84,6 +97,7 @@ export function Home({ data }: { data: HomeData }) {
             )}
           </div>
           {open && context && <p className="m-0 text-[13px] text-muted-2">{context}</p>}
+          {composer.open && <ComposeCard state={composer.state} onClose={composer.reset} />}
           {!open && (
             <>
               <div className="flex flex-wrap gap-2">

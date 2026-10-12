@@ -29,6 +29,28 @@ remonte d'un cran, `⌘K` prend le composer, et au focus le composer propose
 des exemples de ce qu'on peut lui demander (ordo, rendez-vous, mail, courrier,
 arrêt, question). Clair ou sombre, au choix, mémorisé.
 
+## Le composer (`⌘K`)
+
+Ce qu'on tape ne reçoit pas une réponse rédigée : il revient un **plan
+d'actions**, typé sur les objets du LGC, à valider d'un geste (`⌘⏎`). Une
+boucle d'agent côté serveur (`/api/compose`, NDJSON) donne à **Claude**
+(`claude-sonnet-5-5`) la demande, l'écran et le dossier (la même projection
+`patient_ehr` que locus-core reçoit), et des **outils** qui sont les actions du
+logiciel : `proposer_ordonnance`, `proposer_rdv`, `proposer_message`,
+`proposer_courrier`, `proposer_arret`, `inscrire_au_dossier`, `ouvrir`,
+`lire_document`. **Locus (locus-core) est un outil parmi eux** (`locus_retrieve`) :
+toute question clinique passe par lui, et sa réponse alimente la synthèse et les
+actions qu'elle implique, au lieu d'être « versée au dossier ». Rien n'est écrit
+ni envoyé par le serveur ; chaque action est une proposition, comme après la
+dictée.
+
+```bash
+ANTHROPIC_API_KEY=sk-ant-…   # vide → composeur à règles : même plan, compréhension plus courte
+```
+
+Le code : `src/locus/compose/` (contrat, contexte, outils, boucle, règles) et
+`src/components/studio/compose.tsx` (la carte du plan).
+
 Le scénario complet est dans [`docs/scenes.md`](docs/scenes.md) (patiente :
 Claire Moreau). Les sept ruptures sont dans [`src/data/manifeste.ts`](src/data/manifeste.ts).
 Les 22 dossiers sont tous écrits à la même profondeur : antécédents, traitements,
@@ -75,12 +97,13 @@ src/
 │   ├── rencontres.ts      la dictée scriptée, les actions détectées, les documents générés, la question
 │   └── manifeste.ts       les prises de parti
 ├── locus/                 l'intégration locus-core
+│   ├── compose/           le composer ⌘K : Claude + les outils du LGC, Locus en outil ; composeur à règles sans clé
 │   ├── contract.ts        le sous-ensemble du contrat v2 que le studio lit
 │   ├── client.server.ts   le client (serveur uniquement), 3 modes
 │   ├── ehr.ts             la projection dossier → patient_ehr
 │   ├── simulation.ts      le mode à sec
 │   └── capabilities.ts    le registre : ce que core sert, ce que le studio compose, ce qui est projeté
-├── app/                   Next 16 App Router — `/`, `/p/[id]/*`, `/inbox/[box]`, BFF (/api/locus/*)
+├── app/                   Next 16 App Router — `/`, `/p/[id]/*`, `/inbox/[box]`, BFF (/api/locus/*, /api/compose)
 ├── components/            l'interface (Tailwind v4, Geist, aucun kit)
 └── store/rencontre.tsx    l'état de session (réponses, signatures, carte ouverte), persisté en localStorage
 docs/

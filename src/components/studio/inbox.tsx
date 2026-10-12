@@ -3,6 +3,7 @@ import * as React from "react";
 import Link from "next/link";
 import type { InboxView as IV, InboxRow, InboxKind, Urgence } from "@/studio/types";
 import { Header, Omni, Avatar, Kbd, I } from "./chrome";
+import { ComposeCard, useCompose } from "./compose";
 import { cn } from "@/lib/cn";
 
 const TITRES: Record<InboxKind, { h1: string; sous: string; vide: string }> = {
@@ -19,6 +20,7 @@ export function InboxView({ v, praticien }: { v: IV; praticien: { initials: stri
   const [filtre, setFiltre] = React.useState<string>("tous");
   const [open, setOpen] = React.useState<string | null>(null);
   const [faits, setFaits] = React.useState<Record<string, string>>({});
+  const composer = useCompose();
   const t = TITRES[v.kind];
   const rows = v.rows.filter((r) => filtre === "tous" || r.deType === filtre).filter((r) => !faits[r.id]);
   const nonLus = rows.filter((r) => r.nonLu);
@@ -65,7 +67,7 @@ export function InboxView({ v, praticien }: { v: IV; praticien: { initials: stri
         )}
         {Object.keys(faits).length > 0 && <p className="m-0 text-xs text-muted-2">{Object.keys(faits).length} traité{Object.keys(faits).length > 1 ? "s" : ""} cette session · tout est au journal.</p>}
       </main>
-      <Omni placeholder={v.kind === "messages" ? "« Réponds à tous les renouvellements simples », « appelle Mme Fontaine »…" : v.kind === "bio" ? "« Les créatinines en baisse ce mois », « classe tout ce qui est normal »…" : "« Résume les courriers de l'hôpital », « classe tout ce qui est pour info »…"} suggestions={v.kind === "messages" ? [{ k: "répondre", t: "Réponds à tous les renouvellements simples, je signe en bloc" }, { k: "appeler", t: "Programme un appel à Mme Fontaine entre deux patients" }, { k: "trier", t: "Montre-moi seulement ce qui demande une décision médicale" }] : v.kind === "bio" ? [{ k: "trier", t: "Classe tout ce qui est normal et préviens les patients" }, { k: "chercher", t: "Les créatinines en baisse ce mois-ci" }, { k: "suivre", t: "Programme les contrôles prévus par les plans de suivi" }] : [{ k: "résumer", t: "Résume les courriers de l'hôpital en une ligne chacun" }, { k: "trier", t: "Classe tout ce qui est pour info, verse les faits au dossier" }, { k: "répondre", t: "Accuse réception aux confrères qui attendent une réponse" }]} />
+      <Omni onSubmit={(t) => composer.run({ texte: t, ecran: "inbox", boite: v.kind })} placeholder={v.kind === "messages" ? "« Réponds à tous les renouvellements simples », « appelle Mme Fontaine »…" : v.kind === "bio" ? "« Les créatinines en baisse ce mois », « classe tout ce qui est normal »…" : "« Résume les courriers de l'hôpital », « classe tout ce qui est pour info »…"} suggestions={v.kind === "messages" ? [{ k: "répondre", t: "Réponds à tous les renouvellements simples, je signe en bloc" }, { k: "appeler", t: "Programme un appel à Mme Fontaine entre deux patients" }, { k: "trier", t: "Montre-moi seulement ce qui demande une décision médicale" }] : v.kind === "bio" ? [{ k: "trier", t: "Classe tout ce qui est normal et préviens les patients" }, { k: "chercher", t: "Les créatinines en baisse ce mois-ci" }, { k: "suivre", t: "Programme les contrôles prévus par les plans de suivi" }] : [{ k: "résumer", t: "Résume les courriers de l'hôpital en une ligne chacun" }, { k: "trier", t: "Classe tout ce qui est pour info, verse les faits au dossier" }, { k: "répondre", t: "Accuse réception aux confrères qui attendent une réponse" }]}>{composer.open && <ComposeCard state={composer.state} onClose={composer.reset} />}</Omni>
     </div>
   );
 }

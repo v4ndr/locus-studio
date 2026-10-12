@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import type { PatientView } from "@/studio/types";
 import { SORTIES_LABEL } from "@/data/rencontres";
 import { Header, Omni, CtaLink, Kbd, I, useShortcuts } from "./chrome";
+import { ComposeCard, useCompose } from "./compose";
 import { useRencontre } from "@/store/rencontre";
 import { cn } from "@/lib/cn";
 
@@ -13,6 +14,7 @@ export function ActionsView({ v, praticien }: { v: PatientView; praticien: { ini
   const r = v.rencontre;
   const { me, dispatch } = useRencontre(v.ref.id);
   const [open, setOpen] = React.useState<string | null>(null);
+  const composer = useCompose();
   useShortcuts({ cmdEnter: () => router.push(`/p/${v.ref.id}/signature`) });
   const answer = r.question ? me.answers[r.question.id] : undefined;
   const docs = r.actions.map((a) => {
@@ -60,7 +62,7 @@ export function ActionsView({ v, praticien }: { v: PatientView; praticien: { ini
           })}
         </section>
       </main>
-      <Omni placeholder="« Ajoute un bon de transport », « passe la kiné à domicile »…" suggestions={[{ k: "ajouter", t: "Ajoute un bon de transport assis" }, { k: "modifier", t: "Passe la kiné à domicile, 10 séances" }, { k: "retirer", t: "Retire le courrier, je l'appellerai" }, { k: "ordo", t: "Ajoute du paracétamol 1 g si douleur" }]} cta={<CtaLink href={`/p/${v.ref.id}/signature`}>Signer <Kbd dark>⌘⏎</Kbd></CtaLink>} />
+      <Omni placeholder="« Ajoute un bon de transport », « passe la kiné à domicile »…" onSubmit={(t) => composer.run({ texte: t, patientId: v.ref.id, ecran: "actions" })} suggestions={[{ k: "ajouter", t: "Ajoute un bon de transport assis" }, { k: "modifier", t: "Passe la kiné à domicile, 10 séances" }, { k: "retirer", t: "Retire le courrier, je l'appellerai" }, { k: "ordo", t: "Ajoute du paracétamol 1 g si douleur" }]} cta={<CtaLink href={`/p/${v.ref.id}/signature`}>Signer <Kbd dark>⌘⏎</Kbd></CtaLink>}>{composer.open && <ComposeCard state={composer.state} onClose={composer.reset} />}</Omni>
     </div>
   );
 }
