@@ -5,6 +5,7 @@ import { at } from "@/data/clock";
 import { documentView } from "@/studio/view.server";
 import { retrieveStream } from "@/locus/client.server";
 import { fromDataset, type PatientCtx } from "./patient";
+import { chargeOf, materialize } from "./materialize";
 import type { ComposeAction, ComposeRef, ComposeInput } from "./contract";
 
 /**
@@ -78,11 +79,6 @@ export const TOOLS: Anthropic.Tool[] = [
   },
 ];
 
-const RX_LABEL: Record<string, string> = { medicament: "Ordonnance", biologie: "Ordonnance de biologie", imagerie: "Demande d'imagerie", paramedical: "Ordonnance paramédicale", transport: "Prescription de transport", dispositif: "Dispositif médical" };
-const RX_CODE: Record<string, string> = { medicament: "Rx", biologie: "BIO", imagerie: "IMG", paramedical: "K", transport: "TR", dispositif: "DM" };
-const MSG_DEST: Record<string, string> = { patient: "patient · messagerie", confrere: "MSSanté", secretariat: "interne", pharmacie: "MSSanté · pharmacie" };
-const MOIS = ["janv", "févr", "mars", "avr", "mai", "juin", "juil", "août", "sept", "oct", "nov", "déc"];
-function jourFr(iso: string) { const d = new Date(iso); return `${["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"][d.getDay()]} ${d.getDate()} ${MOIS[d.getMonth()]}`; }
 /** Un jour ouvré à N jours : on décale le week-end au lundi. */
 function creneau(dans: number, moment?: string) { let n = Math.max(1, dans); for (;;) { const d = new Date(at("09:00", n)); const wd = d.getDay(); if (wd === 0) n += 1; else if (wd === 6) n += 2; else break; } return at(moment === "apres-midi" ? "14:30" : "09:30", n); }
 
@@ -125,41 +121,43 @@ export async function executeTool(name: string, input: Record<string, unknown>, 
       return [`${doc.type} · ${doc.date} · ${doc.titre} · ${doc.de}`, doc.lecture ? `Lecture Locus : ${doc.lecture.resume}` : "", doc.lignes?.map((l) => `- ${l.k} : ${l.v ?? ""}${l.flag && l.flag !== "normal" ? ` (${l.flag})` : ""}`).join("\n") ?? "", doc.note?.map((n) => `${n.k} : ${n.v}`).join("\n") ?? "", doc.corps ?? ""].filter(Boolean).join("\n");
     }
     case "proposer_ordonnance": {
-      const type = s(input.type) || "medicament";
-      const lignes = (Array.isArray(input.lignes) ? input.lignes : []) as { libelle?: string; posologie?: string; duree?: string; renouvellement?: number; ald?: boolean }[];
-      if (!lignes.length) return "Aucune ligne : rien à préparer.";
+      const c = chargeOf("ordonnance", input);
+      if (!c || c.kind !== "ordonnance" || !c.lignes.length) return "Aucune ligne : rien à préparer.";
       // Garde-fou allergies : on ne bloque pas, on signale dans l'action.
       const allergies = (pt?.allergies ?? []).map((a) => a.toLowerCase());
-      const alerte = lignes.map((l) => (l.libelle ?? "").toLowerCase()).find((lib) => allergies.some((a) => a.split(/[ (]/)[0] && lib.includes(a.split(/[ (]/)[0])));
-      const fields = lignes.map((l) => ({ k: l.libelle ?? "", v: [l.posologie, l.duree, l.renouvellement ? `renouvelable ${l.renouvellement}×` : undefined, l.ald ? "ALD" : undefined].filter(Boolean).join(" · ") }));
-      push({ id: nid(), kind: "ordonnance", code: RX_CODE[type] ?? "Rx", titre: `${RX_LABEL[type] ?? "Ordonnance"} · ${lignes.map((l) => l.libelle).join(", ")}`, ligne: `${prenomNom} · ${lignes.length} ligne${lignes.length > 1 ? "s" : ""}${alerte ? ` · ⚠ allergie au dossier : ${alerte}` : ""}`, destination: "patient · e-ordo", statut: "relire", fields, justification: s(input.justification), charge: input });
-      return `Ordonnance préparée (${lignes.length} ligne(s))${alerte ? `. ATTENTION : « ${alerte} » croise une allergie du dossier` : ""}.`;
+      const alerte = c.lignes.map((l) => l.libelle.toLowerCase()).find((lib) => allergies.some((a) => a.split(/[ (]/)[0] && lib.includes(a.split(/[ (]/)[0])));
+      push({ id: nid(), ...materialize(c, prenomNom, alerte) });
+      return `Ordonnance préparée (${c.lignes.length} ligne(s))${alerte ? `. ATTENTION : « ${alerte} » croise une allergie du dossier` : ""}.`;
     }
     case "proposer_rdv": {
       const iso = creneau(Number(input.dans_jours ?? 7), s(input.moment));
-      const h = iso.slice(11, 16);
-      push({ id: nid(), kind: "rdv", code: "RV", titre: `${jourFr(iso)} · ${h} · ${Number(input.duree_min ?? 20)} min`, ligne: `${s(input.motif)} · ${prenomNom} · SMS de confirmation`, destination: "agenda", statut: "pret", fields: [{ k: "Quand", v: `${jourFr(iso)} ${h}` }, { k: "Durée", v: `${Number(input.duree_min ?? 20)} min` }, { k: "Motif", v: s(input.motif) }], justification: s(input.justification), charge: { ...input, debut: iso } });
-      return `Créneau libre trouvé : ${jourFr(iso)} ${h}.`;
+      const c = chargeOf("rdv", { ...input, debut: iso });
+      if (!c) return "Rendez-vous impossible.";
+      push({ id: nid(), ...materialize(c, prenomNom) });
+      return `Créneau libre trouvé : ${iso.slice(0, 10)} ${iso.slice(11, 16)}.`;
     }
     case "proposer_message": {
-      const a = s(input.a) || "patient";
-      const nom = s(input.nom) || (a === "patient" ? prenomNom : a);
-      push({ id: nid(), kind: "message", code: "MSG", titre: `À ${nom} · ${s(input.objet)}`, ligne: s(input.corps).slice(0, 110) + (s(input.corps).length > 110 ? "…" : ""), destination: MSG_DEST[a] ?? "messagerie", statut: "pret", fields: [{ k: "À", v: nom }, { k: "Objet", v: s(input.objet) }, { k: "Message", v: s(input.corps) }], justification: s(input.justification), charge: input });
+      const c = chargeOf("message", input);
+      if (!c) return "Message impossible.";
+      push({ id: nid(), ...materialize(c, prenomNom) });
       return "Message rédigé.";
     }
     case "proposer_courrier": {
-      push({ id: nid(), kind: "courrier", code: "CR", titre: s(input.titre), ligne: `À ${s(input.destinataire)}${input.specialite ? ` · ${s(input.specialite)}` : ""} · MSSanté`, destination: "MSSanté", statut: "relire", fields: [{ k: "Destinataire", v: `${s(input.destinataire)}${input.specialite ? ` · ${s(input.specialite)}` : ""}` }, { k: "Corps", v: s(input.corps) }], justification: s(input.justification), charge: input });
+      const c = chargeOf("courrier", input);
+      if (!c) return "Courrier impossible.";
+      push({ id: nid(), ...materialize(c, prenomNom) });
       return "Courrier rédigé.";
     }
     case "proposer_arret": {
-      const j = Number(input.jours ?? 3);
-      const sort = s(input.sorties) || "non";
-      push({ id: nid(), kind: "arret", code: "AT", titre: `${input.prolongation ? "Prolongation d'arrêt" : "Arrêt de travail"} · ${j} jour${j > 1 ? "s" : ""}`, ligne: `${prenomNom} · sorties ${sort === "oui" ? "autorisées" : sort}${input.temps_partiel ? " · temps partiel" : ""}`, destination: "CPAM · télétransmis", statut: "relire", fields: [{ k: "Durée", v: `${j} jours` }, { k: "Sorties", v: sort === "oui" ? "autorisées 10h–12h, 16h–18h" : sort }, { k: "Motif", v: s(input.motif) }], justification: s(input.justification), charge: input });
+      const c = chargeOf("arret", input);
+      if (!c) return "Arrêt impossible.";
+      push({ id: nid(), ...materialize(c, prenomNom) });
       return "Arrêt préparé.";
     }
     case "inscrire_au_dossier": {
-      const t = s(input.type);
-      push({ id: nid(), kind: "dossier", code: "DOS", titre: `${{ probleme: "Problème", traitement: "Traitement", mesure: "Mesure", allergie: "Allergie", note: "Note" }[t] ?? "Dossier"} · ${s(input.libelle)}`, ligne: s(input.detail) || "inscrit au dossier et partagé au DMP", destination: "dossier · DMP", statut: "pret", fields: [{ k: "Libellé", v: s(input.libelle) }, ...(input.detail ? [{ k: "Détail", v: s(input.detail) }] : [])], justification: s(input.justification), charge: input });
+      const c = chargeOf("dossier", input);
+      if (!c) return "Inscription impossible.";
+      push({ id: nid(), ...materialize(c, prenomNom) });
       return "Inscription préparée.";
     }
     case "ouvrir": {

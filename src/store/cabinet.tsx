@@ -39,9 +39,8 @@ export interface NoteLocal {
   via?: ComposePlan["via"];
   /** Le chrono : saisie, composition, validation — en millisecondes. */
   chrono: { saisie: number; composition: number; validation: number };
-  /** Une note signée ne s'efface pas : une correction est une nouvelle version qui la remplace. */
-  remplace?: string;
-  remplaceeLe?: string;
+  /** Modifiée en place après signature : les documents modifiés ont été renvoyés. */
+  modifieLe?: string;
 }
 
 interface State { patients: Record<string, PatientLocal> }
@@ -58,7 +57,7 @@ function reducer(s: State, a: Action): State {
     case "hydrate": case "import": return a.state;
     case "upsert": return { patients: { ...s.patients, [a.patient.id]: a.patient } };
     case "delete": { const p = { ...s.patients }; delete p[a.id]; return { patients: p }; }
-    case "note": { const p = s.patients[a.patientId]; if (!p) return s; let notes = p.notes.some((n) => n.id === a.note.id) ? p.notes.map((n) => (n.id === a.note.id ? a.note : n)) : [a.note, ...p.notes]; if (a.note.remplace) notes = notes.map((n) => (n.id === a.note.remplace ? { ...n, remplaceeLe: a.note.date } : n)); return { patients: { ...s.patients, [a.patientId]: { ...p, notes, modifieLe: new Date().toISOString() } } }; }
+    case "note": { const p = s.patients[a.patientId]; if (!p) return s; const notes = p.notes.some((n) => n.id === a.note.id) ? p.notes.map((n) => (n.id === a.note.id ? a.note : n)) : [a.note, ...p.notes]; return { patients: { ...s.patients, [a.patientId]: { ...p, notes, modifieLe: new Date().toISOString() } } }; }
     case "deleteNote": { const p = s.patients[a.patientId]; if (!p) return s; return { patients: { ...s.patients, [a.patientId]: { ...p, notes: p.notes.filter((n) => n.id !== a.noteId) } } }; }
   }
 }
