@@ -68,7 +68,7 @@ const messages = [
     de: { type: "agent", nom: "Locus, pour le Dr Vandepitterie" }, a: [{ type: "patient", nom: "Léa Moreau" }],
     date: at("07:25"),
     objet: "Re: Ventoline + une nouvelle 🙂",
-    corps: "Bonjour Léa, et félicitations !\n\nOui : le Symbicort se poursuit tel quel pendant la grossesse — un asthme bien contrôlé est ce qui protège le mieux le bébé. La Ventoline aussi, si besoin.\n\nLe Dr Vandepitterie vous propose un rendez-vous ce matin à 11h00 pour faire le point (asthme + début de grossesse). Elle préparera la déclaration de grossesse, le bilan de début de grossesse et l'ordonnance de Ventoline. Si vous ne pouvez pas, répondez ici et on trouve un autre créneau cette semaine.\n\nSol, pour le Dr Vandepitterie",
+    corps: "Bonjour Léa, et félicitations !\n\nOui : le Symbicort se poursuit tel quel pendant la grossesse — un asthme bien contrôlé est ce qui protège le mieux le bébé. La Ventoline aussi, si besoin.\n\nLe Dr Vandepitterie vous propose un rendez-vous ce matin à 11h00 pour faire le point (asthme + début de grossesse). Elle préparera la déclaration de grossesse, le bilan de début de grossesse et l'ordonnance de Ventoline. Si vous ne pouvez pas, répondez ici et on trouve un autre créneau cette semaine.\n\nLocus, pour le Dr Vandepitterie",
   }, { status: "propose", at: at("07:25") }),
 ];
 

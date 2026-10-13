@@ -30,7 +30,7 @@ export async function* compose(input: ComposeInput): AsyncGenerator<ComposeEvent
   const { contexte } = buildContext(input);
   const queue: ComposeEvent[] = [];
   const ctx: ToolCtx = { input, actions: [], references: [], locus: 0, patient: resolvePatient(input), emit: (ev) => queue.push(ev) };
-  const demande = input.ecran === "note" ? `## Note de consultation du jour (dictée ou rédigée par le médecin)\n${input.note ?? input.texte}\n\n## Consigne\n${input.texte === input.note || !input.texte ? "Décline cette note en actions : inscris au dossier ce qu'elle établit (problème, traitement, mesure, allergie), prépare ce qu'elle prescrit ou demande (ordonnances, arrêt, courrier, rendez-vous, message), et termine par une seule phrase : la conclusion clinique, sans récapituler les actions." : input.texte}` : `## Demande du médecin\n${input.texte}`;
+  const demande = input.ecran === "note" ? `## Note de consultation du jour (dictée ou rédigée par le médecin)${input.motif ? `\nMotif de consultation (agenda) : ${input.motif}` : ""}\n${input.note ?? input.texte}\n\n## Consigne\n${input.texte === input.note || !input.texte ? "Décline cette note en actions : inscris au dossier ce qu'elle établit (problème, traitement, mesure, allergie), prépare ce qu'elle prescrit ou demande (ordonnances, arrêt, courrier, rendez-vous, message), et termine par une seule phrase : la conclusion clinique, sans récapituler les actions." : input.texte}` : `## Demande du médecin\n${input.texte}`;
   const messages: Anthropic.MessageParam[] = [{ role: "user", content: `${contexte}\n\n${demande}` }];
   let synthese = "";
 
@@ -73,7 +73,8 @@ export async function* compose(input: ComposeInput): AsyncGenerator<ComposeEvent
     messages.push({ role: "user", content: results });
   }
 
-  const plan: ComposePlan = { synthese: synthese || (ctx.actions.length ? "Prêt à valider." : "Je n'ai rien trouvé à faire avec cette demande."), actions: ctx.actions, references: ctx.references, via: "claude", modele: MODEL, locus: ctx.locus };
+  const pt = ctx.patient;
+  const plan: ComposePlan = { synthese: (synthese || (ctx.actions.length ? "Prêt à valider." : "Je n'ai rien trouvé à faire avec cette demande.")).slice(0, 600), actions: ctx.actions, references: ctx.references, via: "claude", modele: MODEL, locus: ctx.locus, patient: pt ? { nom: pt.nom, sexe: pt.sexe, age: pt.age, naissance: pt.naissance, allergies: pt.allergies } : undefined };
   yield { step: "done", plan };
 }
 

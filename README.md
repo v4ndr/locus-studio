@@ -71,7 +71,23 @@ relu ») ou se **retire** ; si la note change, « Régénérer » recompose. La
 consultation est un **brouillon persistant** : quitter l'écran ne perd rien,
 le dossier affiche « N actions à valider · Reprendre », l'accueil liste les
 consultations en cours. À la signature, le compte rendu dit ce qui est parti
-où. Un **chrono** mesure la saisie, la composition et la validation. Le composer reçoit le dossier local avec la demande
+où. Un **chrono** mesure la saisie, la composition et la validation (il
+s'arrête quand l'onglet n'est plus visible).
+
+Une note signée se **modifie en place** (« Modifier » dans le dossier) : ses
+documents reviennent dans l'éditeur, chacun s'ouvre tel qu'il a été rendu et
+envoyé (en-tête, patient, corps, signature e-CPS), se corrige dans un
+formulaire typé avec le papier à côté, et « Re-signer » **renvoie ce qui a
+changé** — le reste est marqué inchangé. La modification a son propre
+brouillon : ouvrir « Modifier » n'écrase jamais une consultation en cours.
+
+Le **garde-fou allergie** compare chaque ligne d'ordonnance aux allergies du
+dossier par classe (pénicillines ↔ amoxicilline, AINS ↔ ibuprofène…) et par
+nom ; l'alerte suit le document (ligne, panneau, mobile) et le garde « à
+relire » tant qu'elle existe. Les règles du composeur à sec lisent la
+**conduite à tenir** d'une note structurée (pas l'anamnèse), respectent les
+négations (« sorties non autorisées », « pas de courrier ») et prennent le
+motif d'un arrêt dans la conclusion, jamais dans un antécédent. Le composer reçoit le dossier local avec la demande
 (le serveur n'a pas de base) et le projette comme un `patient_ehr`.
 
 Le scénario complet est dans [`docs/scenes.md`](docs/scenes.md) (patiente :

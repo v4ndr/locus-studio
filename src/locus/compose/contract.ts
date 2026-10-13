@@ -32,6 +32,8 @@ export interface ComposeInput {
   patient?: PatientLocalPayload;
   /** En écran « note » : la note de consultation à décliner en actions. */
   note?: string;
+  /** En écran « note » : le motif (agenda ou saisi), à part de la note pour ne pas être lu comme une prescription. */
+  motif?: string;
 }
 
 export type ComposeKind = "ordonnance" | "rdv" | "message" | "courrier" | "arret" | "dossier" | "naviguer";
@@ -58,7 +60,12 @@ export interface ComposeAction {
   /** Signé et envoyé le… ; renvoyé si le document a été modifié après un premier envoi. */
   envoyeLe?: string;
   renvoye?: boolean;
+  /** Une ligne de l'ordonnance croise une allergie du dossier : à relire, jamais masqué. */
+  alerte?: string;
 }
+
+/** Le patient tel que la carte le rend (en-tête du document) : porté par le plan pour que chaque écran l'ait. */
+export interface PatientPlan { nom: string; naissance?: string; sexe?: "F" | "M"; age?: number; allergies?: string[] }
 
 export interface ComposePlan {
   /** Une à trois phrases, avec renvois [n] vers `references` quand Locus a été consulté. */
@@ -69,6 +76,8 @@ export interface ComposePlan {
   modele?: string;
   /** Nombre d'appels à locus-core pendant la composition. */
   locus: number;
+  /** Le patient de la composition, pour le rendu des documents. */
+  patient?: PatientPlan;
 }
 
 export type ComposeEvent =

@@ -19,10 +19,11 @@ export function Home({ data }: { data: HomeData }) {
   const [all, setAll] = React.useState(false);
   const [sel, setSel] = React.useState(0);
   const inputRef = React.useRef<HTMLInputElement>(null);
+  const viaTab = React.useRef(false);
   const composer = useCompose();
   const cab = useCabinet();
   // Les dossiers créés sur ce poste rejoignent la patientèle de la palette.
-  const patients = React.useMemo<PatientRef[]>(() => [...cab.patients.map((p) => ({ id: p.id, nom: `${p.prenomUsuel} ${p.nomUsage}`, prenom: p.prenomUsuel, nomUsage: p.nomUsage, initials: initials(p.prenomUsuel, p.nomUsage), hue: (p.nomUsage.length * 37) % 360, age: ageDe(p.naissance), naissance: p.naissance.split("-").reverse().join("/"), profession: p.profession?.toLowerCase(), ins: "provisoire" })), ...data.patients], [cab.patients, data.patients]);
+  const patients = React.useMemo<PatientRef[]>(() => [...cab.patients.map((p) => ({ id: p.id, nom: `${p.prenomUsuel} ${p.nomUsage}`, prenom: p.prenomUsuel, nomUsage: p.nomUsage, initials: initials(p.prenomUsuel, p.nomUsage), hue: (p.nomUsage.length * 37) % 360, age: ageDe(p.naissance), naissance: p.naissance.split("-").reverse().join("/"), profession: p.profession?.toLowerCase(), ins: "provisoire", sexe: p.sexe })), ...data.patients], [cab.patients, data.patients]);
 
   const hits = React.useMemo(() => {
     const t = norm(q);
@@ -43,24 +44,32 @@ export function Home({ data }: { data: HomeData }) {
   const hrefOf = (id: string) => (id.startsWith("loc_") ? `/d/${id}` : `/p/${id}`);
   const items: { href?: string; ask?: boolean }[] = open ? (q ? [...hits.map((h) => ({ href: hrefOf(h.id) })), ...(askRow ? [{ ask: true }] : [])] : EXEMPLES.map((e) => ({ href: e.href }))) : rows.map((r) => ({ href: r.libre ? undefined : `/p/${r.patientId}` }));
   const demander = React.useCallback((texte: string) => { setOpen(false); setQ(""); inputRef.current?.blur(); composer.run({ texte, ecran: "home" }); }, [composer]);
+  const exempleItems = EXEMPLES.map((e) => (e.demande ? { ask: true, texte: e.t } : { href: e.href }));
+  const itemsAll: { href?: string; ask?: boolean; texte?: string }[] = open ? (q ? items : exempleItems) : items;
 
   React.useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") { e.preventDefault(); inputRef.current?.focus(); setOpen(true); }
-      if (e.key === "Escape") { setOpen(false); setQ(""); inputRef.current?.blur(); }
+      if (e.defaultPrevented) return;
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") { e.preventDefault(); inputRef.current?.focus(); setOpen(true); return; }
+      if (e.key === "Tab") { viaTab.current = true; setTimeout(() => { viaTab.current = false; }, 50); return; }
+      // ⌘⏎ appartient à la carte du composer ; esc sous un dialogue aussi.
+      if (e.metaKey || e.ctrlKey || e.altKey || document.querySelector("[role=dialog][aria-modal=true]")) return;
+      if (e.key === "Escape") { if (open || q) { e.preventDefault(); setOpen(false); setQ(""); inputRef.current?.blur(); } return; }
       if (document.activeElement === inputRef.current || !open) {
-        if (e.key === "ArrowDown") { e.preventDefault(); setSel((s) => Math.min(items.length - 1, s + 1)); }
+        if (e.key === "ArrowDown") { e.preventDefault(); setSel((s) => Math.min(itemsAll.length - 1, s + 1)); }
         if (e.key === "ArrowUp") { e.preventDefault(); setSel((s) => Math.max(0, s - 1)); }
-        if (e.key === "Enter" && items[sel]?.ask && open) { e.preventDefault(); demander(q.trim()); }
-        else if (e.key === "Enter" && items[sel]?.href && (open || document.activeElement === document.body)) { e.preventDefault(); router.push(items[sel].href!); }
+        const it = itemsAll[sel];
+        if (e.key === "Enter" && it?.ask && open) { e.preventDefault(); demander(it.texte ?? q.trim()); }
+        else if (e.key === "Enter" && it?.href && (open || document.activeElement === document.body)) { e.preventDefault(); router.push(it.href); }
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [items, sel, open, router, q, demander]);
+  }, [itemsAll, sel, open, router, q, demander]);
 
   const first = hits[0];
-  const context = first?.rdv ? `RDV ${first.rdv} · motif agenda : ${data.agenda.find((a) => a.patientId === first.id)?.motif.toLowerCase()} · patient${first.nom.endsWith("e") ? "e" : ""} reconnu${first.nom.endsWith("e") ? "e" : ""} depuis l'agenda.` : null;
+  const feminin = first ? (first.sexe ? first.sexe === "F" : /^(Marguerite|Léa|Inès|Sophie|Claire|Monique|Nadia|Emma|Thi|Aminata|Hélène|Josiane)/.test(first.prenom)) : false;
+  const context = first?.rdv ? `RDV ${first.rdv} · motif agenda : ${data.agenda.find((a) => a.patientId === first.id)?.motif.toLowerCase()} · patient${feminin ? "e" : ""} reconnu${feminin ? "e" : ""} depuis l'agenda.` : null;
 
   return (
     <div className="flex min-h-dvh flex-col">
@@ -72,14 +81,14 @@ export function Home({ data }: { data: HomeData }) {
             <div className={cn("flex items-center gap-3.5 px-5 py-[18px]", open && "border-b border-line-2")} onClick={() => { inputRef.current?.focus(); setOpen(true); }}>
               <I.search color={open ? "var(--ink)" : "var(--muted-2)"} />
               <label htmlFor="q" className="sr-only">Recherche</label>
-              <input id="q" ref={inputRef} value={q} onChange={(e) => { setQ(e.target.value); setSel(0); setOpen(true); }} onFocus={() => setOpen(true)} placeholder="Nom, date de naissance, ou une demande…" className="flex-1 bg-transparent text-[17px] text-ink outline-none placeholder:text-muted-3" />
+              <input id="q" ref={inputRef} value={q} onChange={(e) => { setQ(e.target.value); setSel(0); setOpen(true); }} onFocus={() => { if (!viaTab.current) setOpen(true); }} placeholder="Nom, date de naissance, ou une demande…" aria-expanded={open} className="min-h-10 flex-1 bg-transparent text-[17px] text-ink outline-none placeholder:text-muted-3" />
               <Kbd>{open ? "esc" : "⌘K"}</Kbd>
             </div>
             {open && (
               <div className="p-2.5">
                 <div className="k px-3 py-2">Patients</div>
                 {hits.length === 0 && q && <div className="px-3 py-3 text-sm text-muted-2">Aucun patient à ce nom.</div>}
-                {hits.map((h, i) => <PatientRow key={h.id} p={h} active={i === sel} first={i === 0} data={data} onHover={() => setSel(i)} />)}
+                {hits.map((h, i) => <PatientRow key={h.id} p={h} active={i === sel} first={i === 0} data={data} onHover={() => setSel(i)} exclure={hits.map((x) => x.id)} />)}
                 {askRow && (
                   <button type="button" onMouseEnter={() => setSel(hits.length)} onClick={() => demander(q.trim())} className={cn("flex w-full items-center gap-3 rounded-[10px] px-3 py-3 text-left text-sm text-ink", sel === hits.length ? "bg-accent-soft-2" : "hover:bg-hover")}>
                     <span className="flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-full bg-accent-soft text-[11px] font-semibold" style={{ color: "var(--accent)" }}>⌘K</span>
@@ -90,21 +99,25 @@ export function Home({ data }: { data: HomeData }) {
                 {hits.length === 0 && !q && (
                   <>
                     <div className="px-3 pb-2 text-sm text-muted-2">Un nom, une date de naissance, ou directement une demande :</div>
-                    {EXEMPLES.map((e, i) => (
-                      <Link key={e.t} href={e.href} onMouseEnter={() => setSel(i)} className={cn("flex items-center gap-3 rounded-[10px] px-3 py-2.5 text-sm text-ink hover:text-ink", i === sel ? "bg-accent-soft-2" : "hover:bg-hover")}>
+                    {EXEMPLES.map((e, i) => e.demande ? (
+                      <button key={e.t} type="button" onMouseEnter={() => setSel(i)} onClick={() => demander(e.t)} className={cn("flex min-h-10 w-full items-center gap-3 rounded-[10px] px-3 py-2.5 text-left text-sm text-ink", i === sel ? "bg-accent-soft-2" : "hover:bg-hover")}>
+                        <span className="d w-[72px] shrink-0 text-[10px]">{e.k}</span><span className="min-w-0 flex-1 truncate">{e.t}</span>{i === sel && <Kbd>⏎</Kbd>}
+                      </button>
+                    ) : (
+                      <Link key={e.t} href={e.href} onMouseEnter={() => setSel(i)} className={cn("flex min-h-10 items-center gap-3 rounded-[10px] px-3 py-2.5 text-sm text-ink hover:text-ink", i === sel ? "bg-accent-soft-2" : "hover:bg-hover")}>
                         <span className="d w-[72px] shrink-0 text-[10px]">{e.k}</span><span className="min-w-0 flex-1 truncate">{e.t}</span>{i === sel && <Kbd>⏎</Kbd>}
                       </Link>
                     ))}
                   </>
                 )}
                 <div className="k px-3 pb-2 pt-3.5">Actions</div>
-                <div className="flex items-center gap-3 rounded-[10px] px-3 py-3 text-sm text-ink-2"><I.card /><span className="flex-1">Lire la carte Vitale pour confirmer</span><Kbd>⌘V</Kbd></div>
+                <div className="flex items-center gap-3 rounded-[10px] px-3 py-3 text-sm text-muted-2" title="Lecteur de carte Vitale : non branché dans le studio"><I.card /><span className="flex-1">Lire la carte Vitale pour confirmer <span className="text-xs">· lecteur mocké, pas de lecteur ici</span></span></div>
                 <Link href={`/nouveau${q ? `?q=${encodeURIComponent(q)}` : ""}`} className="flex items-center gap-3 rounded-[10px] px-3 py-3 text-sm text-ink-2 hover:bg-hover hover:text-ink"><I.plus /><span className="flex-1">Nouveau patient{q ? ` « ${q.slice(0, 1).toUpperCase() + q.slice(1, 24)}${q.length > 24 ? "…" : ""} »` : ""} · sans carte Vitale</span></Link>
               </div>
             )}
           </div>
           {open && context && <p className="m-0 text-[13px] text-muted-2">{context}</p>}
-          {composer.open && <ComposeCard state={composer.state} onClose={composer.reset} />}
+          {composer.open && <ComposeCard state={composer.state} onClose={composer.reset} onRetry={(i) => composer.run(i)} />}
           {!open && (
             <>
               <div className="flex flex-wrap gap-2">
@@ -139,7 +152,7 @@ export function Home({ data }: { data: HomeData }) {
       <footer className="flex flex-wrap justify-center gap-5 p-5">
         <span className="k"><Kbd>↑↓</Kbd> naviguer</span>
         <span className="k"><Kbd>⏎</Kbd> ouvrir</span>
-        <span className="k"><Kbd>⌥ espace</Kbd> dicter</span>
+        <span className="k"><Kbd>⌘K</Kbd> demander</span>
       </footer>
     </div>
   );
@@ -151,9 +164,9 @@ function Pill({ href, label, n }: { href: string; label: string; n: number }) {
 }
 
 /** Ce qu'on peut demander directement depuis l'accueil, sans ouvrir un dossier. */
-const EXEMPLES: { k: string; t: string; href: string }[] = [
-  { k: "ordo", t: "Renouvelle l'ordonnance de Claire Moreau pour 3 mois", href: "/p/pat_cmoreau" },
-  { k: "rdv", t: "Rendez-vous Lucas Petit, rappel vaccin, dans un mois", href: "/p/pat_petit" },
+const EXEMPLES: { k: string; t: string; href: string; /** Composé par Locus (une demande), plutôt qu'un simple lien. */ demande?: boolean }[] = [
+  { k: "ordo", t: "Renouvelle l'ordonnance de Claire Moreau pour 3 mois", href: "/p/pat_cmoreau", demande: true },
+  { k: "rdv", t: "Rendez-vous Lucas Petit, rappel vaccin, dans un mois", href: "/p/pat_petit", demande: true },
   { k: "courriers", t: "Qu'est-ce qui est arrivé ce matin ?", href: "/inbox/courriers" },
   { k: "bio", t: "Les résultats hors norme de la semaine", href: "/inbox/bio" },
   { k: "message", t: "Réponds à la pharmacie pour M. Bernard", href: "/inbox/messages" },
@@ -166,13 +179,13 @@ function Slot({ r, active, onHover }: { r: HomeData["agenda"][number]; active: b
   return <Link href={`/p/${r.patientId}`} className={cls} onMouseEnter={onHover}>{inner}</Link>;
 }
 
-function PatientRow({ p, active, first, data, onHover }: { p: PatientRef; active: boolean; first: boolean; data: HomeData; onHover: () => void }) {
-  const fam = data.patients.filter((x) => x.id !== p.id && x.nomUsage === p.nomUsage);
+function PatientRow({ p, active, first, data, onHover, exclure }: { p: PatientRef; active: boolean; first: boolean; data: HomeData; onHover: () => void; exclure?: string[] }) {
+  const fam = data.patients.filter((x) => x.id !== p.id && x.nomUsage === p.nomUsage && !exclure?.includes(x.id));
   return (
     <>
       <Link href={p.id.startsWith("loc_") ? `/d/${p.id}` : `/p/${p.id}`} onMouseEnter={onHover} className={cn("flex items-center gap-3 rounded-[10px] px-3 py-3.5 text-ink hover:text-ink sm:gap-4", active ? "bg-accent-soft-2" : "hover:bg-hover")}>
         <Avatar initials={p.initials} accent={first} />
-        <span className="flex flex-1 flex-col gap-[3px]"><span className={cn("text-[15px]", first && "font-medium")}>{p.nom}</span><span className="text-[13px] text-muted">{p.age} ans · né{/^(Marguerite|Léa|Inès|Sophie|Claire|Monique|Nadia|Emma|Thi|Aminata|Hélène|Josiane)/.test(p.prenom) ? "e" : ""} le {p.naissance}{p.profession ? ` · ${p.profession}` : ""}</span></span>
+        <span className="flex flex-1 flex-col gap-[3px]"><span className={cn("text-[15px]", first && "font-medium")}>{p.nom}</span><span className="text-[13px] text-muted">{p.age} ans · né{(p.sexe ? p.sexe === "F" : /^(Marguerite|Léa|Inès|Sophie|Claire|Monique|Nadia|Emma|Thi|Aminata|Hélène|Josiane)/.test(p.prenom)) ? "e" : ""} le {p.naissance}{p.profession ? ` · ${p.profession}` : ""}</span></span>
         {p.ins === "qualifiee" && <span className="hidden items-center gap-1.5 text-xs text-ok sm:flex"><I.check />INS qualifiée</span>}
         {p.ins === "provisoire" && <span className="hidden text-xs text-muted-2 sm:inline">dossier local</span>}
         {active && <Kbd>⏎</Kbd>}

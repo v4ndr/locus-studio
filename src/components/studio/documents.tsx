@@ -36,13 +36,12 @@ function Inner({ v, praticien }: { v: PatientView; praticien: { initials: string
           <div className="flex flex-[1_1_280px] items-center gap-2.5 rounded-[10px] border border-line bg-paper px-3.5 py-[9px]">
             <I.search size={15} />
             <label htmlFor="s" className="sr-only">Rechercher</label>
-            <input id="s" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Rechercher dans le contenu, l'émetteur, un médicament…" className="min-w-0 flex-1 bg-transparent text-sm text-ink outline-none placeholder:text-muted-3" />
+            <input id="s" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Rechercher dans le contenu, l'émetteur, un médicament…" className="min-h-8 min-w-0 flex-1 bg-transparent text-base text-ink outline-none placeholder:text-muted-3 sm:text-sm" />
           </div>
-          <span className="hidden rounded-full border border-line bg-paper px-3 py-[7px] text-[13px] text-ink-2 sm:inline">Depuis : tout</span>
-          <span className="hidden rounded-full border border-line bg-paper px-3 py-[7px] text-[13px] text-ink-2 sm:inline">Émetteur : tous</span>
+          <span className="hidden text-[13px] text-muted-2 sm:inline">Tout le dossier, du plus récent au plus ancien · filtrez par type, cherchez un mot.</span>
         </div>
         <div className="flex flex-wrap gap-1.5">
-          {LABELS.map((l) => { const on = l === type; return <button key={l} type="button" onClick={() => setType(l)} aria-pressed={on} className={cn("rounded-full border px-3 py-[7px] text-[13px]", on ? "border-ink bg-ink text-paper" : "border-line bg-paper text-ink-2")}>{PLURAL[l] ?? l}</button>; })}
+          {LABELS.map((l) => { const on = l === type; return <button key={l} type="button" onClick={() => setType(l)} aria-pressed={on} className={cn("min-h-9 rounded-full border px-3 py-[7px] text-[13px]", on ? "border-ink bg-ink text-paper" : "border-line bg-paper text-ink-2")}>{PLURAL[l] ?? l}</button>; })}
         </div>
         <div className="rounded-[14px] border border-line-3 bg-paper">
           <div className="tr tr-head"><span className="k">Date</span><span className="k">Type</span><span className="k">Document</span><span className="k">Émetteur</span><span /></div>

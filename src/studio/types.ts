@@ -3,7 +3,7 @@ import type { Rencontre } from "@/data/rencontres";
 
 /** Ce que l'accueil reçoit : l'agenda du jour et la patientèle, pour la palette. */
 export interface AgendaSlot { patientId: string; heure: string; nom: string; motif: string; libre?: boolean; apresMidi: boolean; prochain?: boolean }
-export interface PatientRef { id: string; nom: string; prenom: string; nomUsage: string; initials: string; hue: number; age: number; naissance: string; profession?: string; ins: string; famille?: string; rdv?: string }
+export interface PatientRef { id: string; nom: string; prenom: string; nomUsage: string; initials: string; hue: number; age: number; naissance: string; sexe?: "F" | "M"; profession?: string; ins: string; famille?: string; rdv?: string }
 export interface HomeData { praticien: { initials: string; nom: string }; agenda: AgendaSlot[]; patients: PatientRef[]; courriersNonLus: number; bioNonLues: number; messagesNonLus: number }
 
 /** Ce qu'un clic sur une ligne « à noter » déclenche : ouvrir le document source, lancer un raccourci préparé, poser la question à Locus, ou dérouler une fiche du dossier. */

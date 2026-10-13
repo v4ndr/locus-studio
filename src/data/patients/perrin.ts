@@ -53,7 +53,7 @@ const messages = [
     de: { type: "agent", nom: "Locus, pour le Dr Vandepitterie" }, a: [{ type: "patient", nom: "Camille Perrin" }],
     date: at("07:42"),
     objet: "Re: Inès — fièvre et gorge",
-    corps: "Bonjour Madame,\n\nOui, venez ce matin : rendez-vous à 15h00 avec le Dr Vandepitterie (le premier créneau enfant). Elle fera un test rapide de la gorge pour savoir si un antibiotique est nécessaire — dans la plupart des angines chez l'enfant, ce n'est pas le cas.\n\nD'ici là : paracétamol 15 mg/kg soit 400 mg (une dose de 26 kg sur la pipette) toutes les 6 h si besoin, à boire régulièrement, pas d'ibuprofène. Si elle a du mal à respirer, à avaler sa salive, ou si elle est très abattue, appelez le 15.\n\nSol, pour le Dr Vandepitterie",
+    corps: "Bonjour Madame,\n\nOui, amenez-la cet après-midi : rendez-vous à 15 h avec le Dr Vandepitterie (le premier créneau enfant). Elle fera un test rapide de la gorge pour savoir si un antibiotique est nécessaire — dans la plupart des angines chez l'enfant, ce n'est pas le cas.\n\nD'ici là : paracétamol 15 mg/kg soit 400 mg (une dose de 26 kg sur la pipette) toutes les 6 h si besoin, à boire régulièrement, pas d'ibuprofène. Si elle a du mal à respirer, à avaler sa salive, ou si elle est très abattue, appelez le 15.\n\nLocus, pour le Dr Vandepitterie",
   }, { status: "propose", at: at("07:42") }),
 ];
 

@@ -16,7 +16,7 @@ function fr(iso: string) { const [y, m, d] = iso.slice(0, 10).split("-"); return
 function ref(d: Dossier): PatientRef {
   const p = d.patient;
   const rdv = recordsOf(d, "appointment").find((a) => a.debut.startsWith(TODAY));
-  return { id: p.id, nom: displayName(p), prenom: p.prenomUsuel, nomUsage: p.nomUsage, initials: initials(p.prenomUsuel, p.nomUsage), hue: p.photoHue ?? 200, age: ageAt(p.ins.dateNaissance, now()), naissance: fr(p.ins.dateNaissance), profession: p.vie?.profession?.split(",")[0].toLowerCase(), ins: p.ins.statut, rdv: rdv ? fmtTime(rdv.debut) : undefined };
+  return { id: p.id, nom: displayName(p), prenom: p.prenomUsuel, nomUsage: p.nomUsage, initials: initials(p.prenomUsuel, p.nomUsage), hue: p.photoHue ?? 200, age: ageAt(p.ins.dateNaissance, now()), naissance: fr(p.ins.dateNaissance), sexe: p.ins.sexe, profession: p.vie?.profession?.split(",")[0].toLowerCase(), ins: p.ins.statut, rdv: rdv ? fmtTime(rdv.debut) : undefined };
 }
 
 export function homeData(): HomeData {
@@ -24,7 +24,14 @@ export function homeData(): HomeData {
   const agenda: AgendaSlot[] = slots.map(({ appointment, dossier }) => ({ patientId: dossier.patient.id, heure: fmtTime(appointment.debut), nom: displayName(dossier.patient), motif: appointment.motif, apresMidi: Number(fmtTime(appointment.debut).slice(0, 2)) >= 12 }));
   const next = agenda.find((a) => a.heure >= "10:30") ?? agenda[0];
   if (next) next.prochain = true;
-  agenda.splice(agenda.findIndex((a) => a.heure > "11:10") < 0 ? agenda.length : agenda.findIndex((a) => a.heure > "11:10"), 0, { patientId: "", heure: "11:30", nom: "Créneau libre", motif: "—", libre: true, apresMidi: false });
+  // Le premier vrai trou de la matinée (20 min libres entre deux rendez-vous, avant 12 h), s'il y en a un.
+  const mins = (h: string) => Number(h.slice(0, 2)) * 60 + Number(h.slice(3, 5));
+  const matin = slots.filter((s) => mins(fmtTime(s.appointment.debut)) < 12 * 60);
+  for (let i = 0; i < matin.length - 1; i++) {
+    const fin = mins(fmtTime(matin[i].appointment.debut)) + (matin[i].appointment.dureeMin ?? 20);
+    const suivant = mins(fmtTime(matin[i + 1].appointment.debut));
+    if (suivant - fin >= 20) { const h = `${String(Math.floor(fin / 60)).padStart(2, "0")}:${String(fin % 60).padStart(2, "0")}`; agenda.splice(i + 1, 0, { patientId: "", heure: h, nom: "Créneau libre", motif: `${suivant - fin} min`, libre: true, apresMidi: false }); break; }
+  }
   const c = inboxCounts();
   return { praticien: PRATICIEN, agenda, patients: DOSSIERS.map(ref), courriersNonLus: c.courriers, bioNonLues: c.bio, messagesNonLus: c.messages };
 }
@@ -209,7 +216,7 @@ function inboxRows(kind: InboxKind): InboxRow[] {
   for (const d of DOSSIERS) {
     const r = ref(d);
     if (kind === "courriers") {
-      for (const x of recordsOf(d, "document")) if (x.recuLe >= horizon) out.push({ id: x.id, href: `/p/${d.patient.id}/documents/${x.id}`, patient: r, de: x.auteur?.split(",")[0] ?? CANAL[x.canal] ?? x.canal, deType: "confrere", titre: x.titre, resume: x.lecture?.resume ?? x.texte.slice(0, 160), urgence: x.lecture?.urgence ?? "aucune", quand: fmtRelative(x.recuLe), at: x.recuLe, nonLu: !x.vuLe });
+      for (const x of recordsOf(d, "document")) if (x.recuLe >= horizon) out.push({ id: x.id, href: `/p/${d.patient.id}/documents/${x.id}`, patient: r, de: x.auteur?.split(",")[0] ?? CANAL[x.canal] ?? x.canal, deType: /\b(Dr|Pr|Docteur)\b/.test(x.auteur ?? "") ? "confrere" : /labo/i.test(x.auteur ?? "") ? "labo" : /secr[ée]tariat/i.test(x.auteur ?? "") ? "secretariat" : "autre", titre: x.titre, resume: x.lecture?.resume ?? x.texte.slice(0, 160), urgence: x.lecture?.urgence ?? "aucune", quand: fmtRelative(x.recuLe), at: x.recuLe, nonLu: !x.vuLe });
     } else if (kind === "bio") {
       for (const x of recordsOf(d, "lab")) if (x.recuLe >= horizon) { const ab = x.resultats.filter((y) => y.flag !== "normal"); out.push({ id: x.id, href: `/p/${d.patient.id}/documents/${x.id}`, patient: r, de: x.laboratoire, deType: "labo", titre: ab.length ? ab.map((y) => `${y.libelle} ${typeof y.valeur === "number" ? String(y.valeur).replace(".", ",") : y.valeur}${y.unite ? " " + y.unite : ""}`).slice(0, 3).join(" · ") : `${x.resultats.length} résultats, tous normaux`, resume: x.lecture?.resume, urgence: x.lecture?.urgence ?? (ab.some((y) => y.flag === "critique") ? "jour" : ab.length ? "semaine" : "aucune"), quand: fmtRelative(x.recuLe), at: x.recuLe, nonLu: !x.vuLe }); }
     } else {

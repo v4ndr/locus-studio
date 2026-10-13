@@ -45,7 +45,7 @@ const messages = [
     de: { type: "agent", nom: "Locus, pour le Dr Vandepitterie" }, a: [{ type: "patient", nom: "Sophie Marchand" }],
     date: at("07:15"),
     objet: "Re: Encore une cystite",
-    corps: "Bonjour Sophie,\n\nLe Dr Vandepitterie a validé une ordonnance de fosfomycine (Monuril 3 g, un sachet unique, le soir au coucher, vessie vide). Elle est déjà dans Mon Espace Santé et à votre pharmacie habituelle (ordonnance numérique) — rien à imprimer.\n\nBuvez bien. Si la fièvre monte, si vous avez mal dans le dos ou si ça ne va pas mieux dans 3 jours, écrivez-nous ou consultez.\n\nC'est le 4e épisode en un an : le Dr Vandepitterie vous propose un rendez-vous dans les prochaines semaines pour en parler (un ECBU à distance, et des options de prévention). Voulez-vous que je vous propose des créneaux ?\n\nSol, pour le Dr Vandepitterie",
+    corps: "Bonjour Sophie,\n\nLe Dr Vandepitterie a validé une ordonnance de fosfomycine (Monuril 3 g, un sachet unique, le soir au coucher, vessie vide). Elle est déjà dans Mon Espace Santé et à votre pharmacie habituelle (ordonnance numérique) — rien à imprimer.\n\nBuvez bien. Si la fièvre monte, si vous avez mal dans le dos ou si ça ne va pas mieux dans 3 jours, écrivez-nous ou consultez.\n\nC'est le 4e épisode en un an : le Dr Vandepitterie vous propose un rendez-vous dans les prochaines semaines pour en parler (un ECBU à distance, et des options de prévention). Voulez-vous que je vous propose des créneaux ?\n\nLocus, pour le Dr Vandepitterie",
   }, { status: "propose", at: at("07:15") }),
 ];
 

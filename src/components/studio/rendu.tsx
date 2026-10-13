@@ -1,7 +1,7 @@
 "use client";
 import * as React from "react";
 import type { ComposeAction } from "@/locus/compose/contract";
-import { chargeOf, materialize, type Charge, type RxLigne, RX_LABEL, CR_TYPE, DOS_LABEL, MSG_A, SORTIES, jourFr, heureFr } from "@/locus/compose/materialize";
+import { chargeOf, materialize, alerteAllergie, isoParis, type Charge, type RxLigne, RX_LABEL, CR_TYPE, DOS_LABEL, MSG_A, SORTIES, jourFr, heureFr } from "@/locus/compose/materialize";
 import { CABINET, DR_LAURENT } from "@/data/cabinet";
 import { Md } from "../md";
 import { I, Kbd } from "./chrome";
@@ -15,7 +15,7 @@ import { cn } from "@/lib/cn";
  * place : un document modifié est renvoyé et remplace le précédent.
  */
 
-export interface PatientRendu { nom: string; naissance?: string; sexe?: "F" | "M"; age?: number }
+export interface PatientRendu { nom: string; naissance?: string; sexe?: "F" | "M"; age?: number; /** Pour recalculer le garde-fou allergie quand une ligne change. */ allergies?: string[] }
 const PRAT = { nom: `Dr ${DR_LAURENT.prenom} ${DR_LAURENT.nom}`, rpps: DR_LAURENT.rpps, specialite: DR_LAURENT.specialite, adresse: CABINET.adresse, cabinet: CABINET.nom, mssante: DR_LAURENT.mssante };
 function frDate(iso?: string) { if (!iso) return ""; const d = new Date(iso); return isNaN(d.getTime()) ? iso : d.toLocaleDateString("fr-FR"); }
 function finArret(debut: string, jours: number) { const d = new Date(debut); d.setDate(d.getDate() + Math.max(1, jours) - 1); return d.toLocaleDateString("fr-FR"); }
@@ -54,7 +54,7 @@ export function DocumentRendu({ action, patient, date, compact }: { action: Comp
         <>
           <h2 className="m-0 text-[15px] font-semibold uppercase tracking-[.04em]">Rendez-vous</h2>
           <div className="grid grid-cols-[110px_1fr] gap-x-4 gap-y-1.5 text-[13px]"><span className="text-muted-2">Quand</span><span>{c.debut ? `${jourFr(c.debut)} à ${heureFr(c.debut)}` : "à planifier"}</span><span className="text-muted-2">Durée</span><span>{c.duree_min} min</span><span className="text-muted-2">Motif</span><span>{c.motif}</span><span className="text-muted-2">Avec</span><span>{PRAT.nom}</span></div>
-          <div className="rounded-[10px] bg-bg px-3.5 py-3 text-[12px] leading-[1.5]"><span className="k">SMS au patient</span><br />Bonjour, votre rendez-vous avec le {PRAT.nom} est fixé le {c.debut ? `${jourFr(c.debut)} à ${heureFr(c.debut)}` : "…"}. {PRAT.cabinet}, {PRAT.adresse}. Répondez STOP pour annuler.</div>
+          <div className="rounded-[10px] bg-bg px-3.5 py-3 text-[12px] leading-[1.5]"><span className="k">SMS au patient</span><br />Bonjour, votre rendez-vous avec le {PRAT.nom} est fixé le {c.debut ? `${jourFr(c.debut).toLowerCase()} à ${heureFr(c.debut).replace(":", " h ")}` : "…"}. {PRAT.cabinet}, {PRAT.adresse}. Pour annuler ou déplacer, répondez à ce message.</div>
           {signature(action.envoyeLe ? "Inscrit à l'agenda · SMS envoyé" : "Sera inscrit à l'agenda, SMS envoyé au patient")}
         </>
       );
@@ -75,7 +75,7 @@ export function DocumentRendu({ action, patient, date, compact }: { action: Comp
           <div className="text-[13px]"><span className="text-muted-2">À l'attention de</span> {c.destinataire}{c.specialite ? <span className="text-muted-2"> · {c.specialite}</span> : null}</div>
           <h2 className="m-0 text-[15px] font-semibold">{c.titre}<span className="ml-2 text-[11px] font-normal text-muted-2">{CR_TYPE[c.type] ?? c.type}</span></h2>
           <div className="text-[13px]"><Md text={c.corps} /></div>
-          {signature(action.envoyeLe ? "Envoyé par MSSanté" : `Par MSSanté, de ${PRAT.mssante}`)}
+          {signature(["certificat", "attestation", "courrier-patient"].includes(c.type) ? (action.envoyeLe ? "Signé · remis au patient" : "Remis au patient en main propre après signature") : action.envoyeLe ? "Envoyé par MSSanté" : `Par MSSanté, de ${PRAT.mssante}`)}
         </>
       );
       break;
@@ -102,7 +102,7 @@ export function DocumentRendu({ action, patient, date, compact }: { action: Comp
       break;
   }
   return (
-    <div className={cn("flex min-h-[420px] w-full flex-col gap-5 rounded-md border border-line bg-paper text-ink", compact ? "px-5 py-5" : "px-7 py-7 sm:px-9 sm:py-8")} style={{ boxShadow: "var(--shadow)" }}>
+    <div className={cn("papier flex min-h-[420px] w-full flex-col gap-5 rounded-md border border-line bg-paper text-ink", compact ? "px-5 py-5" : "px-7 py-7 sm:px-9 sm:py-8")} style={{ boxShadow: "var(--shadow)" }}>
       {entete}
       {bloc}
       <div className="flex flex-1 flex-col gap-3.5 border-t border-line-4 pt-4">{corps}</div>
@@ -114,7 +114,7 @@ export function DocumentRendu({ action, patient, date, compact }: { action: Comp
 /* Le formulaire typé, par genre d'action                               */
 /* ------------------------------------------------------------------ */
 
-const inp = "min-w-0 w-full rounded-[8px] border border-line bg-paper px-2.5 py-1.5 text-sm text-ink outline-none focus:border-accent-line";
+const inp = "min-w-0 w-full rounded-[8px] border border-line bg-paper px-2.5 py-1.5 text-base text-ink sm:text-sm";
 const Lbl = ({ l, children, wide }: { l: string; children: React.ReactNode; wide?: boolean }) => <label className={cn("flex flex-col gap-1", wide && "sm:col-span-2")}><span className="k">{l}</span>{children}</label>;
 
 function Form({ c, onChange }: { c: Charge; onChange: (c: Charge) => void }) {
@@ -127,10 +127,10 @@ function Form({ c, onChange }: { c: Charge; onChange: (c: Charge) => void }) {
           {c.lignes.map((l, i) => (
             <div key={i} className="flex flex-col gap-2 rounded-[10px] border border-line-3 bg-bg p-3">
               <div className="flex items-center gap-2"><span className="d text-[11px]">ligne {i + 1}</span><span className="flex-1" />{c.lignes.length > 1 && <button type="button" onClick={() => onChange({ ...c, lignes: c.lignes.filter((_, j) => j !== i) })} className="text-xs text-muted-2 hover:text-rec-text">Retirer</button>}</div>
-              <input value={l.libelle} onChange={(e) => set(i, { libelle: e.target.value })} placeholder="DCI dosage, examen ou acte" className={inp} />
+              <input value={l.libelle} onChange={(e) => set(i, { libelle: e.target.value })} placeholder="DCI dosage, examen ou acte" aria-label={`Ligne ${i + 1} · libellé`} className={inp} />
               <div className="grid gap-2 sm:grid-cols-2">
-                <input value={l.posologie ?? ""} onChange={(e) => set(i, { posologie: e.target.value })} placeholder="Posologie · 1 cp matin et soir" className={inp} />
-                <input value={l.duree ?? ""} onChange={(e) => set(i, { duree: e.target.value })} placeholder="Durée · 3 mois" className={inp} />
+                <input value={l.posologie ?? ""} onChange={(e) => set(i, { posologie: e.target.value })} placeholder="Posologie · 1 cp matin et soir" aria-label={`Ligne ${i + 1} · posologie`} className={inp} />
+                <input value={l.duree ?? ""} onChange={(e) => set(i, { duree: e.target.value })} placeholder="Durée · 3 mois" aria-label={`Ligne ${i + 1} · durée`} className={inp} />
               </div>
               <div className="flex flex-wrap items-center gap-3 text-sm">
                 <label className="flex items-center gap-2"><span className="text-muted-2">Renouvelable</span><input type="number" min={0} max={12} value={l.renouvellement ?? 0} onChange={(e) => set(i, { renouvellement: Number(e.target.value) || undefined })} className={cn(inp, "w-[64px]")} /><span className="text-muted-2">fois</span></label>
@@ -144,7 +144,7 @@ function Form({ c, onChange }: { c: Charge; onChange: (c: Charge) => void }) {
     }
     case "rdv": {
       const d = c.debut ? c.debut.slice(0, 10) : ""; const h = c.debut ? c.debut.slice(11, 16) : "09:30";
-      const setDebut = (dd: string, hh: string) => onChange({ ...c, debut: dd ? `${dd}T${hh || "09:30"}:00+02:00` : "" });
+      const setDebut = (dd: string, hh: string) => onChange({ ...c, debut: dd ? isoParis(dd, hh || "09:30") : "" });
       return (
         <div className="grid gap-3 sm:grid-cols-2">
           <Lbl l="Date"><input type="date" value={d} onChange={(e) => setDebut(e.target.value, h)} className={inp} /></Lbl>
@@ -197,34 +197,63 @@ function Form({ c, onChange }: { c: Charge; onChange: (c: Charge) => void }) {
 /* Le panneau : formulaire + papier                                     */
 /* ------------------------------------------------------------------ */
 
+/** Un dialogue est ouvert : les raccourcis globaux (⌘⏎ valider, esc remonter) doivent se taire. */
+export const dialogOuvert = () => typeof document !== "undefined" && !!document.querySelector("[role=dialog][aria-modal=true]");
+
 export function ActionPanel({ action, patient, onChange, onClose, titre }: { action: ComposeAction; patient: PatientRendu; /** Absent : consultation seule. */ onChange?: (a: ComposeAction) => void; onClose: () => void; titre?: string }) {
   const [onglet, setOnglet] = React.useState<"modifier" | "apercu">(onChange ? "modifier" : "apercu");
   const c = chargeOf(action.kind, action.charge);
-  React.useEffect(() => { const k = (e: KeyboardEvent) => { if (e.key === "Escape") { e.stopPropagation(); onClose(); } }; window.addEventListener("keydown", k, true); return () => window.removeEventListener("keydown", k, true); }, [onClose]);
-  const update = (nc: Charge) => { if (!onChange) return; const m = materialize(nc, patient.nom); onChange({ ...action, ...m, justification: action.justification, statut: "pret" }); };
+  const boite = React.useRef<HTMLDivElement>(null);
+  const fermer = React.useRef<HTMLButtonElement>(null);
+  // Le focus entre dans le dialogue, y reste (Tab boucle), et revient d'où il est parti à la fermeture.
+  React.useEffect(() => {
+    const avant = document.activeElement as HTMLElement | null;
+    const premier = boite.current?.querySelector<HTMLElement>("input, select, textarea") ?? fermer.current;
+    premier?.focus();
+    const k = (e: KeyboardEvent) => {
+      if (e.key === "Escape") { e.stopPropagation(); e.preventDefault(); onClose(); return; }
+      if (e.key === "Tab" && boite.current) {
+        const f = [...boite.current.querySelectorAll<HTMLElement>("a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex='-1'])")].filter((el) => el.offsetParent !== null);
+        if (!f.length) return;
+        const i = f.indexOf(document.activeElement as HTMLElement);
+        if (e.shiftKey && (i <= 0)) { e.preventDefault(); f[f.length - 1].focus(); }
+        else if (!e.shiftKey && (i === -1 || i === f.length - 1)) { e.preventDefault(); f[0].focus(); }
+      }
+    };
+    window.addEventListener("keydown", k, true);
+    return () => { window.removeEventListener("keydown", k, true); avant?.focus?.(); };
+  }, [onClose]);
+  // Modifier en place : le garde-fou allergie est recalculé sur les lignes (si le patient est connu), jamais perdu ; une alerte garde « à relire ».
+  const update = (nc: Charge) => {
+    if (!onChange) return;
+    const alerte = nc.kind === "ordonnance" ? (patient.allergies ? alerteAllergie(nc.lignes, patient.allergies) : nc.alerte) : undefined;
+    const m = materialize(nc, patient.nom, alerte);
+    onChange({ ...action, ...m, justification: action.justification, statut: alerte ? "relire" : "pret" });
+  };
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-[rgba(17,17,17,.35)] p-0 sm:items-center sm:p-6" onClick={onClose} role="dialog" aria-modal="true">
-      <div onClick={(e) => e.stopPropagation()} className="flex max-h-[94dvh] w-full max-w-[1100px] flex-col overflow-hidden rounded-t-[16px] bg-bg sm:rounded-[16px]" style={{ boxShadow: "0 24px 64px rgba(0,0,0,.25)" }}>
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-[rgba(17,17,17,.35)] p-0 sm:items-center sm:p-6" onClick={onClose} role="dialog" aria-modal="true" aria-label={titre ?? action.titre}>
+      <div ref={boite} onClick={(e) => e.stopPropagation()} className="flex max-h-[94dvh] w-full max-w-[1100px] flex-col overflow-hidden rounded-t-[16px] bg-bg sm:rounded-[16px]" style={{ boxShadow: "0 24px 64px rgba(0,0,0,.25)" }}>
         <div className="flex items-center gap-3 border-b border-line-2 px-5 py-3">
           <span className="d flex h-6 min-w-6 items-center justify-center rounded-[6px] bg-soft px-1 text-[10px] text-ink-3">{action.code}</span>
           <span className="min-w-0 flex-1 truncate text-sm font-medium">{titre ?? action.titre}</span>
-          {action.envoyeLe && <span className="text-xs text-ok">{action.renvoye ? "renvoyé" : "envoyé"} le {frDate(action.envoyeLe)}{onChange ? " · toute modification sera renvoyée" : ""}</span>}
-          {onChange && <div className="flex rounded-full border border-line bg-paper p-0.5 lg:hidden">{(["modifier", "apercu"] as const).map((o) => <button key={o} type="button" onClick={() => setOnglet(o)} className={cn("rounded-full px-3 py-1 text-xs", onglet === o ? "bg-ink text-paper" : "text-ink-2")}>{o === "modifier" ? "Modifier" : "Aperçu"}</button>)}</div>}
-          <button type="button" onClick={onClose} className="flex items-center gap-2 rounded-[8px] px-2 py-1 text-sm text-muted-2 hover:text-ink">Fermer <Kbd>esc</Kbd></button>
+          {action.envoyeLe && <span className="hidden text-xs text-ok sm:inline">{action.renvoye ? "renvoyé" : "envoyé"} le {frDate(action.envoyeLe)}{onChange ? " · toute modification sera renvoyée" : ""}</span>}
+          {onChange && <div className="flex rounded-full border border-line bg-paper p-0.5 lg:hidden">{(["modifier", "apercu"] as const).map((o) => <button key={o} type="button" onClick={() => setOnglet(o)} aria-pressed={onglet === o} className={cn("min-h-9 rounded-full px-3 py-1 text-xs", onglet === o ? "bg-ink text-paper" : "text-ink-2")}>{o === "modifier" ? "Modifier" : "Aperçu"}</button>)}</div>}
+          <button ref={fermer} type="button" onClick={onClose} className="flex min-h-9 items-center gap-2 rounded-[8px] px-2 py-1 text-sm text-muted-2 hover:text-ink">Fermer <Kbd>esc</Kbd></button>
         </div>
+        {action.alerte && <div className="flex items-start gap-2.5 border-b border-line-2 bg-[color-mix(in_srgb,var(--warn)_12%,var(--paper))] px-5 py-2.5 text-[13px] leading-[1.45] text-warn" role="alert"><span className="mt-px shrink-0 font-semibold">⚠ Allergie au dossier</span><span className="min-w-0 flex-1">{action.alerte} · à vérifier avant signature{onChange ? " ; changez la ligne ou retirez-la du plan" : ""}.</span></div>}
         <div className={cn("grid min-h-0 flex-1 overflow-y-auto", onChange ? "lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)]" : "")}>
           {onChange && c && (
             <div className={cn("flex flex-col gap-4 border-line-2 px-5 py-5 lg:border-r", onglet !== "modifier" && "hidden lg:flex")}>
               <Form c={c} onChange={update} />
               {action.justification && <div className="rounded-[10px] bg-accent-soft-2 px-3.5 py-2.5 text-[13px] leading-[1.5]"><span className="k" style={{ color: "var(--accent)" }}>Pourquoi</span><br />{action.justification}</div>}
-              <span className="text-xs text-muted-2">Le papier à droite se met à jour en direct. {action.envoyeLe ? "À la signature, cette version est renvoyée et remplace l'envoi précédent." : "Rien ne part avant la signature."}</span>
+              <span className="text-xs text-muted-2"><span className="hidden lg:inline">Le papier à droite se met à jour en direct. </span><span className="lg:hidden">L'onglet Aperçu montre le document tel qu'il partira. </span>{action.envoyeLe ? "À la signature, cette version est renvoyée et remplace l'envoi précédent." : "Rien ne part avant la signature."}</span>
             </div>
           )}
           <div className={cn("bg-soft/40 px-4 py-5 sm:px-6", onChange && onglet !== "apercu" && "hidden lg:block")}>
             <div className="mx-auto max-w-[640px]"><DocumentRendu action={action} patient={patient} /></div>
           </div>
         </div>
-        {onChange && <div className="flex items-center justify-end gap-2 border-t border-line-2 px-5 py-3"><button type="button" onClick={onClose} className="flex items-center gap-2 rounded-[10px] bg-ink px-4 py-[9px] text-sm text-paper"><I.check size={13} color="var(--paper)" w={2.5} /> Terminé</button></div>}
+        {onChange && <div className="flex items-center justify-end gap-2 border-t border-line-2 px-5 py-3"><button type="button" onClick={onClose} className="flex min-h-11 items-center gap-2 rounded-[10px] bg-ink px-4 py-[9px] text-sm text-paper"><I.check size={13} color="var(--paper)" w={2.5} /> Terminé</button></div>}
       </div>
     </div>
   );

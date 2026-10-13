@@ -5,7 +5,7 @@ import { at } from "@/data/clock";
 import { documentView } from "@/studio/view.server";
 import { retrieveStream } from "@/locus/client.server";
 import { fromDataset, type PatientCtx } from "./patient";
-import { chargeOf, materialize } from "./materialize";
+import { chargeOf, materialize, alerteAllergie } from "./materialize";
 import type { ComposeAction, ComposeRef, ComposeInput } from "./contract";
 
 /**
@@ -82,8 +82,8 @@ export const TOOLS: Anthropic.Tool[] = [
 /** Un jour ouvré à N jours : on décale le week-end au lundi. */
 function creneau(dans: number, moment?: string) { let n = Math.max(1, dans); for (;;) { const d = new Date(at("09:00", n)); const wd = d.getDay(); if (wd === 0) n += 1; else if (wd === 6) n += 2; else break; } return at(moment === "apres-midi" ? "14:30" : "09:30", n); }
 
-let seq = 0;
-const nid = () => `c${++seq}`;
+/** Un identifiant sans compteur de module : deux instances (ou deux plans) ne se marchent pas dessus. */
+const nid = () => `c${Date.now().toString(36).slice(-4)}${Math.random().toString(36).slice(2, 7)}`;
 
 export async function executeTool(name: string, input: Record<string, unknown>, ctx: ToolCtx): Promise<string> {
   // Un patientId explicite (depuis l'accueil) l'emporte ; sinon le patient de la composition.
@@ -122,15 +122,15 @@ export async function executeTool(name: string, input: Record<string, unknown>, 
     }
     case "proposer_ordonnance": {
       const c = chargeOf("ordonnance", input);
-      if (!c || c.kind !== "ordonnance" || !c.lignes.length) return "Aucune ligne : rien à préparer.";
-      // Garde-fou allergies : on ne bloque pas, on signale dans l'action.
-      const allergies = (pt?.allergies ?? []).map((a) => a.toLowerCase());
-      const alerte = c.lignes.map((l) => l.libelle.toLowerCase()).find((lib) => allergies.some((a) => a.split(/[ (]/)[0] && lib.includes(a.split(/[ (]/)[0])));
+      if (!c || c.kind !== "ordonnance" || !c.lignes.filter((l) => l.libelle.trim()).length) return "Aucune ligne : rien à préparer.";
+      // Garde-fou allergies, par classe et par nom, sur toutes les lignes : on ne bloque pas, on signale dans l'action, et l'alerte suit le document.
+      const alerte = alerteAllergie(c.lignes, pt?.allergies);
       push({ id: nid(), ...materialize(c, prenomNom, alerte) });
-      return `Ordonnance préparée (${c.lignes.length} ligne(s))${alerte ? `. ATTENTION : « ${alerte} » croise une allergie du dossier` : ""}.`;
+      return `Ordonnance préparée (${c.lignes.length} ligne(s))${alerte ? `. ATTENTION, allergie au dossier : ${alerte}` : ""}.`;
     }
     case "proposer_rdv": {
-      const iso = creneau(Number(input.dans_jours ?? 7), s(input.moment));
+      const dj = Number(input.dans_jours);
+      const iso = creneau(Number.isFinite(dj) ? dj : 7, s(input.moment));
       const c = chargeOf("rdv", { ...input, debut: iso });
       if (!c) return "Rendez-vous impossible.";
       push({ id: nid(), ...materialize(c, prenomNom) });
