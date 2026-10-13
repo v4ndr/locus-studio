@@ -82,7 +82,7 @@ export function DossierView({ v, praticien }: { v: PatientView; praticien: { ini
             <Card id="fiche-depistages" title="Dépistages · vaccins">{v.dossier.depistages.map((f, i) => <Li key={i} k={f.k} v={f.v} muted={f.muted} warn={f.v === "dû" || f.v === "en retard"} />)}</Card>
           </div>
         )}
-        <NotesSession patientId={v.ref.id} />
+        <NotesSession patientId={v.ref.id} patient={{ nom: v.ref.nom, naissance: v.ref.naissance, age: v.ref.age, sexe: v.meta.endsWith("F") ? "F" : "M" }} />
       </main>
       <Omni placeholder="Ordo, rendez-vous, mail, courrier, question… tout." onSubmit={ask} suggestions={exemples(v)} chips={v.chips.slice(0, 3).map((c) => ({ id: c.id, label: c.label, onClick: () => { composer.reset(); dispatch({ type: "cmd", patientId: v.ref.id, cmd: c.id }); } }))} cta={<CtaLink href={`/p/${v.ref.id}/rencontre`}>+ Consultation</CtaLink>}>
         {chip && !done && <ResultCard tool={chip.tool} title={chip.title} body={chip.body.replace(/\[\d+\]/g, "")} cta={chip.cta} onCta={() => { setDone(chip.id); setTimeout(() => { dispatch({ type: "cmd", patientId: v.ref.id, cmd: null }); setDone(null); }, 1400); }} onClose={() => dispatch({ type: "cmd", patientId: v.ref.id, cmd: null })} />}

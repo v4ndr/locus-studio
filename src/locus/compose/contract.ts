@@ -55,6 +55,9 @@ export interface ComposeAction {
   href?: string;
   /** La charge brute, telle que l'outil l'a reçue — ce qui deviendrait la `Proposal`. */
   charge?: Record<string, unknown>;
+  /** Signé et envoyé le… ; renvoyé si le document a été modifié après un premier envoi. */
+  envoyeLe?: string;
+  renvoye?: boolean;
 }
 
 export interface ComposePlan {

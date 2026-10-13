@@ -6,6 +6,7 @@ import type { ComposeEvent, ComposeInput, ComposePlan, ComposeAction } from "@/l
 import { readNdjson } from "@/locus/ndjson";
 import { Kbd, I } from "./chrome";
 import { Md } from "../md";
+import { ActionPanel, type PatientRendu } from "./rendu";
 import { cn } from "@/lib/cn";
 
 /**
@@ -56,9 +57,11 @@ export function useCompose() {
 const STATUT: Record<string, { label: string; color: string }> = { pret: { label: "prêt", color: "var(--ok)" }, relire: { label: "à relire", color: "var(--warn)" } };
 const FAIT: Record<string, string> = { ordonnance: "signée, envoyée en e-ordo", rdv: "réservé, SMS envoyé", message: "envoyé", courrier: "signé, envoyé par MSSanté", arret: "signé, télétransmis à la CPAM", dossier: "inscrit au dossier, partagé au DMP", naviguer: "ouvert" };
 
-export function ComposeCard({ state, onClose, suivreSeul = true, onValide, libelleValider, initialActions, onChange, apres }: {
+export function ComposeCard({ state, onClose, suivreSeul = true, onValide, libelleValider, initialActions, onChange, apres, patient }: {
   state: ComposeState;
   onClose: () => void;
+  /** Le patient, pour le rendu des documents (en-tête, identité). */
+  patient?: PatientRendu;
   suivreSeul?: boolean;
   onValide?: (actions: ComposeAction[], plan: ComposePlan) => void;
   libelleValider?: string;
@@ -71,6 +74,7 @@ export function ComposeCard({ state, onClose, suivreSeul = true, onValide, libel
 }) {
   const router = useRouter();
   const [open, setOpen] = React.useState<string | null>(null);
+  const pr: PatientRendu = patient ?? { nom: "" };
   const [edits, setEdits] = React.useState<Record<string, ComposeAction>>(initialActions?.edits ?? {});
   const [retires, setRetires] = React.useState<Set<string>>(new Set(initialActions?.retires ?? []));
   const [valide, setValide] = React.useState<ComposeAction[] | null>(null);
@@ -82,6 +86,7 @@ export function ComposeCard({ state, onClose, suivreSeul = true, onValide, libel
 
   const signal = React.useCallback((e: Record<string, ComposeAction>, r: Set<string>) => onChange?.(e, [...r]), [onChange]);
   const edite = (a: ComposeAction, patch: Partial<ComposeAction>) => setEdits((e) => { const n = { ...e, [a.id]: { ...vue(a), ...patch } }; signal(n, retires); return n; });
+  void edite;
   const bascule = (id: string) => setRetires((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); signal(edits, n); return n; });
 
   // Une navigation seule : on y va, sans carte à valider.
@@ -109,9 +114,10 @@ export function ComposeCard({ state, onClose, suivreSeul = true, onValide, libel
           <button type="button" onClick={onClose} aria-label="Fermer" className="px-1 text-base text-muted-3">×</button>
         </div>
         <div className="flex flex-col">
-          {valide.map((a, i) => <div key={a.id} className={cn("flex items-center gap-3 py-2 text-sm", i > 0 && "border-t border-line-4")}><span className="d flex h-6 min-w-6 items-center justify-center rounded-[6px] bg-soft px-1 text-[10px] text-ink-3">{a.code}</span><span className="min-w-0 flex-1 truncate">{a.titre}</span><span className="text-xs text-ok">{FAIT[a.kind] ?? "fait"}</span></div>)}
+          {valide.map((a, i) => <button key={a.id} type="button" onClick={() => setOpen(a.id)} className={cn("flex items-center gap-3 rounded-[8px] px-1 py-2 text-left text-sm hover:bg-hover", i > 0 && "border-t border-line-4")}><span className="d flex h-6 min-w-6 items-center justify-center rounded-[6px] bg-soft px-1 text-[10px] text-ink-3">{a.code}</span><span className="min-w-0 flex-1 truncate">{a.titre}</span><span className="text-xs text-ok">{a.renvoye ? "renvoyé, remplace le précédent" : FAIT[a.kind] ?? "fait"}</span><I.chevron /></button>)}
         </div>
         {apres && <div className="flex flex-wrap items-center gap-2 pt-1">{apres}</div>}
+        {open && valide.find((a) => a.id === open) && <ActionPanel action={valide.find((a) => a.id === open)!} patient={pr} onClose={() => setOpen(null)} />}
       </div>
     );
   }
@@ -135,37 +141,23 @@ export function ComposeCard({ state, onClose, suivreSeul = true, onValide, libel
       {docs.length > 0 && (
         <div className="flex flex-col gap-0.5 rounded-xl border border-line-3 bg-bg p-1">
           {docs.map((a) => {
-            const off = retires.has(a.id); const isOpen = open === a.id; const modifie = !!edits[a.id];
+            const off = retires.has(a.id); const modifie = !!edits[a.id];
             return (
-              <div key={a.id} className={cn(off && "opacity-45")}>
-                <div className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left hover:bg-hover">
-                  <button type="button" onClick={() => bascule(a.id)} aria-pressed={!off} aria-label={off ? "Remettre" : "Retirer"} title={off ? "Remettre" : "Retirer du plan"} className={cn("flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-[5px]", off ? "border-[1.5px] border-gray-dot" : "bg-ink text-paper")}>{!off && <I.check size={12} color="var(--paper)" w={3} />}</button>
-                  <button type="button" onClick={() => setOpen(isOpen ? null : a.id)} aria-expanded={isOpen} className="flex min-w-0 flex-1 items-center gap-3 text-left">
-                    <span className="d flex h-6 min-w-6 shrink-0 items-center justify-center rounded-[6px] bg-soft px-1 text-[10px] text-ink-3">{a.code}</span>
-                    <span className="flex min-w-0 flex-1 flex-col"><span className={cn("truncate text-sm", off && "line-through")}>{a.titre}{modifie && <span className="ml-2 text-[11px] text-accent" style={{ color: "var(--accent)" }}>modifié</span>}</span><span className="truncate text-xs text-muted-2">{a.ligne}</span></span>
-                    <span className="hidden text-xs sm:inline" style={{ color: STATUT[a.statut]?.color }}>{STATUT[a.statut]?.label}</span>
-                    <span className="hidden text-[11px] text-muted-3 sm:inline">{a.destination}</span>
-                    <I.chevron open={isOpen} />
-                  </button>
-                </div>
-                {isOpen && (
-                  <div className="flex flex-col gap-1 px-3 pb-3 pt-1 sm:pl-[64px]">
-                    <label className="flex flex-col gap-1 border-t border-line-4 py-2 text-sm sm:flex-row sm:gap-4"><span className="w-[96px] shrink-0 text-muted-2">Titre</span><input value={a.titre} onChange={(e) => edite(a, { titre: e.target.value })} className="min-w-0 flex-1 rounded-[8px] border border-line bg-paper px-2.5 py-1.5 text-sm text-ink outline-none focus:border-accent-line" /></label>
-                    {a.fields.map((f, i) => (
-                      <label key={i} className="flex flex-col gap-1 border-t border-line-4 py-2 text-sm sm:flex-row sm:gap-4"><span className="w-[96px] shrink-0 text-muted-2">{f.k}</span><textarea value={f.v} rows={Math.min(6, Math.max(1, Math.ceil(f.v.length / 70)))} onChange={(e) => edite(a, { fields: a.fields.map((g, j) => (j === i ? { ...g, v: e.target.value } : g)) })} className="min-w-0 flex-1 resize-y rounded-[8px] border border-line bg-paper px-2.5 py-1.5 text-sm leading-[1.45] text-ink outline-none focus:border-accent-line" /></label>
-                    ))}
-                    {a.justification && <div className="flex gap-4 border-t border-line-4 py-2 text-sm leading-[1.45]"><span className="w-[96px] shrink-0 text-muted-2">Pourquoi</span><span className="flex-1 text-ink-2">{a.justification}</span></div>}
-                    <div className="flex gap-2 pt-1">
-                      {a.statut === "relire" && <button type="button" onClick={() => edite(a, { statut: "pret" })} className="rounded-[8px] border border-line bg-paper px-2.5 py-1 text-xs text-ink hover:bg-hover">Marquer relu</button>}
-                      {modifie && <button type="button" onClick={() => setEdits((e) => { const n = { ...e }; delete n[a.id]; signal(n, retires); return n; })} className="rounded-[8px] px-2.5 py-1 text-xs text-muted-2 hover:bg-hover">Revenir à la proposition</button>}
-                    </div>
-                  </div>
-                )}
+              <div key={a.id} className={cn("flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left hover:bg-hover", off && "opacity-45")}>
+                <button type="button" onClick={() => bascule(a.id)} aria-pressed={!off} aria-label={off ? "Remettre" : "Retirer"} title={off ? "Remettre" : "Retirer du plan"} className={cn("flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-[5px]", off ? "border-[1.5px] border-gray-dot" : "bg-ink text-paper")}>{!off && <I.check size={12} color="var(--paper)" w={3} />}</button>
+                <button type="button" onClick={() => setOpen(a.id)} className="flex min-w-0 flex-1 items-center gap-3 text-left" title="Ouvrir le document">
+                  <span className="d flex h-6 min-w-6 shrink-0 items-center justify-center rounded-[6px] bg-soft px-1 text-[10px] text-ink-3">{a.code}</span>
+                  <span className="flex min-w-0 flex-1 flex-col"><span className={cn("truncate text-sm", off && "line-through")}>{a.titre}{modifie && <span className="ml-2 text-[11px]" style={{ color: "var(--accent)" }}>modifié</span>}</span><span className="truncate text-xs text-muted-2">{a.ligne}</span></span>
+                  <span className="hidden text-xs sm:inline" style={{ color: STATUT[a.statut]?.color }}>{STATUT[a.statut]?.label}</span>
+                  <span className="hidden text-[11px] text-muted-3 sm:inline">{a.destination}</span>
+                  <I.chevron />
+                </button>
               </div>
             );
           })}
         </div>
       )}
+      {open && docs.find((a) => a.id === open) && <ActionPanel action={docs.find((a) => a.id === open)!} patient={pr} onChange={(na) => setEdits((e) => { const n = { ...e, [na.id]: na }; signal(n, retires); return n; })} onClose={() => setOpen(null)} />}
 
       {nav.length > 0 && (docs.length > 0 || nav.length > 1) && (
         <div className="flex flex-wrap gap-2">{nav.map((a) => a.href && <Link key={a.id} href={a.href} onClick={onClose} className="flex items-center gap-2 rounded-full border border-line bg-paper px-3 py-[6px] text-[13px] text-ink hover:bg-hover hover:text-ink">→ {a.titre}</Link>)}</div>
@@ -179,7 +171,7 @@ export function ComposeCard({ state, onClose, suivreSeul = true, onValide, libel
         <div className="flex flex-wrap items-center gap-2">
           {gardes.length > 0 && <button type="button" onClick={valider} className="flex items-center gap-2 rounded-[10px] bg-ink px-4 py-[9px] text-sm text-paper">{libelleValider ?? `Valider ${gardes.length > 1 ? `les ${gardes.length}` : ""}`} <Kbd dark>⌘⏎</Kbd></button>}
           {gardes.length === 0 && docs.length === 0 && nav.length === 0 && <button type="button" onClick={onClose} className="rounded-[10px] border border-line bg-paper px-4 py-[9px] text-sm text-ink">Fermer</button>}
-          {docs.length > 0 && <span className="text-xs text-muted-2">Cliquez une ligne pour la modifier, la case pour la retirer.</span>}
+          {docs.length > 0 && <span className="text-xs text-muted-2">Une ligne ouvre le document, pour le lire et le modifier · la case le retire du plan.</span>}
           <span className="flex-1" />
           {via && <span className="d text-[11px]">{via}</span>}
         </div>

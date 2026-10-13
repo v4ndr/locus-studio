@@ -5,6 +5,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Header, Omni, Kbd, I, Avatar } from "./chrome";
 import { ComposeCard, useCompose } from "./compose";
 import { NoteEditor, NoteRow, readBrouillon } from "./note";
+import { ActionPanel, type PatientRendu } from "./rendu";
+import type { ComposeAction } from "@/locus/compose/contract";
 import { useCabinet, nid, patientPayload, ageDe, type PatientLocal, type NoteLocal } from "@/store/cabinet";
 import { initials } from "@/lib/format";
 import { cn } from "@/lib/cn";
@@ -130,6 +132,7 @@ export function DossierLocalView({ id }: { id: string }) {
   const [noteOpen, setNoteOpen] = React.useState(false);
   const [base, setBase] = React.useState<NoteLocal | undefined>(undefined);
   const [vueActions, setVueActions] = React.useState(false);
+  const [doc, setDoc] = React.useState<ComposeAction | null>(null);
   const notesRef = React.useRef<HTMLElement>(null);
   // Un brouillon en cours rouvre l'éditeur directement.
   React.useEffect(() => { const b = readBrouillon(id); if (b && (b.texte.trim() || b.plan)) setNoteOpen(true); }, [id]);
@@ -138,6 +141,7 @@ export function DossierLocalView({ id }: { id: string }) {
     <div className="flex min-h-dvh flex-col"><Header praticien={PRATICIEN} back="/d" /><main className="mx-auto flex max-w-[720px] flex-1 flex-col items-center justify-center gap-3 px-6 text-center"><h1 className="m-0 text-xl font-medium">Dossier introuvable sur ce poste</h1><p className="m-0 text-sm text-muted-2">Les dossiers créés sans carte Vitale vivent dans le navigateur qui les a créés. Importez l'export JSON pour le retrouver.</p><Link href="/d" className="text-sm" style={{ color: "var(--accent)" }}>Cabinet local →</Link></main></div>
   );
   const nom = `${p.prenomUsuel} ${p.nomUsage}`;
+  const pr: PatientRendu = { nom, naissance: p.naissance.split("-").reverse().join("/"), sexe: p.sexe, age: ageDe(p.naissance) };
   const ini = initials(p.prenomUsuel, p.nomUsage);
   const age = ageDe(p.naissance);
   const derniere = p.notes[0];
@@ -177,24 +181,27 @@ export function DossierLocalView({ id }: { id: string }) {
             <div className="flex items-center gap-3 border-b border-line-4 px-4 py-3"><span className="k">Actions validées</span><span className="d">{p.notes.reduce((n, x) => n + x.actions.length, 0)}</span></div>
             {p.notes.flatMap((n) => n.actions.map((a) => ({ a, n }))).length === 0 && <div className="px-4 py-3 text-sm text-muted-2">Aucune action validée pour l'instant.</div>}
             {p.notes.flatMap((n) => n.actions.map((a) => ({ a, n }))).map(({ a, n }, i) => (
-              <div key={`${n.id}-${a.id}`} className={cn("flex items-center gap-3 px-4 py-2.5 text-sm", i > 0 && "border-t border-line-4", n.remplaceeLe && "opacity-50")}>
-                <span className="d w-[42px] shrink-0 text-[11px]">{new Date(n.date).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" })}</span>
+              <button type="button" key={`${n.id}-${a.id}`} onClick={() => setDoc(a)} className={cn("flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm hover:bg-hover", i > 0 && "border-t border-line-4")} title="Voir le document envoyé">
+                <span className="d w-[42px] shrink-0 text-[11px]">{new Date(a.envoyeLe ?? n.date).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" })}</span>
                 <span className="d flex h-6 min-w-6 shrink-0 items-center justify-center rounded-[6px] bg-soft px-1 text-[10px] text-ink-3">{a.code}</span>
                 <span className="min-w-0 flex-1 truncate">{a.titre}</span>
                 <span className="hidden text-[11px] text-muted-3 sm:inline">{a.destination}</span>
-              </div>
+                {a.renvoye && <span className="text-[11px] text-ok">renvoyé</span>}
+                <I.chevron />
+              </button>
             ))}
           </section>
         )}
+        {doc && <ActionPanel action={doc} patient={pr} onClose={() => setDoc(null)} />}
         {edit && <section className="card px-5 py-5"><PatientForm initial={p} onDone={() => setEdit(false)} /></section>}
 
         {noteOpen ? (
-          <section className="card px-5 py-5"><NoteEditor key={base?.id ?? "nouvelle"} patientId={p.id} local={p} nom={nom} retour={`/d/${p.id}`} consultHref={`/d/${p.id}`} base={base} onRetour={() => { setNoteOpen(false); setBase(undefined); }} /></section>
+          <section className="card px-5 py-5"><NoteEditor key={base?.id ?? "nouvelle"} patientId={p.id} local={p} nom={nom} retour={`/d/${p.id}`} consultHref={`/d/${p.id}`} base={base} patient={pr} onRetour={() => { setNoteOpen(false); setBase(undefined); }} /></section>
         ) : (
           <section ref={notesRef} className="flex scroll-mt-24 flex-col gap-2">
             <div className="flex items-center gap-3"><span className="k px-1">Notes</span><span className="flex-1" /><button type="button" onClick={() => setNoteOpen(true)} className="flex items-center gap-2 rounded-[10px] bg-ink px-3.5 py-[8px] text-sm text-paper"><I.plus /> Consultation</button></div>
             {p.notes.length === 0 && <div className="rounded-[14px] border border-dashed border-line px-5 py-6 text-center text-sm text-muted-2">Aucune note. La première consultation commence ici : écrivez ou dictez, Locus décline en actions, vous signez.</div>}
-            {p.notes.map((n) => <NoteRow key={n.id} n={n} onModifier={() => { setBase(n); setNoteOpen(true); }} onDelete={() => cab.removeNote(p.id, n.id)} />)}
+            {p.notes.map((n) => <NoteRow key={n.id} n={n} patient={pr} onModifier={() => { setBase(n); setNoteOpen(true); }} onDelete={() => cab.removeNote(p.id, n.id)} />)}
           </section>
         )}
       </main>

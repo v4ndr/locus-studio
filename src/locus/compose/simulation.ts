@@ -85,7 +85,7 @@ export async function* simulateCompose(input: ComposeInput): AsyncGenerator<Comp
       const m = /(parac[ée]tamol|ibuprof[èe]ne|amoxicilline|dolip?rane)\s*(\d+\s*(?:mg|g))?/.exec(t);
       lignes.push(m ? { libelle: `${m[1]}${m[2] ? " " + m[2] : ""}`, posologie: /si douleur|si besoin/.test(t) ? "1 prise si douleur, max 3/j" : "1 prise matin et soir", duree: /(\d+)\s*(j|jour)/.test(t) ? `${/(\d+)\s*(j|jour)/.exec(t)![1]} jours` : "5 jours" } : { libelle: (note ? /(?:ordo(?:nnance)?|prescri[st]?|traitement)\s*:?\s*([^\n.]+)/i.exec(input.note ?? "")?.[1] : undefined) ?? input.texte.replace(/^(ordo(nnance)?|prescri[st]?)\s*:?\s*/i, ""), posologie: "à préciser", duree: `${duree} mois` });
     }
-    await call("proposer_ordonnance", { type: nommes.length || (/renouvel/.test(t) && meds.length) ? "medicament" : /kin[ée]|s[ée]ance/.test(t) ? "paramedical" : /bio|nfs|tsh|cr[ée]at|hba1c/.test(t) ? "biologie" : /scanner|irm|radio|[ée]cho/.test(t) ? "imagerie" : "medicament", lignes, justification: nommes.length || /renouvel/.test(t) ? "Renouvellement des traitements de fond, sans changement." : note ? "Prescrite dans la conduite à tenir de la note." : "Rédigée depuis la demande ; à relire avant signature." });
+    await call("proposer_ordonnance", { type: nommes.length || (/renouvel/.test(t) && meds.length) || drugsNote.length ? "medicament" : /kin[ée]|s[ée]ance/.test(t) ? "paramedical" : /bio|nfs|tsh|cr[ée]at|hba1c/.test(t) ? "biologie" : /scanner|irm|radio|[ée]cho/.test(t) ? "imagerie" : "medicament", lignes, justification: nommes.length || /renouvel/.test(t) ? "Renouvellement des traitements de fond, sans changement." : note ? "Prescrite dans la conduite à tenir de la note." : "Rédigée depuis la demande ; à relire avant signature." });
     yield* flush();
     phrases.push(`Ordonnance prête${/renouvel/.test(t) ? " : renouvellement sans changement" : ""}.`);
   }
@@ -111,7 +111,7 @@ export async function* simulateCompose(input: ComposeInput): AsyncGenerator<Comp
   // Courrier.
   if (/courrier|adresse|lettre|avis/.test(t) && d && !/mail|message/.test(t)) {
     yield { step: "reflexion", titre: "Je rédige le courrier" }; await sleep(350);
-    const spe = /cardio/.test(t) ? "cardiologie" : /neuro/.test(t) ? "neurologie" : /gyn/.test(t) ? "gynécologie" : /rhumat/.test(t) ? "rhumatologie" : /pneumo/.test(t) ? "pneumologie" : /dermat/.test(t) ? "dermatologie" : "spécialiste";
+    const spe = /kin[ée]/.test(t) ? "kinésithérapie" : /cardio/.test(t) ? "cardiologie" : /neuro/.test(t) ? "neurologie" : /gyn/.test(t) ? "gynécologie" : /rhumat/.test(t) ? "rhumatologie" : /pneumo/.test(t) ? "pneumologie" : /dermat/.test(t) ? "dermatologie" : "spécialiste";
     const motif = input.texte.replace(/.*(?:pour|:)\s*/i, "");
     await call("proposer_courrier", { type: "adressage", destinataire: `Dr — ${spe}`, specialite: spe, titre: `Adressage en ${spe}`, corps: `Cher confrère,\n\nJe vous adresse ${d.nom} pour ${motif}.\n\nAntécédents et traitements : voir la synthèse jointe.\n\nBien confraternellement,\nDr Vandepitterie`, justification: "Adressage demandé ; les éléments du dossier sont joints." });
     yield* flush();

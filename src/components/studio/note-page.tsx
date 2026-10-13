@@ -34,8 +34,8 @@ function Inner({ v, praticien }: { v: PatientView; praticien: { initials: string
           <span className="flex-1" />
           {scripte && <Link href={`/p/${v.ref.id}/actions`} className="text-xs text-muted-2 hover:text-ink">Scénario du design →</Link>}
         </div>
-        {lu && <NoteEditor key={base?.id ?? "nouvelle"} patientId={v.ref.id} nom={v.ref.nom} retour={`/p/${v.ref.id}`} consultHref={`/p/${v.ref.id}/rencontre`} script={scripte ? script : undefined} motifInitial={v.rdv?.motif} base={base} />}
-        <NotesSession patientId={v.ref.id} />
+        {lu && <NoteEditor key={base?.id ?? "nouvelle"} patientId={v.ref.id} nom={v.ref.nom} retour={`/p/${v.ref.id}`} consultHref={`/p/${v.ref.id}/rencontre`} script={scripte ? script : undefined} motifInitial={v.rdv?.motif} base={base} patient={{ nom: v.ref.nom, naissance: v.ref.naissance, age: v.ref.age, sexe: v.meta.endsWith("F") ? "F" : "M" }} />}
+        <NotesSession patientId={v.ref.id} patient={{ nom: v.ref.nom, naissance: v.ref.naissance, age: v.ref.age, sexe: v.meta.endsWith("F") ? "F" : "M" }} />
       </main>
     </div>
   );
