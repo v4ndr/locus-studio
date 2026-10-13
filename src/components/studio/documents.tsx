@@ -1,7 +1,7 @@
 "use client";
 import * as React from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import type { PatientView, DocRow } from "@/studio/types";
 import { Header, Omni, I } from "./chrome";
 import { ComposeCard, useCompose } from "./compose";
@@ -17,16 +17,20 @@ export function DocumentsView({ v, praticien }: { v: PatientView; praticien: { i
 
 function Inner({ v, praticien }: { v: PatientView; praticien: { initials: string } }) {
   const sp = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
   const composer = useCompose();
   // Prérendu statique : le filtre de l'URL s'applique après l'hydratation, pour ne pas diverger du HTML servi.
-  const [type, setType] = React.useState<string>("Tous");
+  const [type, setTypeState] = React.useState<string>("Tous");
   const fromUrl = sp.get("type");
-  React.useEffect(() => { if (fromUrl) setType(fromUrl); }, [fromUrl]);
+  React.useEffect(() => { setTypeState(fromUrl ?? "Tous"); }, [fromUrl]);
+  // Le filtre vit dans l'URL : « Tous » la nettoie, un rechargement garde ce qu'on voit.
+  const setType = (t: string) => { setTypeState(t); try { window.history.replaceState(window.history.state, "", t === "Tous" ? pathname : `${pathname}?type=${encodeURIComponent(t)}`); } catch { router.replace(pathname); } };
   const [q, setQ] = React.useState("");
-  const rows = v.documents.filter((r) => (type === "Tous" || r.type === type) && (!q || norm(`${r.titre} ${r.de} ${r.type}`).includes(norm(q))));
+  const rows = v.documents.filter((r) => (type === "Tous" || r.type === type) && (!q || norm(`${r.titre} ${r.de} ${r.type} ${r.texte ?? ""}`).includes(norm(q))));
   return (
     <div className="flex min-h-dvh flex-col">
-      <Header praticien={praticien} patient={{ id: v.ref.id, nom: v.ref.nom, initials: v.ref.initials, meta: v.meta }} />
+      <Header praticien={praticien} patient={{ id: v.ref.id, nom: v.ref.nom, initials: v.ref.initials, meta: v.meta }} back={`/p/${v.ref.id}`} />
       <main className="mx-auto flex w-full max-w-[1040px] flex-1 flex-col gap-5 px-4 pb-8 pt-8 sm:px-6 sm:pt-10">
         <div className="flex items-center gap-3">
           <h1 className="m-0 text-2xl font-medium tracking-[-.02em]">Tout</h1>

@@ -131,7 +131,7 @@ src/
 ├── studio/                types et projection serveur du parcours (accueil, vue patient, document, boîtes)
 ├── components/studio/     chrome, home, dossier, rencontre, actions, signature, documents, document, inbox, compose (la carte du plan), note (l'éditeur + chrono), local (patient sans carte Vitale, cabinet local)
 ├── domain/types.ts        le modèle du dossier — UNE enveloppe pour tout, provenance de 1re classe
-├── data/                  le jeu de données : cabinet, horloge fixe (jeudi 15 oct. 2026), 19 patients
+├── data/                  le jeu de données : cabinet, horloge fixe (jeudi 15 oct. 2026), 22 patients
 │   ├── patients/          8 patients « héros » écrits à la main (dont Claire Moreau, la patiente du design), 14 autres décrits dans seeds.ts et construits par secondaires.ts
 │   ├── rencontres.ts      la dictée scriptée, les actions détectées, les documents générés, la question
 │   └── manifeste.ts       les prises de parti

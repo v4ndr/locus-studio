@@ -25,7 +25,7 @@ export interface PatientView {
   ehr: string;
 }
 export interface Chip { id: string; label: string; tool: string; title: string; body: string; cta: string; proposal?: Proposal }
-export interface DocRow { date: string; type: "Ordonnance" | "Courrier" | "Biologie" | "Imagerie" | "Arrêt · certif" | "Consultation"; titre: string; de: string; id: string }
+export interface DocRow { date: string; type: "Ordonnance" | "Courrier" | "Biologie" | "Imagerie" | "Arrêt · certif" | "Consultation"; titre: string; de: string; id: string; /** Le contenu, pour la recherche plein texte de la table. */ texte?: string }
 
 /** Un document ouvert : son contenu, sa lecture par Locus, ses métadonnées. */
 export interface DocLine { k: string; v?: string; flag?: "normal" | "bas" | "haut" | "critique"; ref?: string; precedent?: string; alerte?: string }

@@ -105,7 +105,7 @@ function Inner({ v, doc, boite, boiteKind, praticien }: { v: PatientView; doc: D
               <div className="flex items-center gap-2.5"><span className="k" style={{ color: "var(--accent)" }}>Lecture de Locus</span><span className="flex-1" /><span className={cn("text-xs", URG[doc.lecture.urgence].cls)}>{URG[doc.lecture.urgence].label}</span></div>
               <p className="m-0 text-[15px] leading-relaxed">{doc.lecture.resume}</p>
               {doc.lecture.points.length > 0 && <ul className="m-0 flex list-disc flex-col gap-1 pl-5 text-sm text-ink-2">{doc.lecture.points.map((p, i) => <li key={i}>{p}</li>)}</ul>}
-              <span className="d text-[11px]">confiance {Math.round(doc.lecture.confidence * 100)} % · vérifiable en un clic sur chaque fait</span>
+              <span className="d text-[11px]">confiance {Math.round(doc.lecture.confidence * 100)} % · le document complet est en dessous</span>
             </section>
           )}
 
@@ -117,7 +117,7 @@ function Inner({ v, doc, boite, boiteKind, praticien }: { v: PatientView; doc: D
                   <span className={cn("flex-1", l.flag && l.flag !== "normal" && "font-medium")}>{l.k}{l.alerte && <span className="ml-2 text-xs text-warn">⚠ {l.alerte}</span>}</span>
                   <span className="flex items-baseline gap-3 sm:justify-end">
                     {l.v && <span className={cn("d text-[13px]", l.flag === "critique" ? "text-rec-text" : l.flag === "haut" || l.flag === "bas" ? "text-warn" : "text-ink")}>{l.v}{l.flag === "haut" ? " ↑" : l.flag === "bas" ? " ↓" : l.flag === "critique" ? " ‼" : ""}</span>}
-                    {l.ref && <span className="d hidden min-w-[80px] text-[11px] sm:inline">{l.ref}</span>}
+                    {l.ref && <span className="d min-w-[80px] text-[11px]">norme {l.ref}</span>}
                     {l.precedent && <span className="d min-w-[92px] text-[11px]">préc. {l.precedent}</span>}
                   </span>
                 </div>

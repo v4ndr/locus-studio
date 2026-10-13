@@ -116,7 +116,7 @@ const briefing = rec("briefing", ID, P.agent(0.9, [messages[0].id]), {
   appointmentId: appointment.id,
   synthese: "Asthmatique sous Symbicort, ==enceinte (≈ 7 SA, test positif hier)==. Petite perte de contrôle de l'asthme la semaine dernière. Pré-conception préparée cet été (acide folique en cours).",
   depuisDerniereFois: ["Message hier 22h15 : test positif, DDR " + day(-49) + ", demande Ventoline, sifflements la semaine dernière."],
-  echeances: [{ libelle: "Déclaration de grossesse (DSG amelipro) avant 14 SA" }, { libelle: "Échographie T1 : 11-13 SA + 6 j, soit entre " + day(28) + " et " + day(48) }, { libelle: "Vaccination grippe (saison) : à proposer ce matin" }],
+  echeances: [{ libelle: "Déclaration de grossesse (DSG amelipro) avant 14 SA" }, { libelle: "Échographie T1 : 11-13 SA + 6 j, soit entre le " + day(28).split("-").reverse().join("/") + " et le " + day(48).split("-").reverse().join("/") }, { libelle: "Vaccination grippe (saison) : à proposer ce matin" }],
   questions: ["ACT / contrôle de l'asthme : fréquence de la Ventoline, réveils nocturnes ?", "Nausées, saignements, douleurs ?", "Acide folique poursuivi ?", "Tabac, alcool : non connus — confirmer.", "Souhaite-t-elle un suivi par vous, une sage-femme, une maternité ? (orientation HAS : grossesse à bas risque, suivi A)"],
   propositionsIds: [proposals[0].id, proposals[3].id],
 }, { id: `${ID}.briefing.1`, status: "propose", at: at("07:30") });
