@@ -91,7 +91,7 @@ const prescriptions = [
 ];
 
 const sickLeaves = [
-  rec("sick-leave", ID, P.medecin("2026-08-12"), { du: "2026-08-12", au: "2026-09-01", motif: "Épicondylite latérale droite", sortiesAutorisees: "libres", teletransmis: { le: "2026-08-12T10:12:00+02:00", numero: "AAT-26-081233" } }, { at: "2026-08-12T10:12:00+02:00" }),
+  rec("sick-leave", ID, P.medecin("2026-08-12"), { du: "2026-08-12", au: day(-30), motif: "Épicondylite latérale droite", sortiesAutorisees: "libres", teletransmis: { le: "2026-08-12T10:12:00+02:00", numero: "AAT-26-081233" } }, { at: "2026-08-12T10:12:00+02:00" }),
   rec("sick-leave", ID, P.medecin(day(-29)), { du: day(-29), au: day(-1), motif: "Épicondylite latérale droite", sortiesAutorisees: "libres", prolongation: true, teletransmis: { le: at("10:14", -29), numero: "AAT-26-091644" } }, { at: at("10:14", -29) }),
 ];
 

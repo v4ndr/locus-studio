@@ -56,7 +56,7 @@ export function ActionsView({ v, praticien }: { v: PatientView; praticien: { ini
                 {isOpen && (
                   <div className="flex flex-col px-4 pb-4 pt-1 md:pl-[58px]">
                     {d.fields.map((f, i) => <div key={i} className="flex gap-4 border-t border-soft py-2.5 text-sm leading-[1.45]"><span className="w-[110px] shrink-0 text-muted-2">{f.k}</span><span className="flex-1">{f.v}</span></div>)}
-                    <span className="flex flex-wrap gap-4 pt-2.5 text-xs"><Link href={`/p/${v.ref.id}/rencontre`} className="hover:underline" style={{ color: "var(--accent)" }}>Voir la phrase dictée →</Link><Link href={`/p/${v.ref.id}/signature`} className="hover:underline" style={{ color: "var(--accent)" }}>Voir le document tel qu'il sera signé →</Link></span>
+                    <span className="flex flex-wrap gap-4 pt-2.5 text-xs"><Link href={`/p/${v.ref.id}/rencontre`} className="hover:underline" style={{ color: "var(--accent)" }}>Voir la phrase dictée →</Link><Link href={`/p/${v.ref.id}/signature?doc=${encodeURIComponent(d.id)}`} className="hover:underline" style={{ color: "var(--accent)" }}>Voir le document tel qu'il sera signé →</Link></span>
                   </div>
                 )}
               </div>

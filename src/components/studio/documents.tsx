@@ -24,8 +24,9 @@ function Inner({ v, praticien }: { v: PatientView; praticien: { initials: string
   const [type, setTypeState] = React.useState<string>("Tous");
   const fromUrl = sp.get("type");
   React.useEffect(() => { setTypeState(fromUrl ?? "Tous"); }, [fromUrl]);
-  // Le filtre vit dans l'URL : « Tous » la nettoie, un rechargement garde ce qu'on voit.
-  const setType = (t: string) => { setTypeState(t); try { window.history.replaceState(window.history.state, "", t === "Tous" ? pathname : `${pathname}?type=${encodeURIComponent(t)}`); } catch { router.replace(pathname); } };
+  // Le filtre vit dans l'URL, toujours explicite (« ?type=Tous » compris) : le routeur client de Next réutilise sinon, pour le chemin nu, l'entrée en cache de la première visite et son filtre.
+  const hrefType = (t: string) => `${pathname}?type=${encodeURIComponent(t)}`;
+  void router;
   const [q, setQ] = React.useState("");
   const rows = v.documents.filter((r) => (type === "Tous" || r.type === type) && (!q || norm(`${r.titre} ${r.de} ${r.type} ${r.texte ?? ""}`).includes(norm(q))));
   return (
@@ -45,7 +46,7 @@ function Inner({ v, praticien }: { v: PatientView; praticien: { initials: string
           <span className="hidden text-[13px] text-muted-2 sm:inline">Tout le dossier, du plus récent au plus ancien · filtrez par type, cherchez un mot.</span>
         </div>
         <div className="flex flex-wrap gap-1.5">
-          {LABELS.map((l) => { const on = l === type; return <button key={l} type="button" onClick={() => setType(l)} aria-pressed={on} className={cn("min-h-9 rounded-full border px-3 py-[7px] text-[13px]", on ? "border-ink bg-ink text-paper" : "border-line bg-paper text-ink-2")}>{PLURAL[l] ?? l}</button>; })}
+          {LABELS.map((l) => { const on = l === type; return <Link key={l} href={hrefType(l)} replace scroll={false} onClick={() => setTypeState(l)} aria-current={on ? "true" : undefined} className={cn("flex min-h-9 items-center rounded-full border px-3 py-[7px] text-[13px] hover:text-ink", on ? "border-ink bg-ink text-paper hover:text-paper" : "border-line bg-paper text-ink-2")}>{PLURAL[l] ?? l}</Link>; })}
         </div>
         <div className="rounded-[14px] border border-line-3 bg-paper">
           <div className="tr tr-head"><span className="k">Date</span><span className="k">Type</span><span className="k">Document</span><span className="k">Émetteur</span><span /></div>

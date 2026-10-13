@@ -44,7 +44,7 @@ function Inner({ v, doc, boite, boiteKind, praticien }: { v: PatientView; doc: D
   const nextId = at >= 0 && at < ids.length - 1 ? ids[at + 1] : undefined;
   const prevRow = inBox ? rowsBoite[at - 1] : rowsDossier[at - 1];
   const nextRow = inBox ? rowsBoite[at + 1] : rowsDossier[at + 1];
-  const back = inBox ? `/inbox/${from}` : `/p/${v.ref.id}/documents${type !== "Tous" ? `?type=${encodeURIComponent(type)}` : ""}`;
+  const back = inBox ? `/inbox/${from}` : `/p/${v.ref.id}/documents?type=${encodeURIComponent(type)}`;
 
   React.useEffect(() => {
     const onKey = (e: KeyboardEvent) => {

@@ -2,7 +2,7 @@
 import * as React from "react";
 import Link from "next/link";
 import type { PatientView } from "@/studio/types";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Header, Kbd, I, useShortcuts } from "./chrome";
 import { DR_LAURENT } from "@/data/cabinet";
 import { TODAY } from "@/data/clock";
@@ -10,8 +10,13 @@ import { useRencontre } from "@/store/rencontre";
 import { cn } from "@/lib/cn";
 
 /** Validation et signature : la liste, l'aperçu, un bouton. Puis « Rencontre clôturée ». */
-export function SignatureView({ v, praticien }: { v: PatientView; praticien: { initials: string; nom: string } }) {
+export function SignatureView(props: { v: PatientView; praticien: { initials: string; nom: string } }) {
+  return <React.Suspense fallback={null}><SignatureInner {...props} /></React.Suspense>;
+}
+
+function SignatureInner({ v, praticien }: { v: PatientView; praticien: { initials: string; nom: string } }) {
   const r = v.rencontre;
+  const docParam = useSearchParams().get("doc");
   const router = useRouter();
   const { me, dispatch } = useRencontre(v.ref.id);
   const aSigner = r.actions.filter((a) => a.statut !== "attente" && a.destination !== "agenda");
@@ -21,6 +26,7 @@ export function SignatureView({ v, praticien }: { v: PatientView; praticien: { i
   const reponse = r.question && answer ? r.question.options.find((o) => o.id === answer)?.label ?? answer : undefined;
   const bloque = !!r.question && !answer && aSigner.some((a) => a.id === r.question!.appliqueA);
   const [sel, setSel] = React.useState(aSigner.find((a) => a.statut !== "pret")?.id ?? aSigner[0]?.id);
+  React.useEffect(() => { if (docParam && aSigner.some((a) => a.id === docParam)) setSel(docParam); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [docParam]);
   const cur = aSigner.find((a) => a.id === sel);
   const sign = () => { if (!bloque && aSigner.length) dispatch({ type: "sign", patientId: v.ref.id }); };
   useShortcuts({ cmdEnter: () => (me.signed ? undefined : sign()) });
