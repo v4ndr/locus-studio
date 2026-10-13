@@ -125,7 +125,7 @@ function Row({ r, kind, open, onOpen, onDone, muted }: { r: InboxRow; kind: Inbo
           <p className="m-0 whitespace-pre-line text-sm leading-relaxed">{r.corps}</p>
           {r.resume && <div className="flex flex-col gap-1 rounded-[10px] bg-accent-soft-2 px-3.5 py-2.5 text-sm"><span className="k" style={{ color: "var(--accent)" }}>Locus{r.intention && INTENTION[r.intention] ? ` · ${INTENTION[r.intention]}` : ""}</span>{r.resume}</div>}
           {r.reponse ? (
-            <label className="flex flex-col gap-1 rounded-[10px] border border-line px-3.5 py-2.5 text-sm"><span className="k">Réponse préparée · modifiez-la avant d'envoyer</span><textarea id={`rep-${r.id}`} value={rep} onChange={(e) => setRep(e.target.value)} rows={Math.min(12, Math.max(4, rep.split("\n").length + 1))} className="w-full resize-y bg-transparent text-base leading-relaxed text-ink sm:text-sm" /></label>
+            <label className="flex flex-col gap-1 rounded-[10px] border border-line px-3.5 py-2.5 text-sm"><span className="k">Réponse préparée · modifiez-la avant d'envoyer</span><textarea autoComplete="off" autoCorrect="off" spellCheck={false} id={`rep-${r.id}`} value={rep} onChange={(e) => setRep(e.target.value)} rows={Math.min(12, Math.max(4, rep.split("\n").length + 1))} className="w-full resize-y bg-transparent text-base leading-relaxed text-ink sm:text-sm" /></label>
           ) : (
             <p className="m-0 text-xs text-muted-2">Pas de réponse préparée : demandez-la dans la barre du bas (« réponds-lui que… ») ou ouvrez le dossier.</p>
           )}

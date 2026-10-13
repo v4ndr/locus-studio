@@ -127,7 +127,7 @@ export function Omni({ placeholder, onSubmit, cta, chips, children, maxWidth = 7
         )}
         <form onSubmit={(e) => { e.preventDefault(); if (showHints && sel >= 0) { setV(suggestions![sel].t); setSel(-1); return; } envoyer(v); }} className="flex items-center gap-2 rounded-[14px] border border-line bg-paper py-2.5 pl-4 pr-2.5 focus-within:border-accent-line sm:gap-3 sm:py-3 sm:pl-[18px] sm:pr-3" style={{ boxShadow: "var(--shadow)" }}>
           <label htmlFor={inputId} className="sr-only">Demander</label>
-          <input id={inputId} ref={ref} value={v} onChange={(e) => { setV(e.target.value); setSel(-1); }} onFocus={() => setFocus(true)} onKeyDown={(e) => {
+          <input id={inputId} name="locus-omni" ref={ref} autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck={false} data-1p-ignore data-lpignore="true" value={v} onChange={(e) => { setV(e.target.value); setSel(-1); }} onFocus={() => setFocus(true)} onKeyDown={(e) => {
             if (showHints && e.key === "ArrowDown") { e.preventDefault(); setSel((x) => Math.min(suggestions!.length - 1, x + 1)); }
             else if (showHints && e.key === "ArrowUp") { e.preventDefault(); setSel((x) => Math.max(-1, x - 1)); }
             else if (e.key === "Escape") { if (v) { e.preventDefault(); e.stopPropagation(); setV(""); setSel(-1); } }

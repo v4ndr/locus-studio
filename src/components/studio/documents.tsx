@@ -41,7 +41,7 @@ function Inner({ v, praticien }: { v: PatientView; praticien: { initials: string
           <div className="flex flex-[1_1_280px] items-center gap-2.5 rounded-[10px] border border-line bg-paper px-3.5 py-[9px]">
             <I.search size={15} />
             <label htmlFor="s" className="sr-only">Rechercher</label>
-            <input id="s" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Rechercher dans le contenu, l'émetteur, un médicament…" className="min-h-8 min-w-0 flex-1 bg-transparent text-base text-ink outline-none placeholder:text-muted-3 sm:text-sm" />
+            <input id="s" name="locus-filtre" value={q} autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck={false} data-1p-ignore data-lpignore="true" onChange={(e) => setQ(e.target.value)} placeholder="Rechercher dans le contenu, l'émetteur, un médicament…" className="min-h-8 min-w-0 flex-1 bg-transparent text-base text-ink outline-none placeholder:text-muted-3 sm:text-sm" />
           </div>
           <span className="hidden text-[13px] text-muted-2 sm:inline">Tout le dossier, du plus récent au plus ancien · filtrez par type, cherchez un mot.</span>
         </div>

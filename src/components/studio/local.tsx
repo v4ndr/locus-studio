@@ -52,17 +52,17 @@ export function PatientForm({ initial, onDone }: { initial?: PatientLocal; onDon
   return (
     <form onSubmit={(e) => { e.preventDefault(); save(); }} className="flex flex-col gap-5">
       <div className="grid gap-4 sm:grid-cols-2">
-        <F label="Prénom"><input value={prenom} onChange={(e) => setPrenom(e.target.value)} className={cls} autoFocus /></F>
-        <F label="Nom d'usage"><input value={nom} onChange={(e) => setNom(e.target.value)} className={cls} /></F>
-        <F label="Date de naissance" hint={dateErr ?? undefined}><input type="date" value={naissance} min="1900-01-01" max={today} aria-invalid={!!dateErr} onChange={(e) => setNaissance(e.target.value)} className={cn(cls, dateErr && "border-rec")} /></F>
+        <F label="Prénom"><input autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck={false} data-1p-ignore data-lpignore="true" value={prenom} onChange={(e) => setPrenom(e.target.value)} className={cls} autoFocus /></F>
+        <F label="Nom d'usage"><input autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck={false} data-1p-ignore data-lpignore="true" value={nom} onChange={(e) => setNom(e.target.value)} className={cls} /></F>
+        <F label="Date de naissance" hint={dateErr ?? undefined}><input autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck={false} data-1p-ignore data-lpignore="true" type="date" value={naissance} min="1900-01-01" max={today} aria-invalid={!!dateErr} onChange={(e) => setNaissance(e.target.value)} className={cn(cls, dateErr && "border-rec")} /></F>
         <F label="Sexe" hint={sexe ? undefined : "à choisir"}><div className="flex gap-1.5">{(["F", "M"] as const).map((x) => <button key={x} type="button" onClick={() => setSexe(x)} aria-pressed={sexe === x} className={cn("min-h-11 rounded-full border px-4 py-2 text-sm", sexe === x ? "border-ink bg-ink text-paper" : "border-line bg-paper text-ink-2")}>{x === "F" ? "Femme" : "Homme"}</button>)}</div></F>
-        <F label="Téléphone" hint="facultatif"><input value={tel} onChange={(e) => setTel(e.target.value)} className={cls} placeholder="06 …" /></F>
-        <F label="Profession · situation" hint="facultatif"><input value={prof} onChange={(e) => setProf(e.target.value)} className={cls} /></F>
+        <F label="Téléphone" hint="facultatif"><input autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck={false} data-1p-ignore data-lpignore="true" value={tel} onChange={(e) => setTel(e.target.value)} className={cls} placeholder="06 …" /></F>
+        <F label="Profession · situation" hint="facultatif"><input autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck={false} data-1p-ignore data-lpignore="true" value={prof} onChange={(e) => setProf(e.target.value)} className={cls} /></F>
       </div>
       <div className="grid gap-4 sm:grid-cols-3">
-        <F label="Antécédents" hint="un par ligne"><textarea value={atcd} onChange={(e) => setAtcd(e.target.value)} rows={5} className={cls} placeholder={"HTA depuis 2019\nAppendicectomie 1998"} /></F>
-        <F label="Allergies" hint="un par ligne"><textarea value={all} onChange={(e) => setAll(e.target.value)} rows={5} className={cls} placeholder={"Pénicilline (urticaire)"} /></F>
-        <F label="Traitements" hint="dci dosage · posologie"><textarea value={tt} onChange={(e) => setTt(e.target.value)} rows={5} className={cls} placeholder={"ramipril 5 mg · 1 cp le matin\nmetformine 1000 mg · 1 cp matin et soir"} /></F>
+        <F label="Antécédents" hint="un par ligne"><textarea autoComplete="off" autoCorrect="off" spellCheck={false} value={atcd} onChange={(e) => setAtcd(e.target.value)} rows={5} className={cls} placeholder={"HTA depuis 2019\nAppendicectomie 1998"} /></F>
+        <F label="Allergies" hint="un par ligne"><textarea autoComplete="off" autoCorrect="off" spellCheck={false} value={all} onChange={(e) => setAll(e.target.value)} rows={5} className={cls} placeholder={"Pénicilline (urticaire)"} /></F>
+        <F label="Traitements" hint="dci dosage · posologie"><textarea autoComplete="off" autoCorrect="off" spellCheck={false} value={tt} onChange={(e) => setTt(e.target.value)} rows={5} className={cls} placeholder={"ramipril 5 mg · 1 cp le matin\nmetformine 1000 mg · 1 cp matin et soir"} /></F>
       </div>
       <div className="flex flex-wrap items-center gap-2.5">
         <button type="submit" disabled={!ok} className="flex min-h-11 items-center gap-2 rounded-[10px] bg-ink px-4 py-[9px] text-sm text-paper disabled:opacity-40">{initial ? "Enregistrer" : "Créer le dossier"} <Kbd dark>⏎</Kbd></button>
