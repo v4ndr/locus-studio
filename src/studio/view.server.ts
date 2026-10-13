@@ -96,7 +96,7 @@ export function patientView(id: string): PatientView | undefined {
   ].sort((a, b) => b.date.split("/").reverse().join("").localeCompare(a.date.split("/").reverse().join("")));
 
   /* « À noter » : chaque ligne sait où elle mène. */
-  const STOP = new Set(["rappel", "renouvellement", "renouveler", "bilan", "prise", "sang", "dans", "pour", "avec", "mail", "semaine", "semaines", "mois", "jours", "controle", "resultat", "resultats", "patient", "patiente", "demande", "compte", "rendu", "courrier", "avant", "apres", "depuis", "vers", "faire", "voir"]);
+  const STOP = new Set(["rappel", "renouvellement", "renouveler", "bilan", "prise", "sang", "dans", "pour", "avec", "mail", "semaine", "semaines", "mois", "jours", "controle", "resultat", "resultats", "patient", "patiente", "demande", "compte", "rendu", "courrier", "avant", "apres", "depuis", "vers", "faire", "voir", "annuel", "annuelle", "suivi", "suivie", "trimestre", "echographie", "radio", "scanner", "consultation", "examen", "retrouvee", "retrouve", "dossier", "proposer", "programme", "programmer", "matin"]);
   const words = (t: string) => new Set(norm(t).split(/[^a-z0-9]+/).filter((w) => w.length >= 4 && !STOP.has(w)));
   const overlap = (a: string, b: string) => { const A = words(a), B = words(b); let n = 0; for (const w of A) if (B.has(w)) n++; return n; };
   // Un seul mot commun (« annuel », « échographie ») ne suffit pas à désigner un document ou un raccourci : il en faut deux, ou la moitié des mots.
@@ -106,8 +106,10 @@ export function patientView(id: string): PatientView | undefined {
   const sourceOf = (x: Proposal): NoteAction => {
     const rid = x.declencheur.recordId ?? x.provenance.derivedFrom?.find((r) => rows.some((row) => row.id === r));
     if (rid && rows.some((r) => r.id === rid)) return { type: "doc", href: docHref(rid) };
+    // Un signalement « non retrouvé au dossier » n'a, par définition, pas de document : on ne devine pas, on demande.
+    if (/non retrouv|absen|manqu|pas (de|re[çc]u)/i.test(x.titre)) return { type: "ask", texte: x.titre };
     const best = recent.map((r) => ({ r, n: overlap(x.titre, `${r.titre} ${r.type}`) })).sort((a, b) => b.n - a.n)[0];
-    if (best && assez(best.n, x.titre)) return { type: "doc", href: docHref(best.r.id) };
+    if (best && best.n >= 2) return { type: "doc", href: docHref(best.r.id) };
     return { type: "ask", texte: x.titre };
   };
   const chipFor = (libelle: string): Chip | undefined => chips.map((c) => ({ c, n: overlap(libelle, `${c.label} ${c.title}`) })).filter((x) => assez(x.n, libelle)).sort((a, b) => b.n - a.n)[0]?.c;
@@ -118,7 +120,7 @@ export function patientView(id: string): PatientView | undefined {
     const lib = brut.replace(/ — .*$/, "").replace(/\s*[—-]?\s*dû$/i, "").replace(/\b(\d{4})-(\d{2})-(\d{2})\b/g, "$3/$2/$1").trim();
     const c = chipFor(lib);
     // « dû » seulement pour ce qui est en retard ou à faire ; une échéance « à jour » ou « non éligible » est une information.
-    const du = /d[ûu]\b|retard|depuis|avant|a proposer|à proposer|ce matin|dépass|attendu/i.test(brut) && !/à jour|non [ée]ligible|fait\)/i.test(brut);
+    const du = /\bd[ûu](?![a-zà-ÿ])|retard|depuis|avant|a proposer|à proposer|ce matin|dépass|attendu/i.test(brut) && !/à jour|non [ée]ligible|fait\)/i.test(brut);
     aNoter.push({ dot: du ? "warn" : "gray", texte: lib, tag: du ? "dû" : "à savoir", action: c ? { type: "cmd", chipId: c.id } : /vaccin|rappel|dtp|dtca|grippe|covid|depist|mammo|hpv|frottis|fit|colorectal/i.test(lib) ? { type: "fiche", section: "depistages" } : { type: "ask", texte: `${lib} : que faut-il préparer ?` } });
   }
   for (const a of allergies.slice(0, 1)) aNoter.push({ dot: "gray", texte: `${a.substance}${a.reaction ? ` · ${a.reaction.toLowerCase()}` : ""}`, tag: "à savoir", action: { type: "fiche", section: "allergies" } });
