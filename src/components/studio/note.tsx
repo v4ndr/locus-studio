@@ -41,7 +41,7 @@ export function writeNotes(patientId: string, notes: NoteLocal[]) { try { localS
  * à l'ouverture — quitter l'écran ne perd rien, et les actions à valider
  * restent visibles depuis le dossier et l'accueil.
  */
-export interface Brouillon { patientId: string; nom: string; href: string; texte: string; motif: string; debut: number | null; chrono: { saisie: number; composeDebut: number; composition: number }; input?: ComposeInput; plan?: ComposePlan; texteDuPlan?: string; edits: Record<string, ComposeAction>; retires: string[]; majLe: string }
+export interface Brouillon { patientId: string; nom: string; href: string; texte: string; motif: string; debut: number | null; chrono: { saisie: number; composeDebut: number; composition: number }; input?: ComposeInput; plan?: ComposePlan; texteDuPlan?: string; edits: Record<string, ComposeAction>; retires: string[]; majLe: string; remplace?: string }
 export const BROUILLON_KEY = (patientId: string) => `locus-studio-brouillon-${patientId}`;
 export function readBrouillon(patientId: string): Brouillon | null { try { const raw = localStorage.getItem(BROUILLON_KEY(patientId)); return raw ? (JSON.parse(raw) as Brouillon) : null; } catch { return null; } }
 export function writeBrouillon(b: Brouillon) { try { localStorage.setItem(BROUILLON_KEY(b.patientId), JSON.stringify(b)); } catch {} }
@@ -53,7 +53,7 @@ export function listBrouillons(): Brouillon[] {
   return out.sort((a, b) => b.majLe.localeCompare(a.majLe));
 }
 
-export function NoteEditor({ patientId, local, nom, retour, onSaved, script, motifInitial, consultHref, onRetour }: { patientId: string; local?: PatientLocal; nom: string; retour: string; onSaved?: (n: NoteLocal) => void; script?: string; motifInitial?: string; consultHref?: string; onRetour?: () => void }) {
+export function NoteEditor({ patientId, local, nom, retour, onSaved, script, motifInitial, consultHref, onRetour, base }: { patientId: string; local?: PatientLocal; nom: string; retour: string; onSaved?: (n: NoteLocal) => void; script?: string; motifInitial?: string; consultHref?: string; onRetour?: () => void; /** La note signée que cette consultation corrige : la nouvelle version la remplacera. */ base?: NoteLocal }) {
   const cab = useCabinet();
   const composer = useCompose();
   const [texte, setTexte] = React.useState("");
@@ -65,6 +65,7 @@ export function NoteEditor({ patientId, local, nom, retour, onSaved, script, mot
   const [retires, setRetires] = React.useState<string[]>([]);
   const [signee, setSignee] = React.useState<NoteLocal | null>(null);
   const [repris, setRepris] = React.useState(false);
+  const [remplace, setRemplace] = React.useState<string | undefined>(undefined);
   const [tick, setTick] = React.useState(0);
   const [micro, setMicro] = React.useState<"absent" | "pret" | "ecoute" | "erreur">("absent");
   const [interim, setInterim] = React.useState("");
@@ -78,8 +79,11 @@ export function NoteEditor({ patientId, local, nom, retour, onSaved, script, mot
   React.useEffect(() => {
     setMicro(speechCtor() ? "pret" : "absent");
     const b = readBrouillon(patientId);
-    if (b && (b.texte.trim() || b.plan)) {
-      setTexte(b.texte); setMotif(b.motif); setDebut(b.debut); chrono.current = b.chrono; setEdits(b.edits ?? {}); setRetires(b.retires ?? []); setTexteDuPlan(b.texteDuPlan ?? null); setRepris(true);
+    if (base && (!b || b.remplace !== base.id)) {
+      // Corriger une note signée : son texte revient dans l'éditeur, le chrono repart, la signature remplacera l'ancienne.
+      setTexte(base.texte); setMotif(base.motif ?? ""); setDebut(null); chrono.current = { saisie: 0, composeDebut: 0, composition: 0 }; setEdits({}); setRetires([]); setTexteDuPlan(null); setRemplace(base.id);
+    } else if (b && (b.texte.trim() || b.plan)) {
+      setTexte(b.texte); setMotif(b.motif); setDebut(b.debut); chrono.current = b.chrono; setEdits(b.edits ?? {}); setRetires(b.retires ?? []); setTexteDuPlan(b.texteDuPlan ?? null); setRepris(true); setRemplace(b.remplace);
       if (b.plan && b.input) composer.restore(b.input, b.plan);
     }
     setPret(true);
@@ -90,8 +94,8 @@ export function NoteEditor({ patientId, local, nom, retour, onSaved, script, mot
   React.useEffect(() => {
     if (!pret || signee) return;
     if (!texte.trim() && !composer.state.plan) { clearBrouillon(patientId); return; }
-    writeBrouillon({ patientId, nom, href: consultHref ?? retour, texte, motif, debut, chrono: chrono.current, input: composer.state.input, plan: composer.state.plan, texteDuPlan: texteDuPlan ?? undefined, edits, retires, majLe: new Date().toISOString() });
-  }, [pret, signee, texte, motif, debut, composer.state.plan, composer.state.input, edits, retires, texteDuPlan, patientId, nom, retour, consultHref]);
+    writeBrouillon({ patientId, nom, href: consultHref ?? retour, texte, motif, debut, chrono: chrono.current, input: composer.state.input, plan: composer.state.plan, texteDuPlan: texteDuPlan ?? undefined, edits, retires, majLe: new Date().toISOString(), remplace });
+  }, [pret, signee, texte, motif, debut, composer.state.plan, composer.state.input, edits, retires, texteDuPlan, patientId, nom, retour, consultHref, remplace]);
   React.useEffect(() => { if (debut === null) return; const id = setInterval(() => setTick((t) => t + 1), 1000); return () => clearInterval(id); }, [debut]);
   React.useEffect(() => { if (composer.state.plan && chrono.current.composeDebut && !chrono.current.composition) chrono.current.composition = Date.now() - chrono.current.composeDebut; }, [composer.state.plan]);
   const demarre = React.useCallback(() => setDebut((d) => d ?? Date.now()), []);
@@ -139,20 +143,22 @@ export function NoteEditor({ patientId, local, nom, retour, onSaved, script, mot
 
   const onValide = React.useCallback((actions: ComposeAction[], plan: ComposePlan) => {
     const validation = Date.now() - (chrono.current.composeDebut + chrono.current.composition);
-    const note: NoteLocal = { id: nid("n"), date: new Date().toISOString(), motif: motif || undefined, texte, actions, synthese: plan.synthese, via: plan.via, chrono: { saisie: chrono.current.saisie, composition: chrono.current.composition, validation } };
-    if (local) cab.saveNote(local.id, note); else writeNotes(patientId, [note, ...readNotes(patientId)]);
+    const note: NoteLocal = { id: nid("n"), date: new Date().toISOString(), motif: motif || undefined, texte, actions, synthese: plan.synthese, via: plan.via, chrono: { saisie: chrono.current.saisie, composition: chrono.current.composition, validation }, remplace };
+    if (local) cab.saveNote(local.id, note);
+    else writeNotes(patientId, [note, ...readNotes(patientId).map((n) => (remplace && n.id === remplace ? { ...n, remplaceeLe: note.date } : n))]);
     setSignee(note); clearBrouillon(patientId);
     onSaved?.(note);
-  }, [motif, texte, local, cab, patientId, onSaved]);
+  }, [motif, texte, local, cab, patientId, onSaved, remplace]);
 
   const modifiee = !!composer.state.plan && texteDuPlan !== null && texteDuPlan !== texte;
-  const nouvelle = () => { setTexte(""); setMotif(motifInitial ?? ""); setDebut(null); chrono.current = { saisie: 0, composeDebut: 0, composition: 0 }; setEdits({}); setRetires([]); setTexteDuPlan(null); setSignee(null); setRepris(false); simPos.current = 0; setSimul("non"); composer.reset(); clearBrouillon(patientId); ref.current?.focus(); };
+  const nouvelle = () => { setTexte(""); setMotif(motifInitial ?? ""); setDebut(null); chrono.current = { saisie: 0, composeDebut: 0, composition: 0 }; setEdits({}); setRetires([]); setTexteDuPlan(null); setSignee(null); setRepris(false); setRemplace(undefined); simPos.current = 0; setSimul("non"); composer.reset(); clearBrouillon(patientId); ref.current?.focus(); };
 
   const ecoule = debut ? Date.now() - debut : 0;
   void tick;
 
   return (
     <div className="flex flex-col gap-4">
+      {remplace && !signee && <div className="flex items-center gap-2.5 rounded-[10px] bg-soft px-3.5 py-2.5 text-sm"><span className="h-2 w-2 shrink-0 rounded-full bg-warn-dot" /><span className="flex-1">Correction d'une note signée : à la signature, cette version remplacera l'ancienne, qui reste au dossier.</span><button type="button" onClick={nouvelle} className="text-xs text-muted-2 hover:text-ink">Annuler</button></div>}
       {repris && !signee && <div className="flex items-center gap-2.5 rounded-[10px] bg-accent-soft-2 px-3.5 py-2.5 text-sm"><span className="h-2 w-2 shrink-0 rounded-full bg-accent" /><span className="flex-1">Consultation reprise là où vous l'aviez laissée{composer.state.plan ? ` · ${composer.state.plan.actions.filter((a) => a.kind !== "naviguer" && !retires.includes(a.id)).length} action(s) à valider` : ""}.</span><button type="button" onClick={nouvelle} className="text-xs text-muted-2 hover:text-ink">Repartir de zéro</button></div>}
       {signee && <div className="flex items-center gap-2.5 rounded-[10px] bg-ok-soft px-3.5 py-2.5 text-sm text-ok"><I.check size={14} w={2.5} /><span className="flex-1">Note signée et versée au dossier · saisie {fmtMs(signee.chrono.saisie)} · composition {fmtMs(signee.chrono.composition)} · validation {fmtMs(signee.chrono.validation)}</span></div>}
       <div className="flex flex-wrap items-center gap-2.5">
@@ -177,7 +183,7 @@ export function NoteEditor({ patientId, local, nom, retour, onSaved, script, mot
         {composer.state.plan && <span className="d text-[11px]">saisie {fmtMs(chrono.current.saisie)} · composition {fmtMs(chrono.current.composition)}</span>}
       </div>
       {composer.open && (
-        <ComposeCard key={composer.state.input ? `${texteDuPlan?.length ?? 0}-${composer.state.plan ? "p" : "c"}` : "x"} state={composer.state} onClose={composer.reset} suivreSeul={false} onValide={onValide} libelleValider="Signer et verser au dossier"
+        <ComposeCard key={composer.state.input ? `${texteDuPlan?.length ?? 0}-${composer.state.plan ? "p" : "c"}` : "x"} state={composer.state} onClose={composer.reset} suivreSeul={false} onValide={onValide} libelleValider={remplace ? "Signer la correction" : "Signer et verser au dossier"}
           initialActions={{ edits, retires }} onChange={(e, r) => { setEdits(e); setRetires(r); }}
           apres={<>{onRetour ? <button type="button" onClick={onRetour} className="rounded-[10px] bg-ink px-4 py-[9px] text-sm text-paper">Retour au dossier</button> : <Link href={retour} className="rounded-[10px] bg-ink px-4 py-[9px] text-sm text-paper hover:text-paper">Retour au dossier</Link>}<button type="button" onClick={nouvelle} className="rounded-[10px] border border-line bg-paper px-4 py-[9px] text-sm text-ink hover:bg-hover">Nouvelle consultation</button></>} />
       )}
@@ -186,14 +192,15 @@ export function NoteEditor({ patientId, local, nom, retour, onSaved, script, mot
 }
 
 /** Une note enregistrée, telle qu'elle s'affiche dans le dossier. */
-export function NoteRow({ n, onDelete }: { n: NoteLocal; onDelete?: () => void }) {
+export function NoteRow({ n, onDelete, onModifier, modifierHref }: { n: NoteLocal; onDelete?: () => void; onModifier?: () => void; modifierHref?: string }) {
   const [open, setOpen] = React.useState(false);
   const d = new Date(n.date);
+  const ancienne = !!n.remplaceeLe;
   return (
-    <div className="card overflow-hidden">
+    <div className={cn("card overflow-hidden", ancienne && "opacity-60")}>
       <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-hover">
         <span className="d w-[92px] shrink-0">{String(d.getDate()).padStart(2, "0")}/{String(d.getMonth() + 1).padStart(2, "0")} {String(d.getHours()).padStart(2, "0")}:{String(d.getMinutes()).padStart(2, "0")}</span>
-        <span className="flex min-w-0 flex-1 flex-col"><span className="truncate text-[15px]">{n.motif || n.synthese?.slice(0, 80) || "Consultation"}</span><span className="truncate text-[13px] text-muted-2">{n.actions.length} action{n.actions.length > 1 ? "s" : ""} · saisie {fmtMs(n.chrono.saisie)} · composition {fmtMs(n.chrono.composition)} · validation {fmtMs(n.chrono.validation)}{n.via ? ` · ${n.via}` : ""}</span></span>
+        <span className="flex min-w-0 flex-1 flex-col"><span className={cn("truncate text-[15px]", ancienne && "line-through")}>{n.motif || n.synthese?.slice(0, 80) || "Consultation"}{n.remplace && <span className="ml-2 text-[11px] no-underline" style={{ color: "var(--accent)" }}>version corrigée</span>}</span><span className="truncate text-[13px] text-muted-2">{ancienne ? `remplacée le ${new Date(n.remplaceeLe!).toLocaleDateString("fr-FR")} à ${new Date(n.remplaceeLe!).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })} · ` : ""}{n.actions.length} action{n.actions.length > 1 ? "s" : ""} · saisie {fmtMs(n.chrono.saisie)} · composition {fmtMs(n.chrono.composition)} · validation {fmtMs(n.chrono.validation)}{n.via ? ` · ${n.via}` : ""}</span></span>
         <I.chevron open={open} />
       </button>
       {open && (
@@ -201,7 +208,11 @@ export function NoteRow({ n, onDelete }: { n: NoteLocal; onDelete?: () => void }
           {n.synthese && <p className="m-0 text-sm leading-relaxed">{n.synthese}</p>}
           <pre className="m-0 whitespace-pre-wrap rounded-[10px] bg-bg px-3.5 py-3 font-sans text-sm leading-relaxed text-ink-2">{n.texte}</pre>
           {n.actions.length > 0 && <div className="flex flex-col gap-1">{n.actions.map((a) => <div key={a.id} className="flex items-center gap-3 text-sm"><span className="d flex h-6 min-w-6 items-center justify-center rounded-[6px] bg-soft px-1 text-[10px] text-ink-3">{a.code}</span><span className="min-w-0 flex-1 truncate">{a.titre}</span><span className="text-[11px] text-muted-3">{a.destination}</span></div>)}</div>}
-          {onDelete && <button type="button" onClick={onDelete} className="self-start text-xs text-muted-2 hover:text-rec-text">Supprimer cette note</button>}
+          <div className="flex flex-wrap items-center gap-3">
+            {!ancienne && modifierHref && <Link href={modifierHref} className="rounded-[8px] border border-line bg-paper px-3 py-1.5 text-xs text-ink hover:bg-hover hover:text-ink">Modifier · nouvelle version</Link>}
+            {!ancienne && onModifier && !modifierHref && <button type="button" onClick={onModifier} className="rounded-[8px] border border-line bg-paper px-3 py-1.5 text-xs text-ink hover:bg-hover">Modifier · nouvelle version</button>}
+            {onDelete && <button type="button" onClick={onDelete} className="text-xs text-muted-2 hover:text-rec-text">Supprimer</button>}
+          </div>
         </div>
       )}
     </div>
@@ -231,7 +242,7 @@ export function NotesSession({ patientId }: { patientId: string }) {
   return (
     <section className="flex flex-col gap-2">
       <span className="k px-1">Notes de la session · {notes.length}</span>
-      {notes.map((n) => <NoteRow key={n.id} n={n} onDelete={() => { const next = notes.filter((x) => x.id !== n.id); writeNotes(patientId, next); setNotes(next); }} />)}
+      {notes.map((n) => <NoteRow key={n.id} n={n} modifierHref={`/p/${patientId}/rencontre?modifie=${n.id}`} onDelete={() => { const next = notes.filter((x) => x.id !== n.id); writeNotes(patientId, next); setNotes(next); }} />)}
     </section>
   );
 }

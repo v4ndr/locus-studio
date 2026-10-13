@@ -2,8 +2,10 @@
 import * as React from "react";
 import Link from "next/link";
 import type { PatientView } from "@/studio/types";
+import { useSearchParams } from "next/navigation";
 import { Header } from "./chrome";
-import { NoteEditor, NotesSession } from "./note";
+import { NoteEditor, NotesSession, readNotes } from "./note";
+import type { NoteLocal } from "@/store/cabinet";
 
 /**
  * La consultation d'un patient du jeu de données : l'éditeur cumule la dictée
@@ -11,7 +13,16 @@ import { NoteEditor, NotesSession } from "./note";
  * libre ; « Générer » passe par le composer. Le scénario du design reste
  * accessible pour les patients qui en ont un.
  */
-export function NoteView({ v, praticien }: { v: PatientView; praticien: { initials: string } }) {
+export function NoteView(props: { v: PatientView; praticien: { initials: string } }) {
+  return <React.Suspense fallback={null}><Inner {...props} /></React.Suspense>;
+}
+
+function Inner({ v, praticien }: { v: PatientView; praticien: { initials: string } }) {
+  const sp = useSearchParams();
+  const modifie = sp.get("modifie");
+  const [base, setBase] = React.useState<NoteLocal | undefined>(undefined);
+  const [lu, setLu] = React.useState(false);
+  React.useEffect(() => { setBase(modifie ? readNotes(v.ref.id).find((n) => n.id === modifie) : undefined); setLu(true); }, [modifie, v.ref.id]);
   const script = v.rencontre.paragraphes.filter((p) => !p.muted).map((p) => p.texte).join("\n\n");
   const scripte = v.rencontre.actions.length > 0 && !/non scriptée/.test(v.rencontre.paragraphes[1]?.texte ?? "");
   return (
@@ -23,7 +34,7 @@ export function NoteView({ v, praticien }: { v: PatientView; praticien: { initia
           <span className="flex-1" />
           {scripte && <Link href={`/p/${v.ref.id}/actions`} className="text-xs text-muted-2 hover:text-ink">Scénario du design →</Link>}
         </div>
-        <NoteEditor patientId={v.ref.id} nom={v.ref.nom} retour={`/p/${v.ref.id}`} consultHref={`/p/${v.ref.id}/rencontre`} script={scripte ? script : undefined} motifInitial={v.rdv?.motif} />
+        {lu && <NoteEditor key={base?.id ?? "nouvelle"} patientId={v.ref.id} nom={v.ref.nom} retour={`/p/${v.ref.id}`} consultHref={`/p/${v.ref.id}/rencontre`} script={scripte ? script : undefined} motifInitial={v.rdv?.motif} base={base} />}
         <NotesSession patientId={v.ref.id} />
       </main>
     </div>
