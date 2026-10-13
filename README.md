@@ -17,8 +17,8 @@ l'omni-saisie. Une rencontre se déroule en cinq temps, dans l'ordre du design :
 |---|---|---|
 | 0 · Qui voyez-vous ? | `/` | une recherche (`⌘K`), l'agenda du matin, rien d'autre |
 | 1 · Overview | `/p/[id]` | le dossier en une phrase, trois choses à noter, le reste à un clic ; raccourcis préparés (RDV, mail, ordonnance) et questions à locus-core dans une carte à valider |
-| 2 · Saisie | `/p/[id]/rencontre` | la dictée ; Locus surligne ce qu'il comprend et compte les actions |
-| 3 · Actions | `/p/[id]/actions` | les documents générés, une question avant de signer |
+| 2 · Consultation | `/p/[id]/rencontre` | un seul éditeur qui cumule la dictée au micro (reconnaissance vocale du navigateur), la dictée simulée (le script du patient, `⌥ espace`) et la note libre ou collée depuis un scribe ; `⌘⏎` génère les actions via le composer, « Signer et verser » enregistre la note ; chrono saisie / composition / validation |
+| 3 · Actions, scénario du design | `/p/[id]/actions` | les documents scriptés du patient, une question avant de signer (accessible depuis la consultation des patients scriptés) |
 | 4 · Signature | `/p/[id]/signature` | la liste avec les destinations, l'aperçu papier, un geste (e-CPS) ; puis « rencontre clôturée » |
 | 1b · Tout | `/p/[id]/documents` | tout le dossier en une table, filtrable ; chaque ligne s'ouvre |
 | 1c · Un document | `/p/[id]/documents/[docId]` | la lecture de Locus d'abord, puis le document (résultats, lignes d'ordonnance, courrier, note de consultation), puis sa provenance ; `←` `→` pour passer au voisin |
@@ -61,8 +61,7 @@ s'exportent en JSON.
 |---|---|
 | `/nouveau` | créer un dossier : identité déclarative, antécédents, allergies, traitements (une ligne chacun) |
 | `/d` | le cabinet local : la liste, export / import JSON |
-| `/d/[id]` | le dossier : overview, fiche modifiable, les notes, le composer ; **+ Note** ouvre l'éditeur |
-| `/p/[id]/note` | la même note libre pour un patient du jeu de données |
+| `/d/[id]` | le dossier : overview, fiche modifiable, les notes, le composer ; **+ Consultation** ouvre le même éditeur |
 
 La **note** s'écrit ou se dicte (ou on colle la sortie d'un scribe), puis
 `⌘⏎` la **décline en actions** : ce qu'elle établit va au dossier, ce qu'elle
