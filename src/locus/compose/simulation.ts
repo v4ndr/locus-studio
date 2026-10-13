@@ -105,16 +105,17 @@ export async function* simulateCompose(input: ComposeInput): AsyncGenerator<Comp
   const dureeMois = /(\d+)\s*mois/.exec(phraseAvec(/renouvel|ordo|pour \d+ mois/) ?? "")?.[1] ?? "3";
   const concl = sec?.concl ? nettoie(sec.concl) : undefined;
 
-  // Une note de consultation : ce qu'elle établit va au dossier.
+  // Une note de consultation : sa conclusion fait la synthèse ; seule une nouveauté de fiche (allergie, antécédent familial, traitement de fond arrêté) devient une action.
   if (note && d) {
     yield { step: "reflexion", titre: "Je lis la note" }; await sleep(350);
-    // Sans « Conclusion : », la première phrase qui n'est pas une consigne (prolonge, renouvelle, adresser…) ; sinon le problème suivi.
     const chroniqueCite = !!d.chronique && norm(d.chronique).split(/\W+/).filter((w) => w.length > 5).some((w) => tout.includes(w));
     const libelle = concl ?? nettoie(input.note!.split(/\n|\. /).map((l) => l.trim()).find((l) => l.length > 12 && !/^(motif|histoire|examen)\s*:/i.test(l) && !/^(donc|on fait|on prolonge|prolonge|renouvel|adress|rappel|revoir|kin[ée]|ordo|arr[êe]t|courrier|mail|message|je |alors)/i.test(norm(l))) ?? (chroniqueCite && d.chronique ? `${d.chronique} · suivi` : "Consultation"));
-    const motif = sec?.motif ? nettoie(sec.motif) : undefined;
-    await call("inscrire_au_dossier", { type: "probleme", libelle: majuscule(libelle.slice(0, 90)), detail: motif ? `Motif : ${motif}` : undefined, justification: "Conclusion de la note du jour." });
-    const mesures = [...input.note!.matchAll(/\b(TA|PA|tension)\s*:?\s*(\d{2,3}\s*\/\s*\d{2,3})|\b(poids)\s*:?\s*(\d{2,3}(?:[.,]\d)?)\s*kg|\b(temp[ée]rature|T°)\s*:?\s*(\d{2}(?:[.,]\d)?)|\b(sat|SpO2)\s*:?\s*(\d{2})\s*%/gi)];
-    for (const m of mesures.slice(0, 3)) await call("inscrire_au_dossier", { type: "mesure", libelle: m[0].replace(/\s+/g, " "), justification: "Mesure relevée dans la note." });
+    const fiche: { type: string; libelle: string; detail?: string }[] = [];
+    for (const m of input.note!.matchAll(/\b(?:nouvelle |une )?allergi(?:e|que) (?:à|au|aux|a) (?:l'|la |le |les |l )?([^,.;\n]{3,60})/gi)) fiche.push({ type: "allergie", libelle: nettoie(m[1]).replace(/\s+(découverte|connue|rapportée|signalée|notée|retrouvée)( ce jour| aujourd'hui)?$/i, "") });
+    for (const m of input.note!.matchAll(/\b(?:ant[ée]c[ée]dent|atcd) familia(?:l|ux)\s*:?\s*([^.;\n]{3,90})/gi)) fiche.push({ type: "antecedent-familial", libelle: nettoie(m[1]) });
+    for (const m of input.note!.matchAll(/\b(?:p[èe]re|m[èe]re|fr[èe]re|s[œo]ur|grand-?(?:p[èe]re|m[èe]re)) ([^,.;\n]{0,30}?(?:infarctus|cancer|diab[èe]te|avc|hta|hypertension|d[ée]mence|alzheimer|parkinson)[^,.;\n]{0,40})/gi)) fiche.push({ type: "antecedent-familial", libelle: nettoie(m[0]) });
+    for (const m of input.note!.matchAll(/\b(?:arr[êe]t|stop|arr[êe]te|arr[êe]ter) (?:du |de la |de l'|le |la |)(?:traitement par |)([a-zéèêàç][a-zéèêàç-]{3,}(?:\s\d+\s?(?:mg|g|µg))?)(?= \w+ définitivement| pour| car| en raison|,|\.|\n|$)/gi)) { const dci = norm(m[1]); if (d.meds.some((x) => norm(x.dci).startsWith(dci.slice(0, 6)))) fiche.push({ type: "traitement", libelle: `${m[1]} · arrêté`, detail: "arrêt du traitement de fond" }); }
+    for (const f of fiche.slice(0, 4)) await call("inscrire_au_dossier", { type: f.type, libelle: f.libelle, detail: f.detail, justification: "Lu dans la note du jour ; entre dans la fiche." });
     yield* flush();
     phrases.push(`${majuscule(libelle).replace(/\.$/, "")}.`);
   }
@@ -161,7 +162,7 @@ export async function* simulateCompose(input: ComposeInput): AsyncGenerator<Comp
     for (const [re, lab] of EX) if (re.test(bioPhrase) && !items.includes(lab)) items.push(lab);
     if (!items.length) items.push(/grossesse|trimestre/.test(tout) ? "Bilan du 1er trimestre de grossesse" : /renal|hta|hypertension/.test(tout) ? "Bilan biologique de suivi (ionogramme, créatinine, DFG)" : "Bilan biologique");
     yield { step: "reflexion", titre: "Je prépare la biologie" }; await sleep(250);
-    await call("proposer_ordonnance", { type: "biologie", lignes: items.map((libelle) => ({ libelle })), justification: note ? "Demandé dans la conduite à tenir." : "Demandé." });
+    await call("proposer_ordonnance", { type: "biologie", lignes: items.map((libelle) => ({ libelle })), indication: concl, justification: note ? "Demandé dans la conduite à tenir." : "Demandé." });
     yield* flush(); phrases.push("Bilan biologique prescrit.");
   }
   // Imagerie demandée (pas reçue).
@@ -170,7 +171,7 @@ export async function* simulateCompose(input: ComposeInput): AsyncGenerator<Comp
     const ex = /irm/.test(imgPhrase) ? "IRM" : /scanner/.test(imgPhrase) ? "Scanner" : /mammo/.test(imgPhrase) ? "Mammographie" : /doppler/.test(imgPhrase) ? "Écho-doppler" : /echo/.test(imgPhrase) ? "Échographie" : "Radiographie";
     const zone = /(?:radio|scanner|irm|echo(?:graphie)?|doppler)\s+(?:du|de la|de l'|des|d'|de)\s+([a-z' -]{3,30}?)(?=\s*(?:,|$|\bet\b|\bpour\b|\bsi\b))/.exec(imgPhrase)?.[1];
     yield { step: "reflexion", titre: "Je prépare la demande d'imagerie" }; await sleep(250);
-    await call("proposer_ordonnance", { type: "imagerie", lignes: [{ libelle: `${ex}${zone ? ` ${zone.trim()}` : ""}` }], justification: note ? "Demandée dans la conduite à tenir." : "Demandée." });
+    await call("proposer_ordonnance", { type: "imagerie", lignes: [{ libelle: `${ex}${zone ? ` ${zone.trim()}` : ""}` }], indication: concl, justification: note ? "Demandée dans la conduite à tenir." : "Demandée." });
     yield* flush(); phrases.push("Imagerie demandée.");
   }
   // Paramédical : la kiné est une ordonnance, pas un courrier.
@@ -180,7 +181,7 @@ export async function* simulateCompose(input: ComposeInput): AsyncGenerator<Comp
     const acte = /orthophon/.test(kine) ? "Orthophonie" : /infirmi/.test(kine) ? "Soins infirmiers" : /pedicure/.test(kine) ? "Pédicurie-podologie" : "Kinésithérapie";
     const pour = concl ?? /kin[ée](?:sith[ée]rapie)?\s*(?:pour|:)\s*([^,.\n]{3,60})/.exec(kine)?.[1];
     yield { step: "reflexion", titre: "Je rédige l'ordonnance paramédicale" }; await sleep(250);
-    await call("proposer_ordonnance", { type: "paramedical", lignes: [{ libelle: `${acte}${n ? ` · ${n} séances` : ""}${pour ? ` · ${nettoie(pour)}` : ""}${/domicile/.test(kine) ? " · à domicile" : ""}` }], justification: note ? "Prescrite dans la conduite à tenir." : "Demandée." });
+    await call("proposer_ordonnance", { type: "paramedical", lignes: [{ libelle: `${acte}${n ? ` · ${n} séances` : ""}${/domicile/.test(kine) ? " · à domicile" : ""}` }], indication: pour ? nettoie(pour) : undefined, justification: note ? "Prescrite dans la conduite à tenir." : "Demandée." });
     yield* flush(); phrases.push(`${acte} prescrite.`);
   }
 
@@ -255,13 +256,7 @@ export async function* simulateCompose(input: ComposeInput): AsyncGenerator<Comp
     phrases.push("Arrêt préparé.");
   }
 
-  /* ---------------- Verser, ouvrir ---------------- */
-  if (dit(/\b(verse|inscri|au dossier)\b/) && d && !note) {
-    yield { step: "reflexion", titre: "J'inscris au dossier" }; await sleep(300);
-    await call("inscrire_au_dossier", { type: "note", libelle: "Faits extraits du document ouvert", detail: "", justification: "Lecture du document par Locus, versée au dossier." });
-    yield* flush();
-    phrases.push("Faits inscrits au dossier.");
-  }
+  /* ---------------- Ouvrir ---------------- */
   if (!note && !ctx.actions.length) {
     if (dit(/courriers? non lus|arrive ce matin|\bboite\b|reception/)) { await call("ouvrir", { cible: "boite", boite: /bio|result/.test(t) ? "bio" : /message/.test(t) ? "messages" : "courriers" }); yield* flush(); }
     else if (dit(/hors norme|resultats? bio/)) { await call("ouvrir", { cible: "boite", boite: "bio" }); yield* flush(); }

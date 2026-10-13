@@ -17,7 +17,7 @@ l'omni-saisie. Une rencontre se déroule en cinq temps, dans l'ordre du design :
 |---|---|---|
 | 0 · Qui voyez-vous ? | `/` | une recherche (`⌘K`), l'agenda du matin, rien d'autre |
 | 1 · Overview | `/p/[id]` | le dossier en une phrase, trois choses à noter, le reste à un clic ; raccourcis préparés (RDV, mail, ordonnance) et questions à locus-core dans une carte à valider |
-| 2 · Consultation | `/p/[id]/rencontre` | un seul éditeur qui cumule la dictée au micro (reconnaissance vocale du navigateur), la dictée simulée (le script du patient, `⌥ espace`) et la note libre ou collée depuis un scribe ; `⌘⏎` génère les actions via le composer, « Signer et verser » enregistre la note ; chrono saisie / composition / validation |
+| 2 · Consultation | `/p/[id]/rencontre` | un seul éditeur qui cumule la dictée au micro (reconnaissance vocale du navigateur), la dictée simulée (le script du patient, `⌥ espace`) et la note libre ou collée depuis un scribe ; `⌘⏎` génère les actions via le composer, « Signer » enregistre la note ; chrono saisie / composition / validation |
 | 3 · Actions, scénario du design | `/p/[id]/actions` | les documents scriptés du patient, une question avant de signer (accessible depuis la consultation des patients scriptés) |
 | 4 · Signature | `/p/[id]/signature` | la liste avec les destinations, l'aperçu papier, un geste (e-CPS) ; puis « rencontre clôturée » |
 | 1b · Tout | `/p/[id]/documents` | tout le dossier en une table, filtrable ; chaque ligne s'ouvre |
@@ -40,7 +40,7 @@ logiciel : `proposer_ordonnance`, `proposer_rdv`, `proposer_message`,
 `proposer_courrier`, `proposer_arret`, `inscrire_au_dossier`, `ouvrir`,
 `lire_document`. **Locus (locus-core) est un outil parmi eux** (`locus_retrieve`) :
 toute question clinique passe par lui, et sa réponse alimente la synthèse et les
-actions qu'elle implique, au lieu d'être « versée au dossier ». Rien n'est écrit
+actions qu'elle implique. Rien n'est écrit
 ni envoyé par le serveur ; chaque action est une proposition, comme après la
 dictée.
 
@@ -64,9 +64,12 @@ s'exportent en JSON.
 | `/d/[id]` | le dossier : overview, fiche modifiable, les notes, le composer ; **+ Consultation** ouvre le même éditeur |
 
 La **note** s'écrit ou se dicte (ou on colle la sortie d'un scribe), puis
-`⌘⏎` la **décline en actions** : ce qu'elle établit va au dossier, ce qu'elle
-prescrit devient ordonnance, arrêt, courrier, rendez-vous, message — à signer
-d'un geste. Chaque action se **modifie** en place (titre, champs, « marquer
+`⌘⏎` la **décline en actions** : ce qu'elle prescrit devient ordonnance, arrêt,
+courrier, rendez-vous, message — à signer d'un geste ; ce qu'elle révèle pour
+la fiche (un antécédent, une allergie, un traitement de fond) devient « Ajouter
+au dossier ». La conclusion reste dans la note : rien n'est « versé » nulle part.
+« + Ajouter » complète le plan à la main (ordonnance, examen, arrêt, courrier…),
+et « + Consultation » ouvre aussi, sans note, une ordonnance ou un arrêt seul. Chaque action se **modifie** en place (titre, champs, « marquer
 relu ») ou se **retire** ; si la note change, « Régénérer » recompose. La
 consultation est un **brouillon persistant** : quitter l'écran ne perd rien,
 le dossier affiche « N actions à valider · Reprendre », l'accueil liste les
@@ -77,8 +80,8 @@ s'arrête quand l'onglet n'est plus visible).
 Une note signée se **modifie en place** (« Modifier » dans le dossier) : ses
 documents reviennent dans l'éditeur, chacun s'ouvre tel qu'il a été rendu et
 envoyé (en-tête, patient, corps, signature e-CPS), se corrige dans un
-formulaire typé avec le papier à côté, et « Re-signer » **renvoie ce qui a
-changé** — le reste est marqué inchangé. La modification a son propre
+formulaire léger avec le papier à côté, et « Enregistrer » **renvoie ce qui a
+changé** puis revient au dossier — le reste est marqué inchangé. La modification a son propre
 brouillon : ouvrir « Modifier » n'écrase jamais une consultation en cours.
 
 Le **garde-fou allergie** compare chaque ligne d'ordonnance aux allergies du

@@ -54,19 +54,33 @@ export function useCompose() {
     }
   }, []);
   const reset = React.useCallback(() => { ctrl.current?.abort(); setS({ steps: [], actions: [], busy: false }); }, []);
+  /** Une action ajoutée à la main (sans passer par le serveur) : au plan existant, ou dans un plan neuf. */
+  const ajoute = React.useCallback((a: ComposeAction, input?: ComposeInput) => {
+    setS((p) => {
+      const actions = [...p.actions, a];
+      const plan: ComposePlan = p.plan ? { ...p.plan, actions } : { synthese: "", actions, references: [], via: "simulation", locus: 0 };
+      return { ...p, input: p.input ?? input ?? { texte: "", ecran: "note" }, actions, plan, busy: false };
+    });
+  }, []);
   /** Remettre un plan déjà composé (un brouillon repris) sans rappeler le serveur. */
   const restore = React.useCallback((input: ComposeInput, plan: ComposePlan) => { ctrl.current?.abort(); setS({ input, steps: [], actions: plan.actions, plan, busy: false }); }, []);
-  return { state: s, run, reset, restore, open: !!s.input };
+  return { state: s, run, reset, restore, ajoute, open: !!s.input };
 }
 
 const STATUT: Record<string, { label: string; color: string }> = { pret: { label: "prêt", color: "var(--ok)" }, relire: { label: "à relire", color: "var(--warn)" } };
-const FAIT: Record<string, string> = { ordonnance: "signée, envoyée en e-ordo", rdv: "réservé, SMS envoyé", message: "envoyé", courrier: "signé, envoyé par MSSanté", arret: "signé, télétransmis à la CPAM", dossier: "inscrit au dossier, partagé au DMP", naviguer: "ouvert" };
+const FAIT: Record<string, string> = { ordonnance: "signée, envoyée en e-ordo", rdv: "réservé, SMS envoyé", message: "envoyé", courrier: "signé, envoyé par MSSanté", arret: "signé, télétransmis à la CPAM", dossier: "ajouté à la fiche", naviguer: "ouvert" };
 /** La ligne du compte rendu : ce qui est parti, ou « inchangé » pour un document d'une note modifiée qui n'a pas bougé. */
 const fait = (a: ComposeAction, resignature: boolean) => (a.renvoye ? "renvoyé, remplace le précédent" : resignature ? "inchangé, déjà envoyé" : a.destination === "patient · remis" ? "signé, remis au patient" : FAIT[a.kind] ?? "fait");
 
-export function ComposeCard({ state, onClose, onRetry, suivreSeul = true, onValide, libelleValider, initialActions, onChange, apres, patient }: {
+export function ComposeCard({ state, onClose, onRetry, suivreSeul = true, onValide, libelleValider, initialActions, onChange, apres, patient, ouvrirId, valideNonce, masquerValider }: {
   state: ComposeState;
   onClose: () => void;
+  /** Ouvre ce document dans le panneau dès qu'il change (une action ajoutée à la main). */
+  ouvrirId?: string | null;
+  /** Change pour valider depuis l'extérieur (le bouton « Enregistrer » de l'éditeur). */
+  valideNonce?: number;
+  /** L'écran porte lui-même le bouton de validation. */
+  masquerValider?: boolean;
   /** Relancer la même demande après une erreur. */
   onRetry?: (input: ComposeInput) => void;
   /** Le patient, pour le rendu des documents (en-tête, identité). */
@@ -84,6 +98,7 @@ export function ComposeCard({ state, onClose, onRetry, suivreSeul = true, onVali
 }) {
   const router = useRouter();
   const [open, setOpen] = React.useState<string | null>(null);
+  React.useEffect(() => { if (ouvrirId) setOpen(ouvrirId); }, [ouvrirId]);
   // Le patient vient de l'écran quand il le connaît, sinon du plan (le serveur l'a résolu, depuis l'accueil par exemple).
   const pr: PatientRendu = patient ? { ...state.plan?.patient, ...patient, allergies: patient.allergies ?? state.plan?.patient?.allergies } : state.plan?.patient ?? { nom: "" };
   const [edits, setEdits] = React.useState<Record<string, ComposeAction>>(initialActions?.edits ?? {});
@@ -110,6 +125,8 @@ export function ComposeCard({ state, onClose, onRetry, suivreSeul = true, onVali
     const retour = onValide?.(gardes, state.plan!);
     setValide(Array.isArray(retour) && retour.length ? retour : gardes.map((a) => ({ ...a, envoyeLe: a.envoyeLe ?? now })));
   }, [done, gardes, valide, onValide, state.plan]);
+  const nonceVu = React.useRef(valideNonce);
+  React.useEffect(() => { if (valideNonce !== undefined && valideNonce !== nonceVu.current) { nonceVu.current = valideNonce; valider(); } }, [valideNonce, valider]);
   React.useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (dialogOuvert()) return;
@@ -187,7 +204,7 @@ export function ComposeCard({ state, onClose, onRetry, suivreSeul = true, onVali
           })}
         </div>
       )}
-      {open && docs.find((a) => a.id === open) && <ActionPanel action={docs.find((a) => a.id === open)!} patient={pr} onChange={(na) => setEdits((e) => { const n = { ...e, [na.id]: na }; signal(n, retires); return n; })} onClose={() => setOpen(null)} />}
+      {open && docs.find((a) => a.id === open) && <ActionPanel action={docs.find((a) => a.id === open)!} patient={pr} onChange={(na) => setEdits((e) => { const n = { ...e, [na.id]: na }; signal(n, retires); return n; })} onRemove={() => { if (!retires.has(open)) bascule(open); }} onClose={() => setOpen(null)} />}
 
       {nav.length > 0 && (docs.length > 0 || nav.length > 1) && (
         <div className="flex flex-wrap gap-2">{nav.map((a) => a.href && <Link key={a.id} href={a.href} onClick={onClose} className="flex items-center gap-2 rounded-full border border-line bg-paper px-3 py-[6px] text-[13px] text-ink hover:bg-hover hover:text-ink">→ {a.titre}</Link>)}</div>
@@ -199,9 +216,8 @@ export function ComposeCard({ state, onClose, onRetry, suivreSeul = true, onVali
 
       {done && (
         <div className="flex flex-wrap items-center gap-2">
-          {gardes.length > 0 && <button type="button" onClick={valider} className="flex min-h-11 items-center gap-2 rounded-[10px] bg-ink px-4 py-[9px] text-sm text-paper">{libelleValider ?? (gardes.length > 1 ? `Valider les ${gardes.length}` : "Valider")} <Kbd dark>⌘⏎</Kbd></button>}
-          {gardes.length === 0 && nav.length === 0 && <button type="button" onClick={onClose} className="min-h-11 rounded-[10px] border border-line bg-paper px-4 py-[9px] text-sm text-ink">Fermer</button>}
-          {docs.length > 0 && <span className="text-xs text-muted-2">Une ligne ouvre le document, pour le lire et le modifier · la case le retire du plan.</span>}
+          {gardes.length > 0 && !masquerValider && <button type="button" onClick={valider} className="flex min-h-11 items-center gap-2 rounded-[10px] bg-ink px-4 py-[9px] text-sm text-paper">{libelleValider ?? (gardes.length > 1 ? `Valider les ${gardes.length}` : "Valider")} <Kbd dark>⌘⏎</Kbd></button>}
+          {!masquerValider && <button type="button" onClick={onClose} className="flex min-h-11 items-center gap-2 rounded-[10px] px-3 py-[9px] text-sm text-muted-2 hover:bg-hover hover:text-ink">{gardes.length > 0 || docs.length > 0 ? "Annuler" : "Fermer"} <Kbd>esc</Kbd></button>}
           <span className="flex-1" />
           {via && <span className="d text-[11px]">{via}</span>}
         </div>

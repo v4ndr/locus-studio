@@ -30,7 +30,7 @@ function SignatureInner({ v, praticien }: { v: PatientView; praticien: { initial
   const cur = aSigner.find((a) => a.id === sel);
   const sign = () => { if (!bloque && aSigner.length) dispatch({ type: "sign", patientId: v.ref.id }); };
   useShortcuts({ cmdEnter: () => (me.signed ? undefined : sign()) });
-  const total = aSigner.length + 1;
+  const total = aSigner.length;
   const suivantRef = React.useRef<HTMLAnchorElement>(null);
   const suivantHref = v.suivant ? `/p/${v.suivant.id}` : "/";
   React.useEffect(() => {
@@ -49,7 +49,7 @@ function SignatureInner({ v, praticien }: { v: PatientView; praticien: { initial
         <main className="flex flex-1 flex-col items-center justify-center gap-[18px] px-6 py-12">
           <span className="flex h-[52px] w-[52px] items-center justify-center rounded-full bg-ok-soft"><I.check size={24} color="var(--ok)" w={2.2} /></span>
           <h1 className="m-0 text-[26px] font-medium tracking-[-.02em]">Rencontre clôturée</h1>
-          <p className="m-0 text-center text-[15px] text-muted">{total} document{total > 1 ? "s" : ""} signé{total > 1 ? "s" : ""} et envoyé{total > 1 ? "s" : ""} · synthèse versée au dossier · {attente.length} suivi{attente.length > 1 ? "s" : ""} programmé{attente.length > 1 ? "s" : ""}</p>
+          <p className="m-0 text-center text-[15px] text-muted">{total} document{total > 1 ? "s" : ""} signé{total > 1 ? "s" : ""} et envoyé{total > 1 ? "s" : ""} · note inscrite au dossier · {attente.length} suivi{attente.length > 1 ? "s" : ""} programmé{attente.length > 1 ? "s" : ""}</p>
           <Link ref={suivantRef} href={suivantHref} className="mt-3 flex min-h-11 items-center gap-2.5 rounded-xl border border-line bg-paper px-[18px] py-3 text-[15px] text-ink hover:text-ink">{v.suivant ? `Patient suivant · ${v.suivant.nom}` : "Retour à l'accueil"} <Kbd>⏎</Kbd></Link>
           <button type="button" onClick={() => dispatch({ type: "reopen", patientId: v.ref.id })} className="min-h-10 text-xs text-muted-2 hover:text-ink">Rouvrir la rencontre (rejouer le scénario)</button>
         </main>
@@ -80,10 +80,6 @@ function SignatureInner({ v, praticien }: { v: PatientView; praticien: { initial
             </button>
           ); })}
           {aSigner.length === 0 && <div className="rounded-xl border border-dashed border-line-3 px-4 py-4 text-sm text-muted-2">Rien à signer : cette rencontre n'a produit aucun document.</div>}
-          <div className="flex items-center gap-3.5 rounded-xl border border-line-3 bg-paper px-4 py-[13px] text-[15px]">
-            <span className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-[5px] bg-ink"><I.check size={12} color="var(--paper)" w={3} /></span>
-            <span className="flex-1">Synthèse de la rencontre</span><span className="text-xs text-muted-2">dossier · DMP</span>
-          </div>
           {attente.length > 0 && <span className="k px-1 pb-2 pt-[18px]">En attente</span>}
           {attente.map((a) => (
             <div key={a.id} className="flex items-center gap-3.5 rounded-xl border border-dashed border-line-3 px-4 py-[13px] text-[15px]">
