@@ -81,7 +81,7 @@ export function Home({ data }: { data: HomeData }) {
             <div className={cn("flex items-center gap-3.5 px-5 py-[18px]", open && "border-b border-line-2")} onClick={() => { inputRef.current?.focus(); setOpen(true); }}>
               <I.search color={open ? "var(--ink)" : "var(--muted-2)"} />
               <label htmlFor="q" className="sr-only">Recherche</label>
-              <input id="q" ref={inputRef} value={q} onChange={(e) => { setQ(e.target.value); setSel(0); setOpen(true); }} onFocus={() => { if (!viaTab.current) setOpen(true); }} placeholder="Nom, date de naissance, ou une demande…" aria-expanded={open} className="min-h-10 flex-1 bg-transparent text-[17px] text-ink outline-none placeholder:text-muted-3" />
+              <input id="q" name="locus-recherche" ref={inputRef} autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck={false} data-1p-ignore data-lpignore="true" value={q} onChange={(e) => { setQ(e.target.value); setSel(0); setOpen(true); }} onFocus={() => { if (!viaTab.current) setOpen(true); }} placeholder="Nom, date de naissance, ou une demande…" aria-expanded={open} className="min-h-10 flex-1 bg-transparent text-[17px] text-ink outline-none placeholder:text-muted-3" />
               <Kbd>{open ? "esc" : "⌘K"}</Kbd>
             </div>
             {open && (

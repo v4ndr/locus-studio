@@ -127,13 +127,13 @@ function Form({ c, onChange }: { c: Charge; onChange: (c: Charge) => void }) {
           {c.lignes.map((l, i) => (
             <div key={i} className="flex flex-col gap-2 rounded-[10px] border border-line-3 bg-bg p-3">
               <div className="flex items-center gap-2"><span className="d text-[11px]">ligne {i + 1}</span><span className="flex-1" />{c.lignes.length > 1 && <button type="button" onClick={() => onChange({ ...c, lignes: c.lignes.filter((_, j) => j !== i) })} className="text-xs text-muted-2 hover:text-rec-text">Retirer</button>}</div>
-              <input value={l.libelle} onChange={(e) => set(i, { libelle: e.target.value })} placeholder="DCI dosage, examen ou acte" aria-label={`Ligne ${i + 1} · libellé`} className={inp} />
+              <input autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck={false} data-1p-ignore data-lpignore="true" value={l.libelle} onChange={(e) => set(i, { libelle: e.target.value })} placeholder="DCI dosage, examen ou acte" aria-label={`Ligne ${i + 1} · libellé`} className={inp} />
               <div className="grid gap-2 sm:grid-cols-2">
-                <input value={l.posologie ?? ""} onChange={(e) => set(i, { posologie: e.target.value })} placeholder="Posologie · 1 cp matin et soir" aria-label={`Ligne ${i + 1} · posologie`} className={inp} />
-                <input value={l.duree ?? ""} onChange={(e) => set(i, { duree: e.target.value })} placeholder="Durée · 3 mois" aria-label={`Ligne ${i + 1} · durée`} className={inp} />
+                <input autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck={false} data-1p-ignore data-lpignore="true" value={l.posologie ?? ""} onChange={(e) => set(i, { posologie: e.target.value })} placeholder="Posologie · 1 cp matin et soir" aria-label={`Ligne ${i + 1} · posologie`} className={inp} />
+                <input autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck={false} data-1p-ignore data-lpignore="true" value={l.duree ?? ""} onChange={(e) => set(i, { duree: e.target.value })} placeholder="Durée · 3 mois" aria-label={`Ligne ${i + 1} · durée`} className={inp} />
               </div>
               <div className="flex flex-wrap items-center gap-3 text-sm">
-                <label className="flex items-center gap-2"><span className="text-muted-2">Renouvelable</span><input type="number" min={0} max={12} value={l.renouvellement ?? 0} onChange={(e) => set(i, { renouvellement: Number(e.target.value) || undefined })} className={cn(inp, "w-[64px]")} /><span className="text-muted-2">fois</span></label>
+                <label className="flex items-center gap-2"><span className="text-muted-2">Renouvelable</span><input autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck={false} data-1p-ignore data-lpignore="true" type="number" min={0} max={12} value={l.renouvellement ?? 0} onChange={(e) => set(i, { renouvellement: Number(e.target.value) || undefined })} className={cn(inp, "w-[64px]")} /><span className="text-muted-2">fois</span></label>
                 <label className="flex items-center gap-2"><input type="checkbox" checked={!!l.ald} onChange={(e) => set(i, { ald: e.target.checked })} /> ALD</label>
               </div>
             </div>
@@ -147,10 +147,10 @@ function Form({ c, onChange }: { c: Charge; onChange: (c: Charge) => void }) {
       const setDebut = (dd: string, hh: string) => onChange({ ...c, debut: dd ? isoParis(dd, hh || "09:30") : "" });
       return (
         <div className="grid gap-3 sm:grid-cols-2">
-          <Lbl l="Date"><input type="date" value={d} onChange={(e) => setDebut(e.target.value, h)} className={inp} /></Lbl>
-          <Lbl l="Heure"><input type="time" value={h} onChange={(e) => setDebut(d, e.target.value)} className={inp} /></Lbl>
+          <Lbl l="Date"><input autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck={false} data-1p-ignore data-lpignore="true" type="date" value={d} onChange={(e) => setDebut(e.target.value, h)} className={inp} /></Lbl>
+          <Lbl l="Heure"><input autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck={false} data-1p-ignore data-lpignore="true" type="time" value={h} onChange={(e) => setDebut(d, e.target.value)} className={inp} /></Lbl>
           <Lbl l="Durée"><select value={c.duree_min} onChange={(e) => onChange({ ...c, duree_min: Number(e.target.value) })} className={inp}>{[10, 15, 20, 30, 45].map((n) => <option key={n} value={n}>{n} min</option>)}</select></Lbl>
-          <Lbl l="Motif"><input value={c.motif} onChange={(e) => onChange({ ...c, motif: e.target.value })} className={inp} /></Lbl>
+          <Lbl l="Motif"><input autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck={false} data-1p-ignore data-lpignore="true" value={c.motif} onChange={(e) => onChange({ ...c, motif: e.target.value })} className={inp} /></Lbl>
         </div>
       );
     }
@@ -158,36 +158,36 @@ function Form({ c, onChange }: { c: Charge; onChange: (c: Charge) => void }) {
       return (
         <div className="grid gap-3 sm:grid-cols-2">
           <Lbl l="À"><select value={c.a} onChange={(e) => onChange({ ...c, a: e.target.value })} className={inp}>{Object.entries(MSG_A).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Lbl>
-          <Lbl l="Nom (si pas le patient)"><input value={c.nom ?? ""} onChange={(e) => onChange({ ...c, nom: e.target.value || undefined })} className={inp} /></Lbl>
-          <Lbl l="Objet" wide><input value={c.objet} onChange={(e) => onChange({ ...c, objet: e.target.value })} className={inp} /></Lbl>
-          <Lbl l="Message" wide><textarea value={c.corps} rows={7} onChange={(e) => onChange({ ...c, corps: e.target.value })} className={cn(inp, "resize-y leading-[1.5]")} /></Lbl>
+          <Lbl l="Nom (si pas le patient)"><input autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck={false} data-1p-ignore data-lpignore="true" value={c.nom ?? ""} onChange={(e) => onChange({ ...c, nom: e.target.value || undefined })} className={inp} /></Lbl>
+          <Lbl l="Objet" wide><input autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck={false} data-1p-ignore data-lpignore="true" value={c.objet} onChange={(e) => onChange({ ...c, objet: e.target.value })} className={inp} /></Lbl>
+          <Lbl l="Message" wide><textarea autoComplete="off" autoCorrect="off" spellCheck={false} value={c.corps} rows={7} onChange={(e) => onChange({ ...c, corps: e.target.value })} className={cn(inp, "resize-y leading-[1.5]")} /></Lbl>
         </div>
       );
     case "courrier":
       return (
         <div className="grid gap-3 sm:grid-cols-2">
           <Lbl l="Type"><select value={c.type} onChange={(e) => onChange({ ...c, type: e.target.value })} className={inp}>{Object.entries(CR_TYPE).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Lbl>
-          <Lbl l="Spécialité"><input value={c.specialite ?? ""} onChange={(e) => onChange({ ...c, specialite: e.target.value || undefined })} className={inp} /></Lbl>
-          <Lbl l="Destinataire" wide><input value={c.destinataire} onChange={(e) => onChange({ ...c, destinataire: e.target.value })} className={inp} placeholder="Dr Nom, service, établissement" /></Lbl>
-          <Lbl l="Titre" wide><input value={c.titre} onChange={(e) => onChange({ ...c, titre: e.target.value })} className={inp} /></Lbl>
-          <Lbl l="Corps" wide><textarea value={c.corps} rows={10} onChange={(e) => onChange({ ...c, corps: e.target.value })} className={cn(inp, "resize-y leading-[1.5]")} /></Lbl>
+          <Lbl l="Spécialité"><input autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck={false} data-1p-ignore data-lpignore="true" value={c.specialite ?? ""} onChange={(e) => onChange({ ...c, specialite: e.target.value || undefined })} className={inp} /></Lbl>
+          <Lbl l="Destinataire" wide><input autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck={false} data-1p-ignore data-lpignore="true" value={c.destinataire} onChange={(e) => onChange({ ...c, destinataire: e.target.value })} className={inp} placeholder="Dr Nom, service, établissement" /></Lbl>
+          <Lbl l="Titre" wide><input autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck={false} data-1p-ignore data-lpignore="true" value={c.titre} onChange={(e) => onChange({ ...c, titre: e.target.value })} className={inp} /></Lbl>
+          <Lbl l="Corps" wide><textarea autoComplete="off" autoCorrect="off" spellCheck={false} value={c.corps} rows={10} onChange={(e) => onChange({ ...c, corps: e.target.value })} className={cn(inp, "resize-y leading-[1.5]")} /></Lbl>
         </div>
       );
     case "arret":
       return (
         <div className="grid gap-3 sm:grid-cols-2">
-          <Lbl l="Durée (jours)"><input type="number" min={1} max={365} value={c.jours} onChange={(e) => onChange({ ...c, jours: Math.max(1, Number(e.target.value) || 1) })} className={inp} /></Lbl>
+          <Lbl l="Durée (jours)"><input autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck={false} data-1p-ignore data-lpignore="true" type="number" min={1} max={365} value={c.jours} onChange={(e) => onChange({ ...c, jours: Math.max(1, Number(e.target.value) || 1) })} className={inp} /></Lbl>
           <Lbl l="Sorties"><select value={c.sorties} onChange={(e) => onChange({ ...c, sorties: e.target.value })} className={inp}>{Object.entries(SORTIES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Lbl>
           <div className="flex flex-wrap items-center gap-4 text-sm sm:col-span-2"><label className="flex items-center gap-2"><input type="checkbox" checked={!!c.temps_partiel} onChange={(e) => onChange({ ...c, temps_partiel: e.target.checked })} /> Temps partiel thérapeutique</label><label className="flex items-center gap-2"><input type="checkbox" checked={!!c.prolongation} onChange={(e) => onChange({ ...c, prolongation: e.target.checked })} /> Prolongation</label></div>
-          <Lbl l="Motif médical (volet confidentiel)" wide><input value={c.motif} onChange={(e) => onChange({ ...c, motif: e.target.value })} className={inp} /></Lbl>
+          <Lbl l="Motif médical (volet confidentiel)" wide><input autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck={false} data-1p-ignore data-lpignore="true" value={c.motif} onChange={(e) => onChange({ ...c, motif: e.target.value })} className={inp} /></Lbl>
         </div>
       );
     case "dossier":
       return (
         <div className="grid gap-3 sm:grid-cols-2">
           <Lbl l="Type"><select value={c.type} onChange={(e) => onChange({ ...c, type: e.target.value })} className={inp}>{Object.entries(DOS_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Lbl>
-          <Lbl l="Libellé" wide><input value={c.libelle} onChange={(e) => onChange({ ...c, libelle: e.target.value })} className={inp} /></Lbl>
-          <Lbl l="Détail" wide><textarea value={c.detail ?? ""} rows={4} onChange={(e) => onChange({ ...c, detail: e.target.value || undefined })} className={cn(inp, "resize-y leading-[1.5]")} /></Lbl>
+          <Lbl l="Libellé" wide><input autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck={false} data-1p-ignore data-lpignore="true" value={c.libelle} onChange={(e) => onChange({ ...c, libelle: e.target.value })} className={inp} /></Lbl>
+          <Lbl l="Détail" wide><textarea autoComplete="off" autoCorrect="off" spellCheck={false} value={c.detail ?? ""} rows={4} onChange={(e) => onChange({ ...c, detail: e.target.value || undefined })} className={cn(inp, "resize-y leading-[1.5]")} /></Lbl>
         </div>
       );
   }
