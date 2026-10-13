@@ -30,7 +30,7 @@ export async function* compose(input: ComposeInput): AsyncGenerator<ComposeEvent
   const { contexte } = buildContext(input);
   const queue: ComposeEvent[] = [];
   const ctx: ToolCtx = { input, actions: [], references: [], locus: 0, patient: resolvePatient(input), emit: (ev) => queue.push(ev) };
-  const demande = input.ecran === "note" ? `## Note de consultation du jour (dictée ou rédigée par le médecin)${input.motif ? `\nMotif de consultation (agenda) : ${input.motif}` : ""}\n${input.note ?? input.texte}\n\n## Consigne\n${input.texte === input.note || !input.texte ? "Décline cette note en actions : inscris au dossier ce qu'elle établit (problème, traitement, mesure, allergie), prépare ce qu'elle prescrit ou demande (ordonnances, arrêt, courrier, rendez-vous, message), et termine par une seule phrase : la conclusion clinique, sans récapituler les actions." : input.texte}` : `## Demande du médecin\n${input.texte}`;
+  const demande = input.ecran === "note" ? `## Note de consultation du jour (dictée ou rédigée par le médecin)${input.motif ? `\nMotif de consultation (agenda) : ${input.motif}` : ""}\n${input.note ?? input.texte}\n\n## Consigne\n${input.texte === input.note || !input.texte ? "Décline cette note en actions : prépare ce qu'elle prescrit ou demande (ordonnances, arrêt, courrier, rendez-vous, message) ; ajoute à la fiche seulement un nouvel antécédent, une allergie ou un changement de traitement de fond qu'elle révèle ; et termine par une seule phrase : la conclusion clinique, sans récapituler les actions." : input.texte}` : `## Demande du médecin\n${input.texte}`;
   const messages: Anthropic.MessageParam[] = [{ role: "user", content: `${contexte}\n\n${demande}` }];
   let synthese = "";
 

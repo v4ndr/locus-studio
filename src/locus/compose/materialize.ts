@@ -12,7 +12,7 @@ export const RX_LABEL: Record<string, string> = { medicament: "Ordonnance", biol
 export const RX_CODE: Record<string, string> = { medicament: "Rx", biologie: "BIO", imagerie: "IMG", paramedical: "K", transport: "TR", dispositif: "DM" };
 export const MSG_DEST: Record<string, string> = { patient: "patient · messagerie", confrere: "MSSanté", secretariat: "interne", pharmacie: "MSSanté · pharmacie" };
 export const MSG_A: Record<string, string> = { patient: "patient", confrere: "confrère", secretariat: "secrétariat", pharmacie: "pharmacie" };
-export const DOS_LABEL: Record<string, string> = { probleme: "Problème", traitement: "Traitement", mesure: "Mesure", allergie: "Allergie", note: "Note" };
+export const DOS_LABEL: Record<string, string> = { antecedent: "Antécédent", "antecedent-familial": "Antécédent familial", allergie: "Allergie", traitement: "Traitement de fond" };
 export const CR_TYPE: Record<string, string> = { adressage: "Adressage", certificat: "Certificat", attestation: "Attestation", "reponse-confrere": "Réponse à un confrère", "courrier-patient": "Courrier au patient" };
 export const SORTIES: Record<string, string> = { non: "non autorisées", oui: "autorisées · présence obligatoire 9 h-11 h et 14 h-16 h", libres: "libres" };
 const MOIS = ["janv", "févr", "mars", "avr", "mai", "juin", "juil", "août", "sept", "oct", "nov", "déc"];
@@ -87,7 +87,7 @@ export interface RxLigne { libelle: string; posologie?: string; duree?: string; 
 
 /** Les charges, telles que les outils les reçoivent et que les formulaires les éditent. */
 export type Charge =
-  | { kind: "ordonnance"; type: string; lignes: RxLigne[]; justification?: string; alerte?: string }
+  | { kind: "ordonnance"; type: string; lignes: RxLigne[]; justification?: string; alerte?: string; /** Examens et actes : le renseignement clinique. */ indication?: string }
   | { kind: "rdv"; debut: string; duree_min: number; motif: string; justification?: string; dans_jours?: number; moment?: string }
   | { kind: "message"; a: string; nom?: string; objet: string; corps: string; justification?: string }
   | { kind: "courrier"; type: string; destinataire: string; specialite?: string; titre: string; corps: string; justification?: string }
@@ -98,12 +98,12 @@ export type Charge =
 export function chargeOf(kind: ComposeKind, raw: Record<string, unknown> | undefined): Charge | null {
   const c = raw ?? {};
   switch (kind) {
-    case "ordonnance": return { kind, type: s(c.type) || "medicament", lignes: (Array.isArray(c.lignes) ? c.lignes : []).filter((l) => l && typeof l === "object").map((l: Record<string, unknown>) => ({ libelle: s(l.libelle), posologie: s(l.posologie) || undefined, duree: s(l.duree) || undefined, renouvellement: l.renouvellement ? n(l.renouvellement, 0) : undefined, ald: !!l.ald })), justification: s(c.justification) || undefined, alerte: s(c.alerte) || undefined };
+    case "ordonnance": return { kind, type: s(c.type) || "medicament", lignes: (Array.isArray(c.lignes) ? c.lignes : []).filter((l) => l && typeof l === "object").map((l: Record<string, unknown>) => ({ libelle: s(l.libelle), posologie: s(l.posologie) || undefined, duree: s(l.duree) || undefined, renouvellement: l.renouvellement ? n(l.renouvellement, 0) : undefined, ald: !!l.ald })), justification: s(c.justification) || undefined, alerte: s(c.alerte) || undefined, indication: s(c.indication) || undefined };
     case "rdv": return { kind, debut: s(c.debut), duree_min: n(c.duree_min, 20), motif: s(c.motif), justification: s(c.justification) || undefined, dans_jours: c.dans_jours ? n(c.dans_jours, 7) : undefined, moment: s(c.moment) || undefined };
     case "message": return { kind, a: s(c.a) || "patient", nom: s(c.nom) || undefined, objet: s(c.objet), corps: s(c.corps), justification: s(c.justification) || undefined };
     case "courrier": return { kind, type: s(c.type) || "adressage", destinataire: s(c.destinataire), specialite: s(c.specialite) || undefined, titre: s(c.titre), corps: s(c.corps), justification: s(c.justification) || undefined };
     case "arret": return { kind, jours: Math.max(1, Math.round(n(c.jours, 3))), sorties: ["non", "oui", "libres"].includes(s(c.sorties)) ? s(c.sorties) : "oui", temps_partiel: !!c.temps_partiel, prolongation: !!c.prolongation, motif: s(c.motif), justification: s(c.justification) || undefined };
-    case "dossier": return { kind, type: s(c.type) || "note", libelle: s(c.libelle), detail: s(c.detail) || undefined, justification: s(c.justification) || undefined };
+    case "dossier": return { kind, type: s(c.type) || "antecedent", libelle: s(c.libelle), detail: s(c.detail) || undefined, justification: s(c.justification) || undefined };
     default: return null;
   }
 }
@@ -116,7 +116,8 @@ export function materialize(charge: Charge, prenomNom: string, alerteParam?: str
   switch (kind) {
     case "ordonnance": {
       const lignes = charge.lignes.filter((l) => l.libelle.trim());
-      const fields = lignes.map((l) => ({ k: l.libelle, v: [l.posologie, l.duree, l.renouvellement ? `renouvelable ${l.renouvellement}×` : undefined, l.ald ? "ALD" : undefined].filter(Boolean).join(" · ") }));
+      const med = charge.type === "medicament";
+      const fields = [...lignes.map((l) => ({ k: l.libelle, v: med ? [l.posologie, l.duree, l.renouvellement ? `à renouveler ${l.renouvellement} fois` : undefined, l.ald ? "ALD" : undefined].filter(Boolean).join(" · ") : l.ald ? "ALD" : "" })), ...(charge.indication ? [{ k: "Indication", v: charge.indication }] : [])];
       return { kind, code: RX_CODE[charge.type] ?? "Rx", titre: `${RX_LABEL[charge.type] ?? "Ordonnance"} · ${lignes.map((l) => l.libelle).join(", ") || "sans ligne"}`, ligne: `${prenomNom} · ${lignes.length} ligne${lignes.length > 1 ? "s" : ""}`, destination: "patient · e-ordo", statut: "relire", fields, alerte, ...rest };
     }
     case "rdv": {
@@ -135,6 +136,6 @@ export function materialize(charge: Charge, prenomNom: string, alerteParam?: str
     case "arret":
       return { kind, code: "AT", titre: `${charge.prolongation ? "Prolongation d'arrêt" : "Arrêt de travail"} · ${charge.jours} jour${charge.jours > 1 ? "s" : ""}`, ligne: `${prenomNom} · sorties ${SORTIES[charge.sorties] ?? charge.sorties}${charge.temps_partiel ? " · temps partiel" : ""}`, destination: "CPAM · télétransmis", statut: "relire", fields: [{ k: "Durée", v: `${charge.jours} jours` }, { k: "Sorties", v: SORTIES[charge.sorties] ?? charge.sorties }, { k: "Motif", v: charge.motif }], ...rest };
     case "dossier":
-      return { kind, code: "DOS", titre: `${DOS_LABEL[charge.type] ?? "Dossier"} · ${charge.libelle}`, ligne: charge.detail || "inscrit au dossier et partagé au DMP", destination: "dossier · DMP", statut: "pret", fields: [{ k: "Libellé", v: charge.libelle }, ...(charge.detail ? [{ k: "Détail", v: charge.detail }] : [])], ...rest };
+      return { kind, code: "FI", titre: `Ajouter au dossier · ${charge.libelle}`, ligne: `${DOS_LABEL[charge.type] ?? "Fiche"}${charge.detail ? ` · ${charge.detail}` : ""}`, destination: "fiche", statut: "pret", fields: [{ k: "Rubrique", v: DOS_LABEL[charge.type] ?? charge.type }, { k: "Ligne", v: charge.libelle }, ...(charge.detail ? [{ k: "Détail", v: charge.detail }] : [])], ...rest };
   }
 }

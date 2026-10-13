@@ -29,7 +29,7 @@ export const RUPTURES: Parti[] = [
   {
     titre: "Le fil est le même pour le médecin, l'agent et le patient.",
     texte: "Le patient écrit à l'agent dans son fil ; le médecin voit ce qui le concerne dans le sien ; la consultation est un segment du fil à trois voix. L'agent répond seul à la logistique, prépare le clinique, et signe de son nom. La messagerie n'est pas une fonctionnalité. C'est le substrat.",
-    studio: "Pendant la dictée, Locus surligne ce qu'il a compris et compte les actions détectées ; la synthèse de la rencontre est versée au dossier et au DMP à la signature.",
+    studio: "Pendant la dictée, Locus surligne ce qu'il a compris et compte les actions détectées ; la synthèse de la rencontre est inscrite au dossier et au DMP à la signature.",
     ailleurs: "Instinct : group chats, « trusted person network ». Epic Emmie et Art : le même agent côté patient et côté clinicien. Hippocratic : l'agent se commande comme un acte.",
   },
   {

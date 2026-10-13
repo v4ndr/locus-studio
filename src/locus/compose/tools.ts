@@ -40,10 +40,11 @@ export const TOOLS: Anthropic.Tool[] = [
   },
   {
     name: "proposer_ordonnance",
-    description: "Prépare une ordonnance à signer : médicaments, biologie, imagerie, paramédical (kiné…), transport. Une ligne par item. Pour un renouvellement, reprends exactement les traitements actifs du dossier.",
+    description: "Prépare une ordonnance à signer : médicaments, biologie, imagerie, paramédical (kiné…), transport. Une ordonnance par nature (jamais un médicament et un examen sur la même). Une ligne par item. Pour un renouvellement, reprends exactement les traitements actifs du dossier, QSP 3 mois par défaut, sans renouvellement (sauf si l'ordonnance précédente en portait un).",
     input_schema: S({
       type: { type: "string", enum: ["medicament", "biologie", "imagerie", "paramedical", "transport", "dispositif"] },
-      lignes: { type: "array", items: { type: "object", properties: { libelle: { type: "string", description: "DCI + dosage, ou l'examen, ou l'acte" }, posologie: { type: "string" }, duree: { type: "string" }, renouvellement: { type: "integer", description: "Nombre de renouvellements" }, ald: { type: "boolean" } }, required: ["libelle"] } },
+      lignes: { type: "array", items: { type: "object", properties: { libelle: { type: "string", description: "DCI + dosage, ou l'examen, ou l'acte" }, posologie: { type: "string", description: "Médicaments seulement" }, duree: { type: "string", description: "Médicaments seulement, « 3 mois » par défaut pour un renouvellement" }, renouvellement: { type: "integer", description: "Nombre de renouvellements, seulement si l'ordonnance précédente en portait" }, ald: { type: "boolean" } }, required: ["libelle"] } },
+      indication: { type: "string", description: "Pour un examen ou un acte : le renseignement clinique, une ligne." },
       justification: { type: "string", description: "Une phrase : pourquoi, sur quelle base du dossier ou de Locus." },
     }, ["type", "lignes", "justification"]),
   },
@@ -69,8 +70,8 @@ export const TOOLS: Anthropic.Tool[] = [
   },
   {
     name: "inscrire_au_dossier",
-    description: "Inscrit un fait au dossier (et au DMP) : un problème, un traitement, une mesure, une allergie, une note. À utiliser pour « verser » les faits d'un document ou d'une réponse.",
-    input_schema: S({ type: { type: "string", enum: ["probleme", "traitement", "mesure", "allergie", "note"] }, libelle: { type: "string" }, detail: { type: "string" }, justification: { type: "string" } }, ["type", "libelle", "justification"]),
+    description: "Ajoute une ligne à la FICHE du patient, uniquement ce qui y entre : un nouvel antécédent personnel, un antécédent familial, une allergie ou intolérance, un traitement de fond nouveau ou arrêté. Jamais pour une conclusion de consultation, une mesure, un résumé ou une note : cela n'est pas une action à valider.",
+    input_schema: S({ type: { type: "string", enum: ["antecedent", "antecedent-familial", "allergie", "traitement"] }, libelle: { type: "string", description: "La ligne telle qu'elle apparaîtra dans la fiche" }, detail: { type: "string" }, justification: { type: "string" } }, ["type", "libelle", "justification"]),
   },
   {
     name: "ouvrir",
@@ -156,9 +157,9 @@ export async function executeTool(name: string, input: Record<string, unknown>, 
     }
     case "inscrire_au_dossier": {
       const c = chargeOf("dossier", input);
-      if (!c) return "Inscription impossible.";
+      if (!c || c.kind !== "dossier" || !["antecedent", "antecedent-familial", "allergie", "traitement"].includes(c.type)) return "Rien à ajouter à la fiche : seuls un antécédent, une allergie ou un traitement de fond y entrent.";
       push({ id: nid(), ...materialize(c, prenomNom) });
-      return "Inscription préparée.";
+      return "Ajout à la fiche préparé.";
     }
     case "ouvrir": {
       const cible = s(input.cible);

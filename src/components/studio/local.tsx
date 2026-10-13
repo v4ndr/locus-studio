@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Header, Omni, Kbd, I, Avatar } from "./chrome";
 import { ComposeCard, useCompose } from "./compose";
-import { NoteEditor, NoteRow, BrouillonBanner, listBrouillons, type Brouillon } from "./note";
+import { NoteEditor, NoteRow, BrouillonBanner, listBrouillons, AJOUTS, type Brouillon, type Ajout } from "./note";
 import { ActionPanel, type PatientRendu } from "./rendu";
 import type { ComposeAction } from "@/locus/compose/contract";
 import { useCabinet, nid, patientPayload, ageDe, type PatientLocal, type NoteLocal } from "@/store/cabinet";
@@ -143,8 +143,10 @@ export function DossierLocalView({ id }: { id: string }) {
   const [doc, setDoc] = React.useState<ComposeAction | null>(null);
   const [nonce, setNonce] = React.useState(0);
   const [version, setVersion] = React.useState(0);
+  const [ajout, setAjout] = React.useState<Ajout | undefined>(undefined);
+  const [menu, setMenu] = React.useState(false);
   const notesRef = React.useRef<HTMLElement>(null);
-  const ouvrir = React.useCallback((b?: Brouillon) => { const note = b?.noteId ? cab.get(id)?.notes.find((n) => n.id === b.noteId) : undefined; setBase(note); setVueActions(false); setNoteOpen(true); setNonce((n) => n + 1); }, [cab, id]);
+  const ouvrir = React.useCallback((b?: Brouillon, k?: Ajout) => { const note = b?.noteId ? cab.get(id)?.notes.find((n) => n.id === b.noteId) : undefined; setBase(note); setAjout(k); setMenu(false); setVueActions(false); setNoteOpen(true); setNonce((n) => n + 1); }, [cab, id]);
   const fermer = () => { setNoteOpen(false); setBase(undefined); setVersion((v) => v + 1); };
   // Un brouillon en cours (consultation ou modification) rouvre l'éditeur directement, avec sa note de base.
   React.useEffect(() => { if (!cab.ready) return; const b = listBrouillons(id)[0]; if (b) ouvrir(b); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [id, cab.ready]);
@@ -211,7 +213,7 @@ export function DossierLocalView({ id }: { id: string }) {
         {edit && <section className="card px-5 py-5"><PatientForm initial={p} onDone={() => setEdit(false)} /></section>}
 
         {noteOpen ? (
-          <section className="card px-5 py-5"><NoteEditor key={`${base?.id ?? "nouvelle"}-${nonce}`} patientId={p.id} local={p} nom={nom} retour={`/d/${p.id}`} consultHref={`/d/${p.id}`} base={base} patient={pr} onRetour={fermer} onAnnuler={fermer} onSaved={() => setVersion((v) => v + 1)} /></section>
+          <section className="card px-5 py-5"><NoteEditor key={`${base?.id ?? "nouvelle"}-${nonce}`} patientId={p.id} local={p} nom={nom} retour={`/d/${p.id}`} consultHref={`/d/${p.id}`} base={base} patient={pr} ajout={ajout} onRetour={fermer} onAnnuler={fermer} onSaved={() => setVersion((v) => v + 1)} /></section>
         ) : (
           <section ref={notesRef} className="flex scroll-mt-24 flex-col gap-2">
             <div className="flex items-center gap-3"><span className="k px-1">Notes</span><span className="flex-1" /><button type="button" onClick={() => ouvrir()} className="flex min-h-10 items-center gap-2 rounded-[10px] bg-ink px-3.5 py-[8px] text-sm text-paper"><I.plus /> Consultation</button></div>
@@ -220,7 +222,7 @@ export function DossierLocalView({ id }: { id: string }) {
           </section>
         )}
       </main>
-      <Omni placeholder="Ordo, rendez-vous, mail, courrier, arrêt, question… tout." onSubmit={(t) => composer.run({ texte: t, patientId: p.id, patient: patientPayload(p), ecran: "dossier" })} suggestions={[{ k: "ordo", t: p.traitements[0] ? `Renouvelle ${p.traitements[0].split(/[·,]/)[0].trim()} pour 3 mois` : "Ordonnance : paracétamol 1 g, 3/j si douleur, 5 jours" }, { k: "rdv", t: "Revoir dans 6 semaines, 20 minutes" }, { k: "mail", t: `Mail à ${p.prenomUsuel} : résultats rassurants` }, { k: "arrêt", t: "Arrêt de travail 5 jours, sorties libres" }, { k: "question", t: "Quelle surveillance pour ce traitement ?" }]} cta={<button type="button" onClick={() => ouvrir()} className="flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap rounded-[10px] bg-ink px-3.5 py-[9px] text-sm font-medium text-paper sm:px-4">+ Consultation</button>}>
+      <Omni placeholder="Ordo, rendez-vous, mail, courrier, arrêt, question… tout." onSubmit={(t) => composer.run({ texte: t, patientId: p.id, patient: patientPayload(p), ecran: "dossier" })} suggestions={[{ k: "ordo", t: p.traitements[0] ? `Renouvelle ${p.traitements[0].split(/[·,]/)[0].trim()} pour 3 mois` : "Ordonnance : paracétamol 1 g, 3/j si douleur, 5 jours" }, { k: "rdv", t: "Revoir dans 6 semaines, 20 minutes" }, { k: "mail", t: `Mail à ${p.prenomUsuel} : résultats rassurants` }, { k: "arrêt", t: "Arrêt de travail 5 jours, sorties libres" }, { k: "question", t: "Quelle surveillance pour ce traitement ?" }]} cta={<div className="relative flex shrink-0 items-stretch"><button type="button" onClick={() => ouvrir()} className="flex min-h-11 items-center gap-2 whitespace-nowrap rounded-l-[10px] bg-ink px-3.5 py-[9px] text-sm font-medium text-paper sm:px-4">+ Consultation</button><button type="button" onClick={() => setMenu((m) => !m)} aria-expanded={menu} aria-haspopup="menu" aria-label="Ajouter autre chose" className="flex min-h-11 w-9 items-center justify-center rounded-r-[10px] border-l border-paper/20 bg-ink text-paper"><I.chevron open={menu} color="var(--paper)" /></button>{menu && <div role="menu" className="absolute bottom-full right-0 z-20 mb-1 flex min-w-[200px] flex-col rounded-[12px] border border-line bg-paper p-1" style={{ boxShadow: "var(--shadow)" }}><span className="k px-3 pb-1 pt-2">Sans note · juste</span>{AJOUTS.map((a) => <button key={a.k} type="button" role="menuitem" onClick={() => ouvrir(undefined, a.k)} className="min-h-10 rounded-[8px] px-3 py-2 text-left text-sm text-ink hover:bg-hover">{a.label}</button>)}</div>}</div>}>
         {composer.open && <ComposeCard state={composer.state} onClose={composer.reset} onRetry={(i) => composer.run(i)} suivreSeul={false} patient={pr} onValide={(actions, plan) => { const now = new Date().toISOString(); const envoyees = actions.map((a) => ({ ...a, envoyeLe: now, renvoye: false })); cab.saveNote(p.id, { id: nid("n"), date: now, motif: envoyees.map((a) => a.code).filter((c, i, arr) => arr.indexOf(c) === i).join(" · "), texte: composer.state.input?.texte ?? "", actions: envoyees, synthese: plan.synthese, via: plan.via, chrono: { saisie: 0, composition: 0, validation: 0 }, origine: "commande" }); setVersion((v) => v + 1); return envoyees; }} />}
       </Omni>
     </div>

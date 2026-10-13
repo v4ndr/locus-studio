@@ -40,7 +40,7 @@ export function DossierView({ v, praticien }: { v: PatientView; praticien: { ini
       <Header praticien={praticien} patient={{ id: v.ref.id, nom: v.ref.nom, initials: v.ref.initials, meta: v.meta }} />
       <main className="mx-auto flex w-full max-w-[720px] flex-1 flex-col gap-7 px-4 pb-8 pt-10 sm:px-6 sm:pt-16">
         <BrouillonBanner patientId={v.ref.id} href={`/p/${v.ref.id}/rencontre`} />
-        {me.signed && <div className="flex items-center gap-3 rounded-[12px] border border-line bg-paper px-4 py-3 text-sm"><I.check size={14} color="var(--ok)" w={2.5} /><span className="flex-1">Rencontre{v.rdv ? ` de ${v.rdv.heure}` : ""} clôturée : documents signés et envoyés, synthèse versée au dossier.</span><button type="button" onClick={() => dispatch({ type: "reopen", patientId: v.ref.id })} className="min-h-9 text-xs text-muted-2 hover:text-ink">Rouvrir</button></div>}
+        {me.signed && <div className="flex items-center gap-3 rounded-[12px] border border-line bg-paper px-4 py-3 text-sm"><I.check size={14} color="var(--ok)" w={2.5} /><span className="flex-1">Rencontre{v.rdv ? ` de ${v.rdv.heure}` : ""} clôturée : documents signés et envoyés, note inscrite au dossier.</span><button type="button" onClick={() => dispatch({ type: "reopen", patientId: v.ref.id })} className="min-h-9 text-xs text-muted-2 hover:text-ink">Rouvrir</button></div>}
         <div className="flex flex-col gap-3">
           <span className="k px-px">Overview{v.rdv ? ` · ${v.rdv.heure} · ${v.rdv.motif}` : ""}</span>
           <p className="m-0 text-[21px] leading-[1.45] tracking-[-.01em] sm:text-2xl"><Rich text={v.prose} /></p>
