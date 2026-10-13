@@ -61,7 +61,7 @@ const messages = [
     de: { type: "agent", nom: "Locus, pour le Dr Vandepitterie" }, a: [{ type: "patient", nom: "Julien Garnier" }],
     date: at("07:05"),
     objet: "Re: Mal au dos — arrêt ?",
-    corps: "Bonjour Julien,\n\nMerci pour les précisions, elles sont rassurantes. Le Dr Vandepitterie vous voit ce matin à 10h00 (rendez-vous ajouté — répondez « non » si l'horaire ne va pas). Un arrêt de travail nécessite de vous examiner.\n\nD'ici là : continuez à bouger autant que la douleur le permet, évitez de rester allongé, chaleur locale. L'ibuprofène 400 mg à 3 par jour au repas au maximum, pas plus de 5 jours, et pas si vous avez des brûlures d'estomac.\n\nAppelez le 15 si vous perdez la force d'une jambe, si vous n'arrivez plus à uriner, ou si la douleur devient insupportable.\n\nSol, pour le Dr Vandepitterie",
+    corps: "Bonjour Julien,\n\nMerci pour les précisions, elles sont rassurantes. Le Dr Vandepitterie vous voit ce matin à 10h00 (rendez-vous ajouté — répondez « non » si l'horaire ne va pas). Un arrêt de travail nécessite de vous examiner.\n\nD'ici là : continuez à bouger autant que la douleur le permet, évitez de rester allongé, chaleur locale. L'ibuprofène 400 mg à 3 par jour au repas au maximum, pas plus de 5 jours, et pas si vous avez des brûlures d'estomac.\n\nAppelez le 15 si vous perdez la force d'une jambe, si vous n'arrivez plus à uriner, ou si la douleur devient insupportable.\n\nLocus, pour le Dr Vandepitterie",
   }, { status: "propose", at: at("07:05") }),
 ];
 

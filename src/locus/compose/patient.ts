@@ -16,6 +16,8 @@ export interface PatientCtx {
   prenom: string;
   sexe: "F" | "M";
   age: number;
+  /** JJ/MM/AAAA, pour l'en-tête des documents. */
+  naissance: string;
   href: string;
   ehr: string;
   allergies: string[];
@@ -36,7 +38,7 @@ export function fromLocal(p: PatientLocalPayload): PatientCtx {
     p.traitements.length ? `Traitement en cours : ${p.traitements.join(" ; ")}.` : "Pas de traitement en cours.",
     ...p.notes.map((n) => `Consultation du ${fr(n.date)}${n.motif ? ` (${n.motif})` : ""} : ${n.synthese}`),
   ];
-  return { id: p.id, local: true, nom: `${p.prenomUsuel} ${p.nomUsage}`, prenom: p.prenomUsuel, sexe: p.sexe, age, href: `/d/${p.id}`, ehr: lines.join("\n"), allergies: p.allergies, meds, chronique: p.antecedents[0] };
+  return { id: p.id, local: true, nom: `${p.prenomUsuel} ${p.nomUsage}`, prenom: p.prenomUsuel, sexe: p.sexe, age, naissance: fr(p.naissance), href: `/d/${p.id}`, ehr: lines.join("\n"), allergies: p.allergies, meds, chronique: p.antecedents[0] };
 }
 
 export function fromDataset(id: string): PatientCtx | undefined {
@@ -45,7 +47,7 @@ export function fromDataset(id: string): PatientCtx | undefined {
   const p = d.patient;
   const lab = recordsOf(d, "lab").sort((a, b) => b.prelevementLe.localeCompare(a.prelevementLe))[0];
   return {
-    id, local: false, nom: displayName(p), prenom: p.prenomUsuel, sexe: p.ins.sexe, age: ageAt(p.ins.dateNaissance, now()), href: `/p/${id}`, ehr: toPatientEhr(d, now()),
+    id, local: false, nom: displayName(p), prenom: p.prenomUsuel, sexe: p.ins.sexe, age: ageAt(p.ins.dateNaissance, now()), naissance: fr(p.ins.dateNaissance), href: `/p/${id}`, ehr: toPatientEhr(d, now()),
     allergies: recordsOf(d, "allergy").map((a) => a.substance),
     meds: recordsOf(d, "medication").filter((m) => m.status === "actif").map((m) => ({ dci: m.dci, dosage: m.dosage, posologie: m.posologie, chronique: m.type === "chronique" })),
     chronique: recordsOf(d, "problem").find((x) => x.enAvant && x.evolution === "chronique")?.libelle,

@@ -13,7 +13,8 @@ import { cn } from "@/lib/cn";
  * micro (reconnaissance vocale du navigateur), la dictée simulée (le script
  * du jeu de données, qui s'écrit tout seul), et la note libre ou collée depuis
  * un scribe. Puis « Générer » passe le tout au composer, qui le décline en
- * actions. Le chrono mesure saisie, composition, validation.
+ * actions. Le chrono mesure saisie, composition, validation — et s'arrête
+ * quand on quitte l'onglet.
  */
 
 const MODELE = `Motif : 
@@ -33,7 +34,7 @@ function speechCtor(): (new () => SR) | null {
 }
 
 export const NOTES_KEY = (patientId: string) => `locus-studio-notes-${patientId}`;
-export function readNotes(patientId: string): NoteLocal[] { try { return JSON.parse(localStorage.getItem(NOTES_KEY(patientId)) ?? "[]"); } catch { return []; } }
+export function readNotes(patientId: string): NoteLocal[] { try { const v = JSON.parse(localStorage.getItem(NOTES_KEY(patientId)) ?? "[]"); return Array.isArray(v) ? v.filter((n) => n && typeof n === "object" && typeof n.id === "string") : []; } catch { return []; } }
 export function writeNotes(patientId: string, notes: NoteLocal[]) { try { localStorage.setItem(NOTES_KEY(patientId), JSON.stringify(notes)); } catch {} }
 
 /**
@@ -41,20 +42,31 @@ export function writeNotes(patientId: string, notes: NoteLocal[]) { try { localS
  * existe, avec ce qu'on y a modifié ou retiré. Sauvé à chaque frappe, repris
  * à l'ouverture — quitter l'écran ne perd rien, et les actions à valider
  * restent visibles depuis le dossier et l'accueil.
+ *
+ * Une consultation nouvelle et la modification d'une note signée ont chacune
+ * leur clé : ouvrir « Modifier » n'écrase jamais ce qu'on était en train de dicter.
  */
-export interface Brouillon { patientId: string; nom: string; href: string; texte: string; motif: string; debut: number | null; chrono: { saisie: number; composeDebut: number; composition: number }; input?: ComposeInput; plan?: ComposePlan; texteDuPlan?: string; edits: Record<string, ComposeAction>; retires: string[]; majLe: string; noteId?: string }
-export const BROUILLON_KEY = (patientId: string) => `locus-studio-brouillon-${patientId}`;
-export function readBrouillon(patientId: string): Brouillon | null { try { const raw = localStorage.getItem(BROUILLON_KEY(patientId)); return raw ? (JSON.parse(raw) as Brouillon) : null; } catch { return null; } }
-export function writeBrouillon(b: Brouillon) { try { localStorage.setItem(BROUILLON_KEY(b.patientId), JSON.stringify(b)); } catch {} }
-export function clearBrouillon(patientId: string) { try { localStorage.removeItem(BROUILLON_KEY(patientId)); } catch {} }
-/** Tous les brouillons du poste, les plus récents d'abord. */
-export function listBrouillons(): Brouillon[] {
+export interface Brouillon { patientId: string; nom: string; href: string; texte: string; motif: string; debut: number | null; chrono: { saisie: number; composeDebut: number; composition: number; validation?: number }; input?: ComposeInput; plan?: ComposePlan; texteDuPlan?: string; edits: Record<string, ComposeAction>; retires: string[]; majLe: string; noteId?: string; noteDate?: string }
+export const BROUILLON_KEY = (patientId: string, noteId?: string) => `locus-studio-brouillon-${patientId}${noteId ? `-mod-${noteId}` : ""}`;
+export function readBrouillon(patientId: string, noteId?: string): Brouillon | null { try { const raw = localStorage.getItem(BROUILLON_KEY(patientId, noteId)); const b = raw ? (JSON.parse(raw) as Brouillon) : null; return b && typeof b === "object" && typeof b.texte === "string" ? b : null; } catch { return null; } }
+export function writeBrouillon(b: Brouillon) { try { localStorage.setItem(BROUILLON_KEY(b.patientId, b.noteId), JSON.stringify(b)); } catch {} }
+export function clearBrouillon(patientId: string, noteId?: string) { try { localStorage.removeItem(BROUILLON_KEY(patientId, noteId)); } catch {} }
+const vivant = (b: Brouillon | null): b is Brouillon => !!b && (b.texte.trim().length > 0 || !!b.plan);
+/** Tous les brouillons du poste, les plus récents d'abord (consultations en cours et modifications de notes). */
+export function listBrouillons(patientId?: string): Brouillon[] {
   const out: Brouillon[] = [];
-  try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k?.startsWith("locus-studio-brouillon-")) { const b = JSON.parse(localStorage.getItem(k) ?? "null") as Brouillon | null; if (b && (b.texte.trim() || b.plan)) out.push(b); } } } catch {}
-  return out.sort((a, b) => b.majLe.localeCompare(a.majLe));
+  try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k?.startsWith("locus-studio-brouillon-")) { let b: Brouillon | null = null; try { b = JSON.parse(localStorage.getItem(k) ?? "null"); } catch { b = null; } if (vivant(b) && typeof b.patientId === "string" && (!patientId || b.patientId === patientId)) out.push(b); } } } catch {}
+  return out.sort((a, b) => (b.majLe ?? "").localeCompare(a.majLe ?? ""));
+}
+const nActions = (b: Brouillon) => (b.plan ? b.plan.actions.filter((a) => a.kind !== "naviguer" && !(b.retires ?? []).includes(a.id)).length : 0);
+
+/** Une seconde s'écoule seulement quand l'onglet est visible : le chrono ne compte pas le café. */
+function useHorloge(actif: boolean, onTick: () => void) {
+  const cb = React.useRef(onTick); cb.current = onTick;
+  React.useEffect(() => { if (!actif) return; const id = setInterval(() => { if (document.visibilityState === "visible") cb.current(); }, 1000); return () => clearInterval(id); }, [actif]);
 }
 
-export function NoteEditor({ patientId, local, nom, retour, onSaved, script, motifInitial, consultHref, onRetour, base, patient }: { patientId: string; local?: PatientLocal; nom: string; retour: string; onSaved?: (n: NoteLocal) => void; script?: string; motifInitial?: string; consultHref?: string; onRetour?: () => void; /** La note signée que l'on modifie en place : ses documents modifiés sont renvoyés. */ base?: NoteLocal; patient?: PatientRendu }) {
+export function NoteEditor({ patientId, local, nom, retour, onSaved, script, motifInitial, consultHref, onRetour, onAnnuler, base, patient }: { patientId: string; local?: PatientLocal; nom: string; retour: string; onSaved?: (n: NoteLocal) => void; script?: string; motifInitial?: string; consultHref?: string; onRetour?: () => void; /** La modification d'une note signée est abandonnée. */ onAnnuler?: () => void; /** La note signée que l'on modifie en place : ses documents modifiés sont renvoyés. */ base?: NoteLocal; patient?: PatientRendu }) {
   const cab = useCabinet();
   const composer = useCompose();
   const [texte, setTexte] = React.useState("");
@@ -66,42 +78,46 @@ export function NoteEditor({ patientId, local, nom, retour, onSaved, script, mot
   const [retires, setRetires] = React.useState<string[]>([]);
   const [signee, setSignee] = React.useState<NoteLocal | null>(null);
   const [repris, setRepris] = React.useState(false);
-  const [noteId, setNoteId] = React.useState<string | undefined>(undefined);
+  const [chrono, setChrono] = React.useState({ saisie: 0, composeDebut: 0, composition: 0, validation: 0 });
+  const noteId = base?.id;
   const pr: PatientRendu = patient ?? { nom };
-  const [tick, setTick] = React.useState(0);
   const [micro, setMicro] = React.useState<"absent" | "pret" | "ecoute" | "erreur">("absent");
   const [interim, setInterim] = React.useState("");
   const [simul, setSimul] = React.useState<"non" | "en-cours" | "pause" | "fini">("non");
-  const chrono = React.useRef({ saisie: 0, composeDebut: 0, composition: 0 });
   const ref = React.useRef<HTMLTextAreaElement>(null);
   const rec = React.useRef<SR | null>(null);
   const simPos = React.useRef(0);
+  const plan = composer.state.plan;
 
-  /* À l'ouverture : le brouillon de ce patient, s'il y en a un, reprend sa place — note, chrono, plan, modifications. */
+  /* À l'ouverture : le brouillon (de cette consultation, ou de cette modification) reprend sa place — note, chrono, plan, modifications. */
   React.useEffect(() => {
     setMicro(speechCtor() ? "pret" : "absent");
-    const b = readBrouillon(patientId);
-    if (base && (!b || b.noteId !== base.id)) {
-      // Modifier une note signée, en place : sa note et ses documents reviennent dans l'éditeur ; ce qui est modifié sera renvoyé.
-      setTexte(base.texte); setMotif(base.motif ?? ""); setDebut(null); chrono.current = { saisie: 0, composeDebut: 0, composition: 0 }; setEdits({}); setRetires([]); setTexteDuPlan(base.texte); setNoteId(base.id);
-      const plan: ComposePlan = { synthese: base.synthese ?? "", actions: base.actions, references: [], via: base.via ?? "simulation", locus: 0 };
-      composer.restore({ texte: "", note: base.texte, ecran: "note", patientId }, plan);
-    } else if (b && (b.texte.trim() || b.plan)) {
-      setTexte(b.texte); setMotif(b.motif); setDebut(b.debut); chrono.current = b.chrono; setEdits(b.edits ?? {}); setRetires(b.retires ?? []); setTexteDuPlan(b.texteDuPlan ?? null); setRepris(true); setNoteId(b.noteId);
+    const b = readBrouillon(patientId, noteId);
+    if (vivant(b)) {
+      setTexte(b.texte); setMotif(b.motif); setDebut(b.debut); setChrono({ saisie: b.chrono?.saisie ?? 0, composeDebut: b.chrono?.composeDebut ?? 0, composition: b.chrono?.composition ?? 0, validation: b.chrono?.validation ?? 0 }); setEdits(b.edits ?? {}); setRetires(b.retires ?? []); setTexteDuPlan(b.texteDuPlan ?? null); setRepris(true);
       if (b.plan && b.input) composer.restore(b.input, b.plan);
+    } else if (base) {
+      // Modifier une note signée, en place : sa note et ses documents reviennent dans l'éditeur ; ce qui est modifié sera renvoyé.
+      setTexte(base.texte); setMotif(base.motif ?? ""); setDebut(null); setChrono({ saisie: 0, composeDebut: 0, composition: 0, validation: 0 }); setEdits({}); setRetires([]); setTexteDuPlan(base.texte);
+      const p: ComposePlan = { synthese: base.synthese ?? "", actions: base.actions, references: [], via: base.via ?? "simulation", locus: 0 };
+      composer.restore({ texte: "", note: base.texte, motif: base.motif, ecran: "note", patientId }, p);
     }
     setPret(true);
     ref.current?.focus();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [patientId]);
-  /* À chaque changement : le brouillon suit. */
+  }, [patientId, noteId]);
+  /* À chaque changement : le brouillon suit. Une modification sans aucun changement ne laisse pas de brouillon fantôme. */
   React.useEffect(() => {
     if (!pret || signee) return;
-    if (!texte.trim() && !composer.state.plan) { clearBrouillon(patientId); return; }
-    writeBrouillon({ patientId, nom, href: consultHref ?? retour, texte, motif, debut, chrono: chrono.current, input: composer.state.input, plan: composer.state.plan, texteDuPlan: texteDuPlan ?? undefined, edits, retires, majLe: new Date().toISOString(), noteId });
-  }, [pret, signee, texte, motif, debut, composer.state.plan, composer.state.input, edits, retires, texteDuPlan, patientId, nom, retour, consultHref, noteId]);
-  React.useEffect(() => { if (debut === null) return; const id = setInterval(() => setTick((t) => t + 1), 1000); return () => clearInterval(id); }, [debut]);
-  React.useEffect(() => { if (composer.state.plan && chrono.current.composeDebut && !chrono.current.composition) chrono.current.composition = Date.now() - chrono.current.composeDebut; }, [composer.state.plan]);
+    const vide = !texte.trim() && !plan;
+    const inchangee = !!base && texte === base.texte && motif === (base.motif ?? "") && !Object.keys(edits).length && !retires.length && (!plan || plan.actions === base.actions);
+    if (vide || inchangee) { clearBrouillon(patientId, noteId); return; }
+    writeBrouillon({ patientId, nom, href: consultHref ?? retour, texte, motif, debut, chrono, input: composer.state.input, plan, texteDuPlan: texteDuPlan ?? undefined, edits, retires, majLe: new Date().toISOString(), noteId, noteDate: base?.date });
+  }, [pret, signee, texte, motif, debut, plan, composer.state.input, edits, retires, texteDuPlan, patientId, nom, retour, consultHref, noteId, base, chrono]);
+  /* Le chrono : la saisie court tant qu'il n'y a pas de plan ; la validation court dès qu'il y en a un, jusqu'à la signature. */
+  useHorloge(!signee && debut !== null && !plan, () => setChrono((c) => ({ ...c, saisie: c.saisie + 1000 })));
+  useHorloge(!signee && !!plan && !composer.state.busy, () => setChrono((c) => ({ ...c, validation: c.validation + 1000 })));
+  React.useEffect(() => { if (plan && chrono.composeDebut && !chrono.composition) setChrono((c) => ({ ...c, composition: Math.max(0, Date.now() - c.composeDebut) })); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [plan]);
   const demarre = React.useCallback(() => setDebut((d) => d ?? Date.now()), []);
   const ajoute = React.useCallback((t: string) => { demarre(); setTexte((prev) => (prev && !/\s$/.test(prev) ? prev + " " : prev) + t); }, [demarre]);
 
@@ -127,73 +143,76 @@ export function NoteEditor({ patientId, local, nom, retour, onSaved, script, mot
   };
   React.useEffect(() => () => rec.current?.stop(), []);
 
-  const generer = React.useCallback(() => {
-    if (!texte.trim()) return;
+  const modifiee = !!plan && texteDuPlan !== null && texteDuPlan !== texte;
+  const touche = Object.keys(edits).length > 0 || retires.length > 0;
+  const generer = React.useCallback((force = false) => {
+    if (!texte.trim() || composer.state.busy) return;
+    // Régénérer efface les modifications faites à la main sur le plan : on le dit avant.
+    if (plan && touche && !force && !confirm("Régénérer les actions remplace le plan actuel, y compris ce que vous avez modifié ou retiré à la main. Continuer ?")) return;
     rec.current?.stop(); setSimul((s) => (s === "en-cours" ? "pause" : s));
-    chrono.current.saisie = debut ? Date.now() - debut : 0;
-    chrono.current.composeDebut = Date.now(); chrono.current.composition = 0;
+    setChrono((c) => ({ ...c, composeDebut: Date.now(), composition: 0, validation: 0 }));
     setEdits({}); setRetires([]); setTexteDuPlan(texte);
-    composer.run({ texte: "", note: (motif ? `Motif : ${motif}\n` : "") + texte, ecran: "note", patientId, patient: local ? patientPayload(local) : undefined });
-  }, [texte, motif, debut, composer, patientId, local]);
+    composer.run({ texte: "", note: texte, motif: motif || undefined, ecran: "note", patientId, patient: local ? patientPayload(local) : undefined });
+  }, [texte, motif, composer, patientId, local, plan, touche]);
 
   React.useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "Enter" && document.activeElement === ref.current) { e.preventDefault(); generer(); }
+      // ⌘⏎ dans la note : générer ; une fois le plan là et la note inchangée, c'est la carte qui valide (le focus peut rester dans la note).
+      if ((e.metaKey || e.ctrlKey) && e.key === "Enter" && document.activeElement === ref.current) { if (plan && !modifiee) return; e.preventDefault(); e.stopPropagation(); generer(); }
       if (e.altKey && e.code === "Space" && script) { e.preventDefault(); simuler(); }
     };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
   });
 
-  const onValide = React.useCallback((actions: ComposeAction[], plan: ComposePlan) => {
-    const validation = Date.now() - (chrono.current.composeDebut + chrono.current.composition);
+  const onValide = React.useCallback((actions: ComposeAction[], p: ComposePlan): ComposeAction[] => {
     const now = new Date().toISOString();
-    // Un document déjà envoyé et modifié est renvoyé : même identifiant, nouvel envoi, l'ancien est remplacé.
+    // Un document déjà envoyé et modifié est renvoyé : même identifiant, nouvel envoi, l'ancien est remplacé. Inchangé : il garde sa date d'envoi.
     const avant = base?.actions ?? [];
-    const envoyees = actions.map((a) => { const prev = avant.find((x) => x.id === a.id); const change = !prev || JSON.stringify(prev.charge) !== JSON.stringify(a.charge); return change ? { ...a, envoyeLe: now, renvoye: !!prev } : { ...a, renvoye: false }; });
-    const note: NoteLocal = { id: noteId ?? nid("n"), date: base?.date ?? now, modifieLe: noteId ? now : undefined, motif: motif || undefined, texte, actions: envoyees, synthese: plan.synthese, via: plan.via, chrono: base ? base.chrono : { saisie: chrono.current.saisie, composition: chrono.current.composition, validation } };
+    const envoyees = actions.map((a) => { const prev = avant.find((x) => x.id === a.id); const change = !prev || JSON.stringify(prev.charge) !== JSON.stringify(a.charge); return change ? { ...a, envoyeLe: now, renvoye: !!prev } : { ...prev, ...a, envoyeLe: prev.envoyeLe ?? now, renvoye: false }; });
+    const note: NoteLocal = { id: noteId ?? nid("n"), date: base?.date ?? now, modifieLe: noteId ? now : undefined, motif: motif || undefined, texte, actions: envoyees, synthese: p.synthese, via: p.via, chrono: base ? base.chrono : { saisie: chrono.saisie, composition: chrono.composition, validation: chrono.validation }, origine: "consultation" };
     if (local) cab.saveNote(local.id, note);
     else { const prev = readNotes(patientId); writeNotes(patientId, prev.some((n) => n.id === note.id) ? prev.map((n) => (n.id === note.id ? note : n)) : [note, ...prev]); }
-    setSignee(note); clearBrouillon(patientId);
+    setSignee(note); clearBrouillon(patientId, noteId);
     onSaved?.(note);
-  }, [motif, texte, local, cab, patientId, onSaved, noteId, base]);
+    return envoyees;
+  }, [motif, texte, local, cab, patientId, onSaved, noteId, base, chrono]);
 
-  const modifiee = !!composer.state.plan && texteDuPlan !== null && texteDuPlan !== texte;
-  const nouvelle = () => { setTexte(""); setMotif(motifInitial ?? ""); setDebut(null); chrono.current = { saisie: 0, composeDebut: 0, composition: 0 }; setEdits({}); setRetires([]); setTexteDuPlan(null); setSignee(null); setRepris(false); setNoteId(undefined); simPos.current = 0; setSimul("non"); composer.reset(); clearBrouillon(patientId); ref.current?.focus(); };
-
-  const ecoule = debut ? Date.now() - debut : 0;
-  void tick;
+  const nouvelle = () => { setTexte(""); setMotif(motifInitial ?? ""); setDebut(null); setChrono({ saisie: 0, composeDebut: 0, composition: 0, validation: 0 }); setEdits({}); setRetires([]); setTexteDuPlan(null); setSignee(null); setRepris(false); simPos.current = 0; setSimul("non"); composer.reset(); clearBrouillon(patientId, noteId); if (noteId) onAnnuler?.(); else ref.current?.focus(); };
+  const enCours = debut !== null && !signee;
+  const aValider = plan ? plan.actions.filter((a) => a.kind !== "naviguer" && !retires.includes(a.id)).length : 0;
 
   return (
     <div className="flex flex-col gap-4">
-      {noteId && !signee && <div className="flex items-center gap-2.5 rounded-[10px] bg-soft px-3.5 py-2.5 text-sm"><span className="h-2 w-2 shrink-0 rounded-full bg-warn-dot" /><span className="flex-1">Modification d'une note signée : ses documents sont là, ouvrez-les pour les corriger. À la signature, ce qui a changé est renvoyé et remplace l'envoi précédent.</span><button type="button" onClick={nouvelle} className="text-xs text-muted-2 hover:text-ink">Annuler</button></div>}
-      {repris && !signee && <div className="flex items-center gap-2.5 rounded-[10px] bg-accent-soft-2 px-3.5 py-2.5 text-sm"><span className="h-2 w-2 shrink-0 rounded-full bg-accent" /><span className="flex-1">Consultation reprise là où vous l'aviez laissée{composer.state.plan ? ` · ${composer.state.plan.actions.filter((a) => a.kind !== "naviguer" && !retires.includes(a.id)).length} action(s) à valider` : ""}.</span><button type="button" onClick={nouvelle} className="text-xs text-muted-2 hover:text-ink">Repartir de zéro</button></div>}
-      {signee && <div className="flex items-center gap-2.5 rounded-[10px] bg-ok-soft px-3.5 py-2.5 text-sm text-ok"><I.check size={14} w={2.5} /><span className="flex-1">{signee.modifieLe ? "Note modifiée et re-signée · les documents modifiés ont été renvoyés" : "Note signée et versée au dossier"} · saisie {fmtMs(signee.chrono.saisie)} · composition {fmtMs(signee.chrono.composition)} · validation {fmtMs(signee.chrono.validation)}</span></div>}
+      {noteId && !signee && <div className="flex items-center gap-2.5 rounded-[10px] bg-soft px-3.5 py-2.5 text-sm"><span className="h-2 w-2 shrink-0 rounded-full bg-warn-dot" /><span className="flex-1">Modification de la note signée{base?.date ? ` du ${new Date(base.date).toLocaleDateString("fr-FR")}` : ""} : ses documents sont là, ouvrez-les pour les corriger. À la signature, ce qui a changé est renvoyé et remplace l'envoi précédent.</span><button type="button" onClick={nouvelle} className="min-h-9 text-xs text-muted-2 hover:text-ink">Annuler</button></div>}
+      {repris && !signee && <div className="flex items-center gap-2.5 rounded-[10px] bg-accent-soft-2 px-3.5 py-2.5 text-sm"><span className="h-2 w-2 shrink-0 rounded-full bg-accent" /><span className="flex-1">{noteId ? "Modification reprise là où vous l'aviez laissée" : "Consultation reprise là où vous l'aviez laissée"}{plan ? ` · ${aValider} action${aValider > 1 ? "s" : ""} à valider` : ""}.</span><button type="button" onClick={nouvelle} className="min-h-9 text-xs text-muted-2 hover:text-ink">{noteId ? "Abandonner" : "Repartir de zéro"}</button></div>}
+      {signee && <div className="flex items-center gap-2.5 rounded-[10px] bg-ok-soft px-3.5 py-2.5 text-sm text-ok"><I.check size={14} w={2.5} /><span className="flex-1">{signee.modifieLe ? "Note modifiée et re-signée · les documents modifiés ont été renvoyés" : `Note signée et versée au dossier · saisie ${fmtMs(signee.chrono.saisie)} · composition ${fmtMs(signee.chrono.composition)} · validation ${fmtMs(signee.chrono.validation)}`}</span></div>}
+      {micro === "absent" && !signee && <p className="m-0 text-xs text-muted-2">La dictée au micro demande un navigateur avec reconnaissance vocale (Chrome, Edge, Safari récents) : ici, écrivez, collez la sortie d'un scribe{script ? ", ou lancez la dictée simulée" : ""}.</p>}
       <div className="flex flex-wrap items-center gap-2.5">
-        <button type="button" onClick={ecouter} disabled={micro === "absent"} title={micro === "absent" ? "Reconnaissance vocale indisponible dans ce navigateur (Chrome recommandé)" : micro === "erreur" ? "Micro refusé : autorisez-le dans la barre d'adresse" : "Dicter au micro"} className={cn("flex items-center gap-2 rounded-full border px-3.5 py-[8px] text-sm", micro === "ecoute" ? "border-rec bg-paper text-rec-text" : "border-line bg-paper text-ink hover:bg-hover", micro === "absent" && "opacity-40")}>
+        <button type="button" onClick={ecouter} disabled={micro === "absent" || !!signee} title={micro === "absent" ? "Reconnaissance vocale indisponible dans ce navigateur" : micro === "erreur" ? "Micro refusé : autorisez-le dans la barre d'adresse" : "Dicter au micro"} className={cn("flex min-h-10 items-center gap-2 rounded-full border px-3.5 py-[8px] text-sm", micro === "ecoute" ? "border-rec bg-paper text-rec-text" : "border-line bg-paper text-ink hover:bg-hover", (micro === "absent" || signee) && "opacity-40")}>
           <span className={cn("h-2 w-2 rounded-full", micro === "ecoute" ? "bg-rec animate-pulse-soft" : "bg-gray-dot")} />{micro === "ecoute" ? "Écoute… arrêter" : micro === "erreur" ? "Micro refusé" : "Dicter"}
         </button>
-        {script && <button type="button" onClick={simuler} className="flex items-center gap-2 rounded-full border border-line bg-paper px-3.5 py-[8px] text-sm text-ink hover:bg-hover"><span className={cn("h-2 w-2 rounded-full", simul === "en-cours" ? "bg-accent animate-pulse-soft" : "bg-gray-dot")} />{simul === "en-cours" ? "Pause" : simul === "pause" ? "Reprendre la dictée simulée" : simul === "fini" ? "Rejouer la dictée simulée" : "Simuler la dictée"} <Kbd>⌥ espace</Kbd></button>}
-        <button type="button" onClick={() => { setTexte((t) => (t.trim() ? t : MODELE)); ref.current?.focus(); }} className="rounded-full border border-line bg-paper px-3.5 py-[8px] text-sm text-ink hover:bg-hover">Structure</button>
+        {script && !signee && <button type="button" onClick={simuler} className="flex min-h-10 items-center gap-2 rounded-full border border-line bg-paper px-3.5 py-[8px] text-sm text-ink hover:bg-hover"><span className={cn("h-2 w-2 rounded-full", simul === "en-cours" ? "bg-accent animate-pulse-soft" : "bg-gray-dot")} />{simul === "en-cours" ? "Pause" : simul === "pause" ? "Reprendre la dictée simulée" : simul === "fini" ? "Rejouer la dictée simulée" : "Simuler la dictée"} <Kbd>⌥ espace</Kbd></button>}
+        {!signee && <button type="button" onClick={() => { setTexte((t) => (t.trim() ? t : MODELE)); ref.current?.focus(); }} className="min-h-10 rounded-full border border-line bg-paper px-3.5 py-[8px] text-sm text-ink hover:bg-hover">Structure</button>}
         <span className="flex-1" />
-        <input value={motif} onChange={(e) => setMotif(e.target.value)} placeholder="Motif" className="w-[160px] min-w-0 rounded-[8px] border border-line bg-paper px-3 py-1.5 text-sm text-ink outline-none placeholder:text-muted-3 sm:w-[220px]" />
-        <span className={cn("d text-[11px]", debut && "text-ink")}>{debut ? `⏱ ${fmtMs(ecoule)}` : "⏱ 0 s"}</span>
+        <input value={motif} onChange={(e) => setMotif(e.target.value)} placeholder="Motif" aria-label="Motif de consultation" readOnly={!!signee} className="min-h-10 w-full min-w-0 rounded-[8px] border border-line bg-paper px-3 py-1.5 text-base text-ink placeholder:text-muted-3 sm:w-[220px] sm:text-sm" />
+        <span className={cn("d text-[11px]", enCours && "text-ink")} title="Temps de saisie, hors absences">{enCours || plan ? `⏱ ${fmtMs(chrono.saisie)}` : "⏱ 0 s"}</span>
       </div>
       <div className="relative">
-        <textarea ref={ref} value={texte} readOnly={!!signee} onChange={(e) => { if (e.target.value.trim()) demarre(); setTexte(e.target.value); }} placeholder={`Dictez au micro, lancez la dictée simulée, collez la sortie d'un scribe, ou écrivez.\n\n${MODELE}`} rows={12} className="w-full resize-y rounded-[14px] border border-line bg-paper px-5 py-4 text-[17px] leading-[1.75] text-ink outline-none placeholder:text-muted-3 focus:border-accent-line" />
+        <textarea ref={ref} value={texte} readOnly={!!signee} aria-label="Note de consultation" data-cmd-enter={plan && !modifiee && !signee ? "valider" : undefined} onChange={(e) => { if (e.target.value.trim()) demarre(); setTexte(e.target.value); }} placeholder={`Dictez au micro, lancez la dictée simulée, collez la sortie d'un scribe, ou écrivez.\n\n${MODELE}`} rows={12} className="w-full resize-y rounded-[14px] border border-line bg-paper px-5 py-4 text-[17px] leading-[1.75] text-ink placeholder:text-muted-3" />
         {interim && <div className="pointer-events-none absolute inset-x-5 bottom-3 truncate text-[15px] text-muted-3">{interim}<span className="caret" /></div>}
       </div>
       <div className="flex flex-wrap items-center gap-2.5">
-        {!signee && <button type="button" onClick={generer} disabled={!texte.trim() || composer.state.busy} className={cn("flex items-center gap-2 rounded-[10px] px-4 py-[9px] text-sm disabled:opacity-40", modifiee ? "border border-accent-line bg-accent-soft-2 text-ink" : composer.state.plan ? "border border-line bg-paper text-ink" : "bg-ink text-paper")}>{modifiee ? "Régénérer les actions · la note a changé" : composer.state.plan ? "Régénérer les actions" : "Générer les actions"} <Kbd dark={!composer.state.plan}>⌘⏎</Kbd></button>}
-        {signee && <button type="button" onClick={nouvelle} className="rounded-[10px] border border-line bg-paper px-4 py-[9px] text-sm text-ink hover:bg-hover">Nouvelle consultation</button>}
+        {!signee && <button type="button" onClick={() => generer()} disabled={!texte.trim() || composer.state.busy} className={cn("flex min-h-11 items-center gap-2 rounded-[10px] px-4 py-[9px] text-sm disabled:opacity-40", modifiee ? "border border-accent-line bg-accent-soft-2 text-ink" : plan ? "border border-line bg-paper text-ink" : "bg-ink text-paper")}>{modifiee ? "Régénérer les actions · la note a changé" : plan ? "Régénérer les actions" : "Générer les actions"} {(!plan || modifiee) && <Kbd dark={!plan}>⌘⏎</Kbd>}</button>}
+        {signee && <button type="button" onClick={nouvelle} className="min-h-11 rounded-[10px] border border-line bg-paper px-4 py-[9px] text-sm text-ink hover:bg-hover">Nouvelle consultation</button>}
         <span className="text-xs text-muted-2">{nom}</span>
         <span className="flex-1" />
-        {composer.state.plan && <span className="d text-[11px]">saisie {fmtMs(chrono.current.saisie)} · composition {fmtMs(chrono.current.composition)}</span>}
+        {plan && !signee && <span className="d text-[11px]">saisie {fmtMs(chrono.saisie)} · composition {fmtMs(chrono.composition)} · validation {fmtMs(chrono.validation)}</span>}
       </div>
       {composer.open && (
-        <ComposeCard key={composer.state.input ? `${texteDuPlan?.length ?? 0}-${composer.state.plan ? "p" : "c"}` : "x"} state={composer.state} onClose={composer.reset} suivreSeul={false} onValide={onValide} libelleValider={noteId ? "Re-signer et renvoyer ce qui a changé" : "Signer et verser au dossier"} patient={pr}
+        <ComposeCard key={composer.state.input ? `${texteDuPlan?.length ?? 0}-${plan ? "p" : "c"}` : "x"} state={composer.state} onClose={composer.reset} onRetry={() => generer(true)} suivreSeul={false} onValide={onValide} libelleValider={noteId ? "Re-signer et renvoyer ce qui a changé" : "Signer et verser au dossier"} patient={pr}
           initialActions={{ edits, retires }} onChange={(e, r) => { setEdits(e); setRetires(r); }}
-          apres={<>{onRetour ? <button type="button" onClick={onRetour} className="rounded-[10px] bg-ink px-4 py-[9px] text-sm text-paper">Retour au dossier</button> : <Link href={retour} className="rounded-[10px] bg-ink px-4 py-[9px] text-sm text-paper hover:text-paper">Retour au dossier</Link>}<button type="button" onClick={nouvelle} className="rounded-[10px] border border-line bg-paper px-4 py-[9px] text-sm text-ink hover:bg-hover">Nouvelle consultation</button></>} />
+          apres={<>{onRetour ? <button type="button" onClick={onRetour} className="min-h-11 rounded-[10px] bg-ink px-4 py-[9px] text-sm text-paper">Retour au dossier</button> : <Link href={retour} className="flex min-h-11 items-center rounded-[10px] bg-ink px-4 py-[9px] text-sm text-paper hover:text-paper">Retour au dossier</Link>}<button type="button" onClick={nouvelle} className="min-h-11 rounded-[10px] border border-line bg-paper px-4 py-[9px] text-sm text-ink hover:bg-hover">Nouvelle consultation</button></>} />
       )}
     </div>
   );
@@ -204,22 +223,23 @@ export function NoteRow({ n, onDelete, onModifier, modifierHref, patient }: { n:
   const [open, setOpen] = React.useState(false);
   const [doc, setDoc] = React.useState<ComposeAction | null>(null);
   const d = new Date(n.date);
+  const chrono = n.chrono.saisie + n.chrono.composition + n.chrono.validation > 0 ? ` · saisie ${fmtMs(n.chrono.saisie)} · composition ${fmtMs(n.chrono.composition)} · validation ${fmtMs(n.chrono.validation)}` : "";
   return (
     <div className="card overflow-hidden">
       <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-hover">
         <span className="d w-[92px] shrink-0">{String(d.getDate()).padStart(2, "0")}/{String(d.getMonth() + 1).padStart(2, "0")} {String(d.getHours()).padStart(2, "0")}:{String(d.getMinutes()).padStart(2, "0")}</span>
-        <span className="flex min-w-0 flex-1 flex-col"><span className="truncate text-[15px]">{n.motif || n.synthese?.slice(0, 80) || "Consultation"}{n.modifieLe && <span className="ml-2 text-[11px] text-muted-2">modifiée le {new Date(n.modifieLe).toLocaleDateString("fr-FR")}</span>}</span><span className="truncate text-[13px] text-muted-2">{n.actions.length} action{n.actions.length > 1 ? "s" : ""} · saisie {fmtMs(n.chrono.saisie)} · composition {fmtMs(n.chrono.composition)} · validation {fmtMs(n.chrono.validation)}{n.via ? ` · ${n.via}` : ""}</span></span>
+        <span className="flex min-w-0 flex-1 flex-col"><span className="truncate text-[15px]">{n.origine === "commande" ? `Hors consultation · ${n.motif || "commande"}` : n.motif || n.synthese?.slice(0, 80) || "Consultation"}{n.modifieLe && <span className="ml-2 text-[11px] text-muted-2">modifiée le {new Date(n.modifieLe).toLocaleDateString("fr-FR")}</span>}</span><span className="truncate text-[13px] text-muted-2">{n.actions.length} action{n.actions.length > 1 ? "s" : ""}{chrono}{n.via ? ` · ${n.via}` : ""}</span></span>
         <I.chevron open={open} />
       </button>
       {open && (
         <div className="flex flex-col gap-3 border-t border-line-4 px-4 py-3">
           {n.synthese && <p className="m-0 text-sm leading-relaxed">{n.synthese}</p>}
-          <pre className="m-0 whitespace-pre-wrap rounded-[10px] bg-bg px-3.5 py-3 font-sans text-sm leading-relaxed text-ink-2">{n.texte}</pre>
-          {n.actions.length > 0 && <div className="flex flex-col gap-0.5">{n.actions.map((a) => <button key={a.id} type="button" onClick={() => setDoc(a)} className="flex items-center gap-3 rounded-[8px] px-2 py-1.5 text-left text-sm hover:bg-hover" title="Voir le document envoyé"><span className="d flex h-6 min-w-6 items-center justify-center rounded-[6px] bg-soft px-1 text-[10px] text-ink-3">{a.code}</span><span className="min-w-0 flex-1 truncate">{a.titre}</span><span className="text-[11px] text-muted-3">{a.destination}</span>{a.renvoye && <span className="text-[11px] text-ok">renvoyé</span>}<I.chevron /></button>)}</div>}
+          {n.texte && <pre className="m-0 whitespace-pre-wrap rounded-[10px] bg-bg px-3.5 py-3 font-sans text-sm leading-relaxed text-ink-2">{n.texte}</pre>}
+          {n.actions.length > 0 && <div className="flex flex-col gap-0.5">{n.actions.map((a) => <button key={a.id} type="button" onClick={() => setDoc(a)} className="flex min-h-11 items-center gap-3 rounded-[8px] px-2 py-1.5 text-left text-sm hover:bg-hover" title="Voir le document envoyé"><span className="d flex h-6 min-w-6 shrink-0 items-center justify-center rounded-[6px] bg-soft px-1 text-[10px] text-ink-3">{a.code}</span><span className="min-w-0 flex-1 truncate">{a.titre}</span><span className="hidden text-[11px] text-muted-2 sm:inline">{a.destination}</span>{a.renvoye && <span className="text-[11px] text-ok">renvoyé</span>}<I.chevron /></button>)}</div>}
           <div className="flex flex-wrap items-center gap-3">
-            {modifierHref && <Link href={modifierHref} className="rounded-[8px] border border-line bg-paper px-3 py-1.5 text-xs text-ink hover:bg-hover hover:text-ink">Modifier</Link>}
-            {onModifier && !modifierHref && <button type="button" onClick={onModifier} className="rounded-[8px] border border-line bg-paper px-3 py-1.5 text-xs text-ink hover:bg-hover">Modifier</button>}
-            {onDelete && <button type="button" onClick={onDelete} className="text-xs text-muted-2 hover:text-rec-text">Supprimer</button>}
+            {modifierHref && <Link href={modifierHref} className="flex min-h-9 items-center rounded-[8px] border border-line bg-paper px-3 py-1.5 text-xs text-ink hover:bg-hover hover:text-ink">Modifier</Link>}
+            {onModifier && !modifierHref && <button type="button" onClick={onModifier} className="min-h-9 rounded-[8px] border border-line bg-paper px-3 py-1.5 text-xs text-ink hover:bg-hover">Modifier</button>}
+            {onDelete && <button type="button" onClick={() => { if (confirm(`Supprimer cette note${n.actions.length ? ` et ses ${n.actions.length} action${n.actions.length > 1 ? "s" : ""}` : ""} ? Les documents déjà envoyés ne sont pas rappelés.`)) onDelete(); }} className="min-h-9 text-xs text-muted-2 hover:text-rec-text">Supprimer</button>}
           </div>
         </div>
       )}
@@ -228,47 +248,56 @@ export function NoteRow({ n, onDelete, onModifier, modifierHref, patient }: { n:
   );
 }
 
-/** La consultation en cours d'un patient, s'il y en a une : le rappel qui ramène à l'éditeur. */
-export function BrouillonBanner({ patientId, href }: { patientId: string; href: string }) {
-  const [b, setB] = React.useState<Brouillon | null>(null);
-  React.useEffect(() => { setB(readBrouillon(patientId)); }, [patientId]);
-  if (!b || (!b.texte.trim() && !b.plan)) return null;
-  const n = b.plan ? b.plan.actions.filter((a) => a.kind !== "naviguer" && !(b.retires ?? []).includes(a.id)).length : 0;
+/** Les consultations et modifications en cours d'un patient : le rappel qui ramène à l'éditeur. */
+export function BrouillonBanner({ patientId, href, onOpen, version }: { patientId: string; /** Le lien vers l'éditeur ; `?modifie=` est ajouté pour une modification. */ href: string; /** À la place d'un lien : ouvrir en place (dossier local). */ onOpen?: (b: Brouillon) => void; /** Change pour relire. */ version?: number }) {
+  const [list, setList] = React.useState<Brouillon[]>([]);
+  React.useEffect(() => { setList(listBrouillons(patientId)); }, [patientId, version]);
+  if (!list.length) return null;
   return (
-    <Link href={href} className="flex items-center gap-3 rounded-[12px] border border-accent-line bg-accent-soft-2 px-4 py-3 text-sm text-ink hover:text-ink" style={{ boxShadow: "var(--shadow-accent)" }}>
-      <span className="h-2 w-2 shrink-0 rounded-full bg-accent animate-pulse-soft" />
-      <span className="flex min-w-0 flex-1 flex-col"><span className="font-medium">{b.plan ? `${n} action${n > 1 ? "s" : ""} à valider` : "Consultation en cours"}</span><span className="truncate text-[13px] text-muted-2">{b.motif ? `${b.motif} · ` : ""}{b.texte.replace(/\s+/g, " ").slice(0, 90) || "note vide"}</span></span>
-      <span className="text-[13px]">Reprendre →</span>
-    </Link>
+    <div className="flex flex-col gap-2">
+      {list.map((b) => {
+        const n = nActions(b);
+        const inner = (<>
+          <span className="h-2 w-2 shrink-0 rounded-full bg-accent animate-pulse-soft" />
+          <span className="flex min-w-0 flex-1 flex-col"><span className="font-medium">{b.noteId ? `Modification de la note${b.noteDate ? ` du ${new Date(b.noteDate).toLocaleDateString("fr-FR")}` : ""} en cours` : b.plan ? `${n} action${n > 1 ? "s" : ""} à valider` : "Consultation en cours"}</span><span className="truncate text-[13px] text-muted-2">{b.motif ? `${b.motif} · ` : ""}{b.texte.replace(/\s+/g, " ").slice(0, 90) || "note vide"}</span></span>
+          <span className="shrink-0 text-[13px]">Reprendre →</span>
+        </>);
+        const cls = "flex min-h-12 w-full items-center gap-3 rounded-[12px] border border-accent-line bg-accent-soft-2 px-4 py-3 text-left text-sm text-ink hover:text-ink";
+        return onOpen ? <button key={b.noteId ?? "nouvelle"} type="button" onClick={() => onOpen(b)} className={cls} style={{ boxShadow: "var(--shadow-accent)" }}>{inner}</button> : <Link key={b.noteId ?? "nouvelle"} href={b.noteId ? `${href}?modifie=${b.noteId}` : href} className={cls} style={{ boxShadow: "var(--shadow-accent)" }}>{inner}</Link>;
+      })}
+    </div>
   );
 }
 
 /** Les notes de la session pour un patient du jeu de données (localStorage), affichées dans son dossier. */
-export function NotesSession({ patientId, patient }: { patientId: string; patient?: PatientRendu }) {
+export function NotesSession({ patientId, patient, version }: { patientId: string; patient?: PatientRendu; /** Change pour relire (après une signature sur le même écran). */ version?: number }) {
   const [notes, setNotes] = React.useState<NoteLocal[]>([]);
-  React.useEffect(() => { setNotes(readNotes(patientId)); }, [patientId]);
+  React.useEffect(() => { setNotes(readNotes(patientId)); }, [patientId, version]);
   if (!notes.length) return null;
   return (
     <section className="flex flex-col gap-2">
       <span className="k px-1">Notes de la session · {notes.length}</span>
-      {notes.map((n) => <NoteRow key={n.id} n={n} patient={patient} modifierHref={`/p/${patientId}/rencontre?modifie=${n.id}`} onDelete={() => { const next = notes.filter((x) => x.id !== n.id); writeNotes(patientId, next); setNotes(next); }} />)}
+      {notes.map((n) => <NoteRow key={n.id} n={n} patient={patient} modifierHref={`/p/${patientId}/rencontre?modifie=${n.id}`} onDelete={() => { const next = notes.filter((x) => x.id !== n.id); writeNotes(patientId, next); clearBrouillon(patientId, n.id); setNotes(next); }} />)}
     </section>
   );
 }
 
 /** Sur l'accueil : les consultations laissées en cours sur ce poste, avec leurs actions à valider. */
 export function BrouillonsAccueil() {
+  const cab = useCabinet();
   const [list, setList] = React.useState<Brouillon[]>([]);
   React.useEffect(() => { setList(listBrouillons()); }, []);
-  if (!list.length) return null;
+  // Un dossier local supprimé n'a plus de consultation à reprendre.
+  const rows = cab.ready ? list.filter((b) => !b.patientId.startsWith("loc_") || cab.get(b.patientId)) : list;
+  if (!rows.length) return null;
   return (
     <section className="flex flex-col gap-1">
-      <div className="k px-3.5 pb-2" style={{ color: "var(--accent)" }}>À valider · {list.length}</div>
-      {list.map((b) => { const n = b.plan ? b.plan.actions.filter((a) => a.kind !== "naviguer" && !(b.retires ?? []).includes(a.id)).length : 0; return (
-        <Link key={b.patientId} href={b.href} className="flex items-center gap-3 rounded-[10px] px-3.5 py-3 text-ink hover:bg-hover hover:text-ink sm:gap-4">
+      <div className="k px-3.5 pb-2" style={{ color: "var(--accent)" }}>À valider · {rows.length}</div>
+      {rows.map((b) => { const n = nActions(b); return (
+        <Link key={`${b.patientId}-${b.noteId ?? ""}`} href={b.noteId && !b.patientId.startsWith("loc_") ? `${b.href}?modifie=${b.noteId}` : b.href} className="flex min-h-12 items-center gap-3 rounded-[10px] px-3.5 py-3 text-ink hover:bg-hover hover:text-ink sm:gap-4">
           <span className="h-2 w-2 shrink-0 rounded-full bg-accent" />
           <span className="min-w-0 flex-1 truncate text-[15px]">{b.nom}</span>
-          <span className="hidden truncate text-[13px] text-muted-2 sm:inline">{b.plan ? `${n} action${n > 1 ? "s" : ""} à valider` : "note en cours"}{b.motif ? ` · ${b.motif}` : ""}</span>
+          <span className="truncate text-[13px] text-muted-2">{b.noteId ? "note en modification" : b.plan ? `${n} action${n > 1 ? "s" : ""} à valider` : "note en cours"}{b.motif ? ` · ${b.motif}` : ""}</span>
           <I.chevron />
         </Link>
       ); })}

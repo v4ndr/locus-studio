@@ -148,7 +148,7 @@ function Inner({ v, doc, boite, boiteKind, praticien }: { v: PatientView; doc: D
           </nav>
         </main>
       </div>
-      <Omni placeholder="« Verse ces faits au dossier », « transmets au cardiologue », « explique à la patiente »…" maxWidth={1180 - 48} onSubmit={(t) => composer.run({ texte: t, patientId: v.ref.id, ecran: "document", docId: doc.id })} suggestions={[{ k: "dossier", t: "Verse les faits extraits au dossier" }, { k: "courrier", t: "Transmets ce document au spécialiste avec un mot" }, { k: "mail", t: `Explique ce résultat à ${v.ref.prenom} en termes simples` }, { k: "comparer", t: "Compare avec le précédent, en tableau" }]} cta={<span className="hidden items-center gap-2 text-[13px] text-muted-2 sm:flex"><I.check />lu</span>}>{composer.open && <ComposeCard state={composer.state} onClose={composer.reset} />}</Omni>
+      <Omni placeholder="« Verse ces faits au dossier », « transmets au cardiologue », « explique à la patiente »…" maxWidth={1180 - 48} onSubmit={(t) => composer.run({ texte: t, patientId: v.ref.id, ecran: "document", docId: doc.id })} suggestions={[{ k: "dossier", t: "Verse les faits extraits au dossier" }, { k: "courrier", t: "Transmets ce document au spécialiste avec un mot" }, { k: "mail", t: `Explique ce résultat à ${v.ref.prenom} en termes simples` }, { k: "comparer", t: "Compare avec le précédent, en tableau" }]}>{composer.open && <ComposeCard state={composer.state} onClose={composer.reset} />}</Omni>
     </div>
   );
 }

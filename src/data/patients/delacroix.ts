@@ -330,7 +330,7 @@ const messages = [
     a: [{ type: "patient", nom: "Anne Delacroix" }],
     date: at("07:50"),
     objet: "Re: Maman — avant le rendez-vous de demain",
-    corps: "Bonjour Anne,\n\nMerci de nous l'avoir écrit — c'est exactement le genre d'information qui compte. Le Dr Vandepitterie en parlera avec votre mère ce matin ; le compte rendu de la cardiologue reçu hier prévoit justement cette situation.\n\nPour le pilulier : oui, c'est une bonne idée. Le cabinet peut prescrire un pilulier hebdomadaire préparé par la pharmacie (sans surcoût), et nous pouvons activer des rappels sur Mon Espace Santé si votre mère est d'accord.\n\nÀ tout à l'heure,\nSol, pour le Dr Vandepitterie",
+    corps: "Bonjour Anne,\n\nMerci de nous l'avoir écrit — c'est exactement le genre d'information qui compte. Le Dr Vandepitterie en parlera avec votre mère ce matin ; le compte rendu de la cardiologue reçu hier prévoit justement cette situation.\n\nPour le pilulier : oui, c'est une bonne idée. Le cabinet peut prescrire un pilulier hebdomadaire préparé par la pharmacie (sans surcoût), et nous pouvons activer des rappels sur Mon Espace Santé si votre mère est d'accord.\n\nÀ tout à l'heure,\nLocus, pour le Dr Vandepitterie",
   }, { status: "propose", at: at("07:50") }),
 ];
 

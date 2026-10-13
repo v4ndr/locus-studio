@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { PatientView } from "@/studio/types";
 import { SORTIES_LABEL } from "@/data/rencontres";
 import { Header, Kbd, I, useShortcuts } from "./chrome";
+import { DR_LAURENT } from "@/data/cabinet";
 import { useRencontre } from "@/store/rencontre";
 import { cn } from "@/lib/cn";
 
@@ -61,8 +62,8 @@ export function SignatureView({ v, praticien }: { v: PatientView; praticien: { i
         </section>
         <section className="flex min-w-0 flex-[999_1_520px] justify-center py-2">
           <div className="flex w-full max-w-[560px] flex-col gap-[22px] rounded-md border border-line bg-paper px-6 py-7 text-sm leading-relaxed sm:px-12 sm:py-11" style={{ boxShadow: "var(--shadow)" }}>
-            <div className="flex justify-between gap-4"><div className="flex flex-col"><b className="font-semibold">{praticien.nom}</b><span className="text-muted-2">Médecine générale · [RPPS]</span></div><span className="text-muted-2">15/10/2026</span></div>
-            <div className="flex flex-col"><span>{v.ref.nom.startsWith("M") && v.ref.nom.endsWith("e") ? "Mme" : ""} {v.ref.nom}</span><span className="text-muted-2">né{v.meta.endsWith("F") ? "e" : ""} le {v.ref.naissance}</span></div>
+            <div className="flex justify-between gap-4"><div className="flex flex-col"><b className="font-semibold">{praticien.nom}</b><span className="text-muted-2">{DR_LAURENT.specialite} · RPPS {DR_LAURENT.rpps}</span></div><span className="text-muted-2">15/10/2026</span></div>
+            <div className="flex flex-col"><span>{v.ref.sexe === "F" || (!v.ref.sexe && v.meta.endsWith("F")) ? "Mme" : "M."} {v.ref.nom}</span><span className="text-muted-2">né{v.meta.endsWith("F") ? "e" : ""} le {v.ref.naissance}</span></div>
             <div className="border-t border-line-4 pt-[18px]">
               <p className="m-0 mb-2 font-medium">{cur?.apercu?.titre ?? cur?.titre}</p>
               {(cur?.apercu?.corps ?? cur?.fields.map((f) => `${f.k} : ${f.v}`) ?? []).map((l, i) => <p key={i} className={cn("m-0", i > 0 && "mt-2.5")}>{l.replace("[SORTIES]", sorties ?? "à confirmer")}</p>)}
@@ -74,8 +75,8 @@ export function SignatureView({ v, praticien }: { v: PatientView; praticien: { i
       </main>
       <div className="sticky-fade px-4 pb-5 pt-4 sm:px-6 sm:pb-6">
         <div className="mx-auto flex max-w-[1240px] flex-wrap items-center justify-end gap-3.5">
-          <span className="text-[13px] text-muted-2">Pro Santé Connect · e-CPS connectée</span>
-          <button type="button" onClick={sign} className="flex items-center gap-2.5 rounded-xl bg-accent px-4 py-3 text-[15px] font-medium text-white sm:px-5">Signer et envoyer {total} documents <span className="kbd" style={{ background: "rgba(255,255,255,.18)", borderColor: "rgba(255,255,255,.35)", color: "#fff" }}>⌘⏎</span></button>
+          <span className="rounded-full bg-bg px-2 py-1 text-[13px] text-muted-2">Pro Santé Connect · e-CPS connectée</span>
+          <button type="button" onClick={sign} className="btn-accent flex min-h-11 items-center gap-2.5 rounded-xl px-4 py-3 text-[15px] font-medium sm:px-5">Signer et envoyer {total} documents <span className="kbd kbd-on-accent">⌘⏎</span></button>
         </div>
       </div>
     </div>
