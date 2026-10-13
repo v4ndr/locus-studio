@@ -4,13 +4,14 @@ import * as React from "react";
 /** L'état des rencontres de la session : réponses aux questions, signature, carte de résultat ouverte. */
 export interface RencontreState { answers: Record<string, string>; signed?: boolean; cmd?: string | null; cmdQuestion?: string | null }
 type State = Record<string, RencontreState>;
-type Action = { type: "answer"; patientId: string; questionId: string; optionId: string } | { type: "sign"; patientId: string } | { type: "cmd"; patientId: string; cmd: string | null; question?: string | null } | { type: "hydrate"; state: State } | { type: "reset" };
+type Action = { type: "answer"; patientId: string; questionId: string; optionId: string } | { type: "sign"; patientId: string } | { type: "reopen"; patientId: string } | { type: "cmd"; patientId: string; cmd: string | null; question?: string | null } | { type: "hydrate"; state: State } | { type: "reset" };
 
 function reducer(s: State, a: Action): State {
   const cur = (id: string): RencontreState => s[id] ?? { answers: {} };
   switch (a.type) {
     case "answer": return { ...s, [a.patientId]: { ...cur(a.patientId), answers: { ...cur(a.patientId).answers, [a.questionId]: a.optionId } } };
     case "sign": return { ...s, [a.patientId]: { ...cur(a.patientId), signed: true } };
+    case "reopen": return { ...s, [a.patientId]: { ...cur(a.patientId), signed: false, answers: {} } };
     case "cmd": return { ...s, [a.patientId]: { ...cur(a.patientId), cmd: a.cmd, cmdQuestion: a.question ?? null } };
     case "hydrate": return a.state;
     case "reset": return {};

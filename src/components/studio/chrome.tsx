@@ -148,6 +148,12 @@ export function CtaLink({ href, children, blue, onClick }: { href?: string; chil
 
 /** La carte de résultat au-dessus de l'omni : ce que Locus a composé, prêt à valider. */
 export function ResultCard({ tool, title, body, cta, onCta, onClose, secondary, onSecondary, busy, children }: { tool: string; title: string; body?: React.ReactNode; cta: string; onCta: () => void; onClose: () => void; secondary?: string; onSecondary?: () => void; busy?: boolean; children?: React.ReactNode }) {
+  // esc ferme la carte avant que l'en-tête ne remonte d'un cran.
+  React.useEffect(() => {
+    const k = (e: KeyboardEvent) => { if (e.key === "Escape" && !document.querySelector("[role=dialog][aria-modal=true]") && !(e.target as HTMLElement | null)?.closest("input, textarea")) { e.preventDefault(); e.stopPropagation(); onClose(); } };
+    window.addEventListener("keydown", k, true);
+    return () => window.removeEventListener("keydown", k, true);
+  }, [onClose]);
   return (
     <div className="flex flex-col gap-3 rounded-[14px] border border-accent-line bg-paper px-[18px] py-4" style={{ boxShadow: "var(--shadow-accent)" }}>
       <div className="flex items-center gap-2.5"><span className="k text-accent" style={{ color: "var(--accent)" }}>{tool}</span><span className="flex-1" /><button type="button" onClick={onClose} aria-label="Fermer" className="px-1 text-base text-muted-3">×</button></div>

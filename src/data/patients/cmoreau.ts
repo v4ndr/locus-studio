@@ -1,6 +1,6 @@
 import type { Dossier, Patient } from "@/domain/types";
 import { rec, P, journal, LOCUS, SYS } from "../build";
-import { at, day } from "../clock";
+import { at, day, daysBetween, TODAY } from "../clock";
 
 /**
  * Claire Moreau, 46 ans — aide-soignante, épicondylite droite en arrêt depuis
@@ -19,7 +19,7 @@ export const patientCMoreau = rec("patient", ID, P.systeme("insi"), {
 }, { id: ID, at: "2017-05-02T10:00:00+02:00" });
 
 const pb = {
-  epi: rec("problem", ID, P.medecin("2026-08-12"), { libelle: "Épicondylite latérale droite", categorie: "medical", cim10: "M77.1", cisp2: "L93", depuis: "2026-08-12", evolution: "chronique", enAvant: true, note: "Arrêt de travail depuis le 12/08/2026 (J+61). Kiné 10 séances faites." }, { at: "2026-08-12T10:00:00+02:00" }),
+  epi: rec("problem", ID, P.medecin("2026-08-12"), { libelle: "Épicondylite latérale droite", categorie: "medical", cim10: "M77.1", cisp2: "L93", depuis: "2026-08-12", evolution: "chronique", enAvant: true, note: `Arrêt de travail depuis le 12/08/2026 (J+${daysBetween("2026-08-12", TODAY)}). Kiné 10 séances faites.` }, { at: "2026-08-12T10:00:00+02:00" }),
   mains: rec("problem", ID, P.medecin(day(-13)), { libelle: "Arthralgies des mains", categorie: "medical", cim10: "M25.5", cisp2: "L20", depuis: day(-13), evolution: "chronique", enAvant: true, note: "Raideur matinale ~20 min. CRP 4, VS 18, FR négatif, anti-CCP en attente." }, { at: at("10:00", -13) }),
   thyro: rec("problem", ID, P.medecin("2018-04-10"), { libelle: "Hypothyroïdie", categorie: "medical", cim10: "E03.9", cisp2: "T86", depuis: "2018-04-10", evolution: "chronique", enAvant: true }, { at: "2018-04-10T10:00:00+02:00" }),
   appendic: rec("problem", ID, P.medecin("2017-05-02"), { libelle: "Appendicectomie", categorie: "chirurgical", depuis: "1996-06-01", evolution: "antecedent", enAvant: true }, { at: "2017-05-02T10:00:00+02:00" }),
@@ -115,14 +115,14 @@ const briefing = rec("briefing", ID, P.agent(0.93, [documents[0].id, labs[0].id]
   appointmentId: appointment.id,
   synthese: "Arrêt pour épicondylite droite jusqu'au **" + fmtFr(day(-1)) + "**. Le ==scanner du coude est arrivé==. Douleurs des mains en bilan, anti-CCP en attente.",
   depuisDerniereFois: ["Scanner coude D (" + day(-4) + ") : enthésopathie, rien d'osseux.", "Bilan : CRP 4, VS 18, FR négatif ; anti-CCP en attente.", "Kiné : 10 séances faites, 15 proposées."],
-  echeances: [{ libelle: "Rappel dTcaPolio des 45 ans — dû" }, { libelle: "Renouvellement lévothyroxine dû" }],
+  echeances: [{ libelle: "Rappel dTcaPolio des 45 ans — dû" }, { libelle: "Renouvellement lévothyroxine — dû" }],
   questions: ["Douleur et préhension : EVA, Cozen ?", "Poste : manutention répétée → déclaration en maladie professionnelle (tableau 57) ?", "Mains : raideur matinale, synovite ?"],
   propositionsIds: proposals.map((p) => p.id),
 }, { id: `${ID}.briefing.1`, status: "propose", at: at("07:45") });
 
 const summary = rec("summary", ID, P.agentValide(0.95, day(-29)), {
   enUneLigne: "46 ans, aide-soignante, épicondylite droite en arrêt depuis août, arthralgies des mains en bilan, hypothyroïdie.",
-  synthese: "Aide-soignante en EHPAD, manutention répétée. Épicondylite latérale droite depuis août 2026, en arrêt (J+61), kiné en cours, AINS arrêtés pour gastralgies. Douleurs des mains avec raideur matinale, bilan en cours (mère polyarthritique). Hypothyroïdie équilibrée sous lévothyroxine 75.",
+  synthese: `Aide-soignante en EHPAD, manutention répétée. Épicondylite latérale droite depuis août 2026, en arrêt (J+${daysBetween("2026-08-12", TODAY)}), kiné en cours, AINS arrêtés pour gastralgies. Douleurs des mains avec raideur matinale, bilan en cours (mère polyarthritique). Hypothyroïdie équilibrée sous lévothyroxine 75.`,
   enCeMoment: ["Scanner du coude arrivé : enthésopathie, rien d'osseux.", "Anti-CCP en attente.", "Rappel dTcaPolio des 45 ans dû."],
   derniereValidation: day(-29), changementsDepuis: [documents[0].id, labs[0].id],
 }, { at: at("07:45") });

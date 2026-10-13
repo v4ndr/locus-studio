@@ -3,7 +3,6 @@ import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { PatientView } from "@/studio/types";
-import { SORTIES_LABEL } from "@/data/rencontres";
 import { Header, Omni, CtaLink, Kbd, I, useShortcuts } from "./chrome";
 import { ComposeCard, useCompose } from "./compose";
 import { useRencontre } from "@/store/rencontre";
@@ -18,20 +17,22 @@ export function ActionsView({ v, praticien }: { v: PatientView; praticien: { ini
   const composer = useCompose();
   useShortcuts({ cmdEnter: () => router.push(`/p/${v.ref.id}/signature`) });
   const answer = r.question ? me.answers[r.question.id] : undefined;
+  // La réponse à la question : le libellé de l'option choisie, dans le champ qu'elle concerne, à la place de « à confirmer ».
+  const label = r.question && answer ? r.question.options.find((o) => o.id === answer)?.label ?? answer : undefined;
   const docs = r.actions.map((a) => {
     if (r.question && a.id === r.question.appliqueA) {
-      const s = answer ? SORTIES_LABEL[answer] ?? answer : undefined;
-      return { ...a, statut: s ? ("pret" as const) : a.statut, ligne: s ? `${a.ligne} · sorties ${s}` : a.ligne, fields: a.fields.map((f) => (f.k === r.question!.champ ? { ...f, v: s ?? "à confirmer" } : f)) };
+      const champ = r.question.champ;
+      return { ...a, statut: label ? ("pret" as const) : a.statut, ligne: label ? `${a.ligne} · ${champ.toLowerCase()} : ${label.toLowerCase()}` : a.ligne, fields: a.fields.map((f) => (f.k === champ ? { ...f, v: label ? (/à confirmer/.test(f.v) ? f.v.replace(/à confirmer/, label) : f.v.includes(label) ? f.v : `${f.v} · ${label}`) : f.v } : f)) };
     }
     return a;
   });
   const todo = docs.filter((d) => d.statut === "relire" || d.statut === "question").length;
-  const label = (s: string) => ({ pret: "prêt", relire: "à relire", question: "1 question", attente: "en attente" }[s] ?? s);
+  const statutLabel = (s: string) => ({ pret: "prêt", relire: "à relire", question: "1 question", attente: "en attente" }[s] ?? s);
   const color = (s: string) => (s === "pret" ? "var(--ok)" : s === "attente" ? "var(--muted-2)" : "var(--warn)");
 
   return (
     <div className="flex min-h-dvh flex-col">
-      <Header praticien={praticien} patient={{ id: v.ref.id, nom: v.ref.nom, initials: v.ref.initials }} back={`/p/${v.ref.id}/rencontre`} />
+      <Header praticien={praticien} patient={{ id: v.ref.id, nom: v.ref.nom, initials: v.ref.initials, meta: v.rdv?.heure ?? v.meta }} back={`/p/${v.ref.id}/rencontre`} />
       <main className="mx-auto flex w-full max-w-[720px] flex-1 flex-col gap-6 px-4 pb-8 pt-8 sm:px-6 sm:pt-14">
         <h1 className="m-0 text-[22px] font-medium sm:text-[26px] tracking-[-.02em]">{docs.length} document{docs.length > 1 ? "s" : ""} prêt{docs.length > 1 ? "s" : ""}{todo ? ` · ${todo} à regarder` : ""}</h1>
         {r.question && !answer && (
@@ -49,7 +50,7 @@ export function ActionsView({ v, praticien }: { v: PatientView; praticien: { ini
                 <button type="button" onClick={() => setOpen(isOpen ? null : d.id)} aria-expanded={isOpen} className="flex w-full items-center gap-3.5 rounded-xl px-4 py-3.5 text-left hover:bg-hover">
                   <span className="d flex h-7 w-7 shrink-0 items-center justify-center rounded-[7px] bg-soft text-[10px] text-ink-3">{d.code}</span>
                   <span className="flex min-w-0 flex-1 flex-col gap-0.5"><span className="text-[15px]">{d.titre}</span><span className="text-[13px] text-muted-2">{d.ligne}</span></span>
-                  <span className="text-xs" style={{ color: color(d.statut) }}>{label(d.statut)}</span>
+                  <span className="text-xs" style={{ color: color(d.statut) }}>{statutLabel(d.statut)}</span>
                   <I.chevron open={isOpen} />
                 </button>
                 {isOpen && (

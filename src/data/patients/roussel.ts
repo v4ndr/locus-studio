@@ -6,7 +6,7 @@ import { at, day } from "../clock";
 const ID = "pat_roussel";
 
 export const patientRoussel = rec("patient", ID, P.systeme("insi"), {
-  ins: { matricule: "1 68 11 38 185 017 82", oid: "1.2.250.1.213.1.4.8", nomNaissance: "ROUSSEL", prenoms: "ALAIN", sexe: "M", dateNaissance: "1968-09-05", lieuNaissance: "38185", statut: "qualifiee", verifieeLe: day(-20) },
+  ins: { matricule: "1 68 09 38 185 017 82", oid: "1.2.250.1.213.1.4.8", nomNaissance: "ROUSSEL", prenoms: "ALAIN", sexe: "M", dateNaissance: "1968-09-05", lieuNaissance: "38185", statut: "qualifiee", verifieeLe: day(-20) },
   nomUsage: "Roussel", prenomUsuel: "Alain", photoHue: 265,
   contact: { telephone: "06 11 22 33 44", email: "alain.roussel@exemple.fr", canalPrefere: "sms" },
   couverture: { regime: "general", mutuelle: { nom: "AG2R", numero: "AG-6610442" }, medecinTraitant: { rpps: "10003456789", nom: "Dr Romain Vandepitterie", declareLe: "2020-06-01" }, droitsVerifiesLe: day(-20) },

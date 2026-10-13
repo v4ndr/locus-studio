@@ -65,7 +65,7 @@ export function patientView(id: string): PatientView | undefined {
   if (p.vie?.profession) modeDeVie.push({ k: "Métier", v: p.vie.profession });
   for (const x of problems.filter((x) => x.categorie === "mode-de-vie")) modeDeVie.push({ k: /tabac|fum/i.test(x.libelle) ? "Tabac" : /alcool/i.test(x.libelle) ? "Alcool" : "Activité", v: x.libelle });
   if (p.vie?.situation) modeDeVie.push({ k: "Famille", v: p.vie.situation });
-  const traitements: Fiche[] = meds.map((m) => ({ k: `${cap(m.dci)}${m.dosage ? " " + m.dosage : ""} · ${m.posologie.replace(/^1 cp /, "1/")}`, v: m.debut ? `depuis ${yr(m.debut)}` : m.dernierRenouvellement ? m.dernierRenouvellement.slice(5, 7) + "/" + yr(m.dernierRenouvellement) : undefined }));
+  const traitements: Fiche[] = meds.map((m) => ({ k: `${cap(m.dci)}${m.dosage ? " " + m.dosage : ""} · ${m.posologie}`, v: m.debut ? `depuis ${yr(m.debut)}` : m.dernierRenouvellement ? m.dernierRenouvellement.slice(5, 7) + "/" + yr(m.dernierRenouvellement) : undefined }));
   const suivis: Fiche[] = chron.filter((x) => x.note).map((x) => ({ k: x.libelle, v: x.note }));
   const depistages: Fiche[] = [
     ...recordsOf(d, "screening").map((s) => ({ k: s.libelle.replace(/ \(.*\)/, ""), v: s.etat === "non-eligible" ? yr(s.prochainLe) : s.etat === "en-retard" ? "en retard" : s.etat === "a-proposer" ? "à proposer" : yr(s.dernierLe), muted: s.etat === "non-eligible" })),
@@ -78,7 +78,7 @@ export function patientView(id: string): PatientView | undefined {
     switch (x.action) {
       case "rdv": return { id: x.id, label: x.titre, tool: "agenda · créer", title: c && "debut" in c ? `${jourFr(String(c.debut))} · ${fmtTime(String(c.debut))} · ${c.dureeMin} min` : x.titre, body: x.justification, cta: "Réserver", proposal: x };
       case "message-patient": return { id: x.id, label: x.titre, tool: "messagerie · envoyer", title: `À ${p.prenomUsuel} ${p.nomUsage}${c && "objet" in c ? ` · ${c.objet}` : ""}`, body: c && "corps" in c ? String(c.corps) : x.justification, cta: "Envoyer", proposal: x };
-      case "ordonnance": return { id: x.id, label: x.titre, tool: "ordonnance · rédiger", title: c && "lignes" in c ? (c.lignes as { libelle: string; duree?: string }[]).map((l) => `${cap(l.libelle.toLowerCase())}${l.duree ? ` · ${l.duree}` : ""}`).join(" · ") : x.titre, body: x.justification, cta: "Signer", proposal: x };
+      case "ordonnance": return { id: x.id, label: x.titre, tool: "ordonnance · rédiger", title: c && "lignes" in c ? (c.lignes as { libelle: string; duree?: string }[]).map((l) => `${cap(l.libelle)}${l.duree ? ` · ${l.duree}` : ""}`).join(" · ") : x.titre, body: x.justification, cta: "Signer", proposal: x };
       case "courrier": return { id: x.id, label: x.titre, tool: "courrier · rédiger", title: c && "titre" in c ? String(c.titre) : x.titre, body: x.justification, cta: "Signer", proposal: x };
       case "arret-travail": return { id: x.id, label: x.titre, tool: "arrêt · AAT", title: x.titre, body: x.justification, cta: "Signer", proposal: x };
       default: return null;
@@ -87,34 +87,39 @@ export function patientView(id: string): PatientView | undefined {
   for (const x of proposals) { const c = chipOf(x); if (c) chips.push(c); }
 
   const rows: DocRow[] = [
-    ...docs.map((x) => ({ id: x.id, date: fr(x.dateDocument), type: (x.type === "cr-imagerie" ? "Imagerie" : "Courrier") as DocRow["type"], titre: x.titre, de: x.auteur?.split(",")[0] ?? x.canal })),
-    ...labs.map((x) => ({ id: x.id, date: fr(x.prelevementLe), type: "Biologie" as const, titre: x.resultats.map((r) => r.libelle).slice(0, 4).join(", ") + (x.resultats.length > 4 ? "…" : ""), de: "Laboratoire" })),
-    ...rx.map((x) => ({ id: x.id, date: fr(x.date), type: "Ordonnance" as const, titre: x.lignes.map((l) => l.libelle).join(" · "), de: PRATICIEN.nom })),
-    ...sl.map((x) => ({ id: x.id, date: fr(x.du), type: "Arrêt · certif" as const, titre: x.prolongation ? "Prolongation d'arrêt de travail" : "Arrêt de travail initial", de: PRATICIEN.nom })),
-    ...letters.map((x) => ({ id: x.id, date: fr(x.date), type: "Courrier" as const, titre: x.titre, de: PRATICIEN.nom })),
-    ...encs.map((x) => ({ id: x.id, date: fr(x.date), type: "Consultation" as const, titre: x.note.motifs.join(", "), de: PRATICIEN.nom })),
+    ...docs.map((x) => ({ id: x.id, date: fr(x.dateDocument), type: (x.type === "cr-imagerie" ? "Imagerie" : x.type === "certificat-recu" || x.type === "formulaire" ? "Arrêt · certif" : "Courrier") as DocRow["type"], titre: x.titre, de: x.auteur?.split(",")[0] ?? x.canal, texte: `${x.texte} ${x.lecture?.resume ?? ""}` })),
+    ...labs.map((x) => ({ id: x.id, date: fr(x.prelevementLe), type: "Biologie" as const, titre: x.resultats.map((r) => r.libelle).slice(0, 4).join(", ") + (x.resultats.length > 4 ? "…" : ""), de: "Laboratoire", texte: `${x.resultats.map((r) => `${r.libelle} ${r.valeur}`).join(" ")} ${x.lecture?.resume ?? ""}` })),
+    ...rx.map((x) => ({ id: x.id, date: fr(x.date), type: "Ordonnance" as const, titre: x.lignes.map((l) => l.libelle).join(" · "), de: PRATICIEN.nom, texte: x.lignes.map((l) => `${l.libelle} ${l.posologie ?? ""}`).join(" ") })),
+    ...sl.map((x) => ({ id: x.id, date: fr(x.du), type: "Arrêt · certif" as const, titre: x.prolongation ? "Prolongation d'arrêt de travail" : "Arrêt de travail initial", de: PRATICIEN.nom, texte: x.motif ?? "" })),
+    ...letters.map((x) => ({ id: x.id, date: fr(x.date), type: "Courrier" as const, titre: x.titre, de: PRATICIEN.nom, texte: x.corps ?? "" })),
+    ...encs.map((x) => ({ id: x.id, date: fr(x.date), type: "Consultation" as const, titre: x.note.motifs.join(", "), de: PRATICIEN.nom, texte: `${x.note.histoire ?? ""} ${x.note.examen ?? ""} ${x.note.conclusion ?? ""} ${x.note.conduite ?? ""}` })),
   ].sort((a, b) => b.date.split("/").reverse().join("").localeCompare(a.date.split("/").reverse().join("")));
 
   /* « À noter » : chaque ligne sait où elle mène. */
   const STOP = new Set(["rappel", "renouvellement", "renouveler", "bilan", "prise", "sang", "dans", "pour", "avec", "mail", "semaine", "semaines", "mois", "jours", "controle", "resultat", "resultats", "patient", "patiente", "demande", "compte", "rendu", "courrier", "avant", "apres", "depuis", "vers", "faire", "voir"]);
   const words = (t: string) => new Set(norm(t).split(/[^a-z0-9]+/).filter((w) => w.length >= 4 && !STOP.has(w)));
   const overlap = (a: string, b: string) => { const A = words(a), B = words(b); let n = 0; for (const w of A) if (B.has(w)) n++; return n; };
+  // Un seul mot commun (« annuel », « échographie ») ne suffit pas à désigner un document ou un raccourci : il en faut deux, ou la moitié des mots.
+  const assez = (n: number, a: string) => n >= 2 || (n >= 1 && words(a).size <= 2);
   const recent = rows.filter((r) => r.type === "Courrier" || r.type === "Imagerie" || r.type === "Biologie");
   const docHref = (docId: string) => `/p/${id}/documents/${docId}?from=dossier`;
   const sourceOf = (x: Proposal): NoteAction => {
     const rid = x.declencheur.recordId ?? x.provenance.derivedFrom?.find((r) => rows.some((row) => row.id === r));
     if (rid && rows.some((r) => r.id === rid)) return { type: "doc", href: docHref(rid) };
-    const best = recent.map((r) => ({ r, n: overlap(`${x.titre} ${x.justification}`, `${r.titre} ${r.type}`) })).sort((a, b) => b.n - a.n)[0];
-    if (best && best.n >= 1) return { type: "doc", href: docHref(best.r.id) };
+    const best = recent.map((r) => ({ r, n: overlap(x.titre, `${r.titre} ${r.type}`) })).sort((a, b) => b.n - a.n)[0];
+    if (best && assez(best.n, x.titre)) return { type: "doc", href: docHref(best.r.id) };
     return { type: "ask", texte: x.titre };
   };
-  const chipFor = (libelle: string): Chip | undefined => chips.map((c) => ({ c, n: overlap(libelle, `${c.label} ${c.title}`) })).filter((x) => x.n >= 1).sort((a, b) => b.n - a.n)[0]?.c;
+  const chipFor = (libelle: string): Chip | undefined => chips.map((c) => ({ c, n: overlap(libelle, `${c.label} ${c.title}`) })).filter((x) => assez(x.n, libelle)).sort((a, b) => b.n - a.n)[0]?.c;
   const aNoter: Note[] = [];
   for (const x of proposals.filter((x) => x.action === "signaler").slice(0, 2)) aNoter.push({ dot: "accent", texte: x.titre, tag: "nouveau", action: sourceOf(x) });
   for (const e of briefing?.echeances.slice(0, 2) ?? []) {
-    const lib = e.libelle.replace(/ — .*$/, "");
+    const brut = e.libelle;
+    const lib = brut.replace(/ — .*$/, "").replace(/\s*[—-]?\s*dû$/i, "").replace(/\b(\d{4})-(\d{2})-(\d{2})\b/g, "$3/$2/$1").trim();
     const c = chipFor(lib);
-    aNoter.push({ dot: "warn", texte: lib, tag: "dû", action: c ? { type: "cmd", chipId: c.id } : /vaccin|rappel|dtp|dtca|grippe|covid|depist|mammo|hpv|frottis|fit|colorectal/i.test(lib) ? { type: "fiche", section: "depistages" } : { type: "ask", texte: `${lib} : que faut-il préparer ?` } });
+    // « dû » seulement pour ce qui est en retard ou à faire ; une échéance « à jour » ou « non éligible » est une information.
+    const du = /d[ûu]\b|retard|depuis|avant|a proposer|à proposer|ce matin|dépass|attendu/i.test(brut) && !/à jour|non [ée]ligible|fait\)/i.test(brut);
+    aNoter.push({ dot: du ? "warn" : "gray", texte: lib, tag: du ? "dû" : "à savoir", action: c ? { type: "cmd", chipId: c.id } : /vaccin|rappel|dtp|dtca|grippe|covid|depist|mammo|hpv|frottis|fit|colorectal/i.test(lib) ? { type: "fiche", section: "depistages" } : { type: "ask", texte: `${lib} : que faut-il préparer ?` } });
   }
   for (const a of allergies.slice(0, 1)) aNoter.push({ dot: "gray", texte: `${a.substance}${a.reaction ? ` · ${a.reaction.toLowerCase()}` : ""}`, tag: "à savoir", action: { type: "fiche", section: "allergies" } });
   if (aNoter.length === 0 && sum?.enCeMoment[0]) aNoter.push({ dot: "gray", texte: sum.enCeMoment[0], tag: "à savoir", action: { type: "fiche", section: "suivis" } });
@@ -140,13 +145,13 @@ export function patientView(id: string): PatientView | undefined {
 }
 
 function cap(s: string) { return s.charAt(0).toUpperCase() + s.slice(1); }
-function jourFr(iso: string) { const d = new Date(iso); const j = ["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"][d.getDay()]; return `${j} ${d.getDate()} ${["janv", "févr", "mars", "avr", "mai", "juin", "juil", "août", "sept", "oct", "nov", "déc"][d.getMonth()]}`; }
+function jourFr(iso: string) { const d = new Date(iso); if (isNaN(d.getTime())) return ""; const parts = new Intl.DateTimeFormat("fr-FR", { timeZone: "Europe/Paris", weekday: "short", day: "numeric", month: "numeric" }).formatToParts(d); const g = (t: string) => parts.find((p) => p.type === t)?.value ?? ""; const j = ["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"][["dim", "lun", "mar", "mer", "jeu", "ven", "sam"].indexOf(g("weekday").slice(0, 3).toLowerCase())] ?? ""; return `${j} ${Number(g("day"))} ${["janv", "févr", "mars", "avr", "mai", "juin", "juil", "août", "sept", "oct", "nov", "déc"][Number(g("month")) - 1] ?? ""}`; }
 
 /* ------------------------------------------------------------------ */
 /* Un document ouvert                                                    */
 /* ------------------------------------------------------------------ */
 
-const DOC_TYPE: Record<string, string> = { "cr-imagerie": "Compte rendu d'imagerie", "cr-hospitalisation": "Compte rendu d'hospitalisation", "cr-specialiste": "Compte rendu de spécialiste", "cr-operatoire": "Compte rendu opératoire", "lettre": "Courrier", "certificat": "Certificat", "resultat": "Résultat", "autre": "Document" };
+const DOC_TYPE: Record<string, string> = { "cr-imagerie": "Compte rendu d'imagerie", "cr-hospitalisation": "Compte rendu d'hospitalisation", "cr-specialiste": "Compte rendu de spécialiste", "cr-operatoire": "Compte rendu opératoire", "lettre": "Courrier", "certificat": "Certificat", "certificat-recu": "Certificat reçu", "formulaire": "Formulaire", "anapath": "Anatomopathologie", "ordonnance-externe": "Ordonnance externe", "photo": "Photo", "resultat": "Résultat", "autre": "Document" };
 const RX_TYPE: Record<string, string> = { medicament: "Ordonnance", biologie: "Ordonnance de biologie", imagerie: "Ordonnance d'imagerie", paramedical: "Ordonnance paramédicale", transport: "Prescription de transport", dispositif: "Dispositif médical" };
 const CANAL: Record<string, string> = { mssante: "MSSanté", dmp: "Mon espace santé · DMP", scan: "scan", patient: "apporté par le patient", papier: "papier", fax: "fax", hprim: "HPRIM" };
 
@@ -243,7 +248,7 @@ export function inboxView(kind: InboxKind): InboxView {
 }
 
 const CODE: Record<string, string> = { ordonnance: "Rx", courrier: "CR", "arret-travail": "AT", "message-patient": "MSG", "message-confrere": "CR", rdv: "RV", rappel: "RV", codage: "COD", "creer-enregistrement": "DOS", "modifier-enregistrement": "DOS", signaler: "!", facturation: "FSE", "alimenter-dmp": "DMP" };
-const DEST: Record<string, string> = { ordonnance: "patiente · e-ordo", courrier: "MSSanté", "arret-travail": "CPAM · télétransmis", "message-patient": "patiente · messagerie", "message-confrere": "MSSanté", rdv: "agenda", rappel: "agenda", codage: "FSE", "creer-enregistrement": "dossier · DMP", "modifier-enregistrement": "dossier", signaler: "—", facturation: "CPAM", "alimenter-dmp": "DMP" };
+const DEST: Record<string, string> = { ordonnance: "patient · e-ordo", courrier: "MSSanté", "arret-travail": "CPAM · télétransmis", "message-patient": "patient · messagerie", "message-confrere": "MSSanté", rdv: "agenda", rappel: "agenda", codage: "FSE", "creer-enregistrement": "dossier · DMP", "modifier-enregistrement": "dossier", signaler: "—", facturation: "CPAM", "alimenter-dmp": "DMP" };
 
 /** Les patients sans rencontre écrite : la dictée est courte, les documents viennent des propositions. */
 function rencontreGenerique(d: Dossier, proposals: Proposal[], motif?: string): Rencontre {
@@ -251,8 +256,11 @@ function rencontreGenerique(d: Dossier, proposals: Proposal[], motif?: string): 
   const briefing = recordsOf(d, "briefing")[0];
   const actions: ActionDoc[] = proposals.filter((x) => x.action !== "signaler").map((x) => {
     const c = (x.charge ?? {}) as Record<string, unknown>;
-    const fields = x.action === "ordonnance" && Array.isArray(c.lignes) ? (c.lignes as { libelle: string; posologie?: string; duree?: string }[]).map((l) => ({ k: l.libelle, v: [l.posologie, l.duree].filter(Boolean).join(" · ") })) : [{ k: "Justification", v: x.justification.replace(/\[\d+\]/g, "") }];
-    return { id: x.id, code: CODE[x.action] ?? "DOC", titre: x.titre, ligne: x.declencheur.libelle, statut: x.action === "ordonnance" || x.action === "arret-travail" ? "relire" : "pret", destination: DEST[x.action] ?? "dossier", fields, apercu: { titre: x.titre, corps: fields.map((f) => `${f.k} : ${f.v}`), pied: DEST[x.action] } };
+    const corps = typeof c.corps === "string" ? c.corps : undefined;
+    const fields = x.action === "ordonnance" && Array.isArray(c.lignes) ? (c.lignes as { libelle: string; posologie?: string; duree?: string }[]).map((l) => ({ k: l.libelle, v: [l.posologie, l.duree].filter(Boolean).join(" · ") })) : corps ? [{ k: typeof c.objet === "string" ? `Objet · ${c.objet}` : "Corps", v: corps }] : [{ k: "Pourquoi", v: x.justification.replace(/\[\d+\]/g, "") }];
+    const quand = (x.action === "rdv" || x.action === "rappel") && typeof c.debut === "string" ? `${jourFr(c.debut)} · ${fmtTime(c.debut)}` : undefined;
+    const ligne = quand ?? (typeof c.objet === "string" ? String(c.objet) : x.justification.replace(/\[\d+\]/g, "").split(/(?<=\.)\s/)[0].slice(0, 110));
+    return { id: x.id, code: CODE[x.action] ?? "DOC", titre: x.titre, ligne, statut: x.action === "ordonnance" || x.action === "arret-travail" ? "relire" : "pret", destination: DEST[x.action] ?? "dossier", fields, apercu: { titre: x.titre, corps: corps ? corps.split(/\n+/) : fields.map((f) => `${f.k} : ${f.v}`), pied: DEST[x.action] } };
   });
   return {
     patientId: p.id,
