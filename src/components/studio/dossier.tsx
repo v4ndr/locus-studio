@@ -5,6 +5,7 @@ import Link from "next/link";
 import type { PatientView, Chip, NoteAction } from "@/studio/types";
 import { Header, Omni, ResultCard, CtaLink, I, Rich } from "./chrome";
 import { ComposeCard, useCompose } from "./compose";
+import { NotesSession } from "./note";
 import { useRencontre } from "@/store/rencontre";
 import { cn } from "@/lib/cn";
 
@@ -55,7 +56,6 @@ export function DossierView({ v, praticien }: { v: PatientView; praticien: { ini
         </section>
         <nav aria-label="Dossier complet" className="flex flex-wrap items-center gap-1.5">
           <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className="flex items-center gap-2 rounded-[10px] px-3 py-2 text-sm text-ink-3 hover:bg-hover"><I.chevron open={open} color="currentColor" /> Dossier</button>
-          <Link href={`/p/${v.ref.id}/note`} className="flex items-center gap-2 rounded-[10px] px-2.5 py-2 text-sm text-ink-3 hover:bg-hover">Note</Link>
           <span className="mx-1 h-[18px] w-px bg-line" />
           {([["Tout", v.counts.documents, ""], ["Ordonnances", v.counts.ordonnances, "Ordonnance"], ["Biologie", v.counts.biologie, "Biologie"], ["Imagerie", v.counts.imagerie, "Imagerie"]] as const).map(([l, n, t]) => (
             <Link key={l} href={`/p/${v.ref.id}/documents${t ? `?type=${encodeURIComponent(t)}` : ""}`} className="flex items-center gap-2 rounded-[10px] px-2.5 py-2 text-sm text-ink-3 hover:bg-hover">{l} <span className="d">{n}</span></Link>
@@ -81,6 +81,7 @@ export function DossierView({ v, praticien }: { v: PatientView; praticien: { ini
             <Card id="fiche-depistages" title="Dépistages · vaccins">{v.dossier.depistages.map((f, i) => <Li key={i} k={f.k} v={f.v} muted={f.muted} warn={f.v === "dû" || f.v === "en retard"} />)}</Card>
           </div>
         )}
+        <NotesSession patientId={v.ref.id} />
       </main>
       <Omni placeholder="Ordo, rendez-vous, mail, courrier, question… tout." onSubmit={ask} suggestions={exemples(v)} chips={v.chips.slice(0, 3).map((c) => ({ id: c.id, label: c.label, onClick: () => { composer.reset(); dispatch({ type: "cmd", patientId: v.ref.id, cmd: c.id }); } }))} cta={<CtaLink href={`/p/${v.ref.id}/rencontre`}>+ Consultation</CtaLink>}>
         {chip && !done && <ResultCard tool={chip.tool} title={chip.title} body={chip.body.replace(/\[\d+\]/g, "")} cta={chip.cta} onCta={() => { setDone(chip.id); setTimeout(() => { dispatch({ type: "cmd", patientId: v.ref.id, cmd: null }); setDone(null); }, 1400); }} onClose={() => dispatch({ type: "cmd", patientId: v.ref.id, cmd: null })} />}

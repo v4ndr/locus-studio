@@ -58,7 +58,7 @@ export async function* simulateCompose(input: ComposeInput): AsyncGenerator<Comp
   // Une note de consultation : ce qu'elle établit va au dossier, le reste suit les mêmes règles.
   if (note && d && input.note) {
     yield { step: "reflexion", titre: "Je lis la note" }; await sleep(350);
-    const concl = /conclusion\s*:?\s*([^\n]+)/i.exec(input.note)?.[1] ?? /diagnostic\s*:?\s*([^\n]+)/i.exec(input.note)?.[1] ?? input.note.split(/\n|\. /).find((l) => l.trim().length > 12)?.trim() ?? "Consultation";
+    const concl = /conclusion\s*:?\s*([^\n]+)/i.exec(input.note)?.[1] ?? /diagnostic\s*:?\s*([^\n]+)/i.exec(input.note)?.[1] ?? input.note.split(/\n|\. /).find((l) => l.trim().length > 12 && !/^motif/i.test(l.trim()))?.trim() ?? "Consultation";
     const motif = /motif\s*:?\s*([^\n]+)/i.exec(input.note)?.[1]?.trim();
     await call("inscrire_au_dossier", { type: "probleme", libelle: concl.slice(0, 90), detail: motif ? `Motif : ${motif}` : undefined, justification: "Conclusion de la note du jour." });
     const mesures = [...input.note.matchAll(/\b(TA|PA|tension)\s*:?\s*(\d{2,3}\s*\/\s*\d{2,3})|\b(poids)\s*:?\s*(\d{2,3}(?:[.,]\d)?)\s*kg|\b(temp[ée]rature|T°)\s*:?\s*(\d{2}(?:[.,]\d)?)|\b(sat|SpO2)\s*:?\s*(\d{2})\s*%/gi)];
@@ -85,7 +85,7 @@ export async function* simulateCompose(input: ComposeInput): AsyncGenerator<Comp
       const m = /(parac[ée]tamol|ibuprof[èe]ne|amoxicilline|dolip?rane)\s*(\d+\s*(?:mg|g))?/.exec(t);
       lignes.push(m ? { libelle: `${m[1]}${m[2] ? " " + m[2] : ""}`, posologie: /si douleur|si besoin/.test(t) ? "1 prise si douleur, max 3/j" : "1 prise matin et soir", duree: /(\d+)\s*(j|jour)/.test(t) ? `${/(\d+)\s*(j|jour)/.exec(t)![1]} jours` : "5 jours" } : { libelle: (note ? /(?:ordo(?:nnance)?|prescri[st]?|traitement)\s*:?\s*([^\n.]+)/i.exec(input.note ?? "")?.[1] : undefined) ?? input.texte.replace(/^(ordo(nnance)?|prescri[st]?)\s*:?\s*/i, ""), posologie: "à préciser", duree: `${duree} mois` });
     }
-    await call("proposer_ordonnance", { type: /kin[ée]|s[ée]ance/.test(t) ? "paramedical" : /bio|nfs|tsh|cr[ée]at|hba1c/.test(t) ? "biologie" : /scanner|irm|radio|[ée]cho/.test(t) ? "imagerie" : "medicament", lignes, justification: nommes.length || /renouvel/.test(t) ? "Renouvellement des traitements de fond, sans changement." : note ? "Prescrite dans la conduite à tenir de la note." : "Rédigée depuis la demande ; à relire avant signature." });
+    await call("proposer_ordonnance", { type: nommes.length || (/renouvel/.test(t) && meds.length) ? "medicament" : /kin[ée]|s[ée]ance/.test(t) ? "paramedical" : /bio|nfs|tsh|cr[ée]at|hba1c/.test(t) ? "biologie" : /scanner|irm|radio|[ée]cho/.test(t) ? "imagerie" : "medicament", lignes, justification: nommes.length || /renouvel/.test(t) ? "Renouvellement des traitements de fond, sans changement." : note ? "Prescrite dans la conduite à tenir de la note." : "Rédigée depuis la demande ; à relire avant signature." });
     yield* flush();
     phrases.push(`Ordonnance prête${/renouvel/.test(t) ? " : renouvellement sans changement" : ""}.`);
   }
