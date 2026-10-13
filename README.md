@@ -66,8 +66,12 @@ s'exportent en JSON.
 La **note** s'écrit ou se dicte (ou on colle la sortie d'un scribe), puis
 `⌘⏎` la **décline en actions** : ce qu'elle établit va au dossier, ce qu'elle
 prescrit devient ordonnance, arrêt, courrier, rendez-vous, message — à signer
-d'un geste. Un **chrono** mesure la saisie, la composition et la validation,
-pour comparer à la montre. Le composer reçoit le dossier local avec la demande
+d'un geste. Chaque action se **modifie** en place (titre, champs, « marquer
+relu ») ou se **retire** ; si la note change, « Régénérer » recompose. La
+consultation est un **brouillon persistant** : quitter l'écran ne perd rien,
+le dossier affiche « N actions à valider · Reprendre », l'accueil liste les
+consultations en cours. À la signature, le compte rendu dit ce qui est parti
+où. Un **chrono** mesure la saisie, la composition et la validation. Le composer reçoit le dossier local avec la demande
 (le serveur n'a pas de base) et le projette comme un `patient_ehr`.
 
 Le scénario complet est dans [`docs/scenes.md`](docs/scenes.md) (patiente :

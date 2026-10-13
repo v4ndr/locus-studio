@@ -1,10 +1,10 @@
 "use client";
 import * as React from "react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Kbd, I } from "./chrome";
 import { ComposeCard, useCompose } from "./compose";
 import { useCabinet, nid, patientPayload, type NoteLocal, type PatientLocal } from "@/store/cabinet";
-import type { ComposeAction, ComposePlan } from "@/locus/compose/contract";
+import type { ComposeAction, ComposePlan, ComposeInput } from "@/locus/compose/contract";
 import { cn } from "@/lib/cn";
 
 /**
@@ -35,13 +35,36 @@ export const NOTES_KEY = (patientId: string) => `locus-studio-notes-${patientId}
 export function readNotes(patientId: string): NoteLocal[] { try { return JSON.parse(localStorage.getItem(NOTES_KEY(patientId)) ?? "[]"); } catch { return []; } }
 export function writeNotes(patientId: string, notes: NoteLocal[]) { try { localStorage.setItem(NOTES_KEY(patientId), JSON.stringify(notes)); } catch {} }
 
-export function NoteEditor({ patientId, local, nom, retour, onSaved, script, motifInitial }: { patientId: string; local?: PatientLocal; nom: string; retour: string; onSaved?: (n: NoteLocal) => void; script?: string; motifInitial?: string }) {
-  const router = useRouter();
+/**
+ * Le brouillon de consultation : la note en cours, et le plan composé s'il
+ * existe, avec ce qu'on y a modifié ou retiré. Sauvé à chaque frappe, repris
+ * à l'ouverture — quitter l'écran ne perd rien, et les actions à valider
+ * restent visibles depuis le dossier et l'accueil.
+ */
+export interface Brouillon { patientId: string; nom: string; href: string; texte: string; motif: string; debut: number | null; chrono: { saisie: number; composeDebut: number; composition: number }; input?: ComposeInput; plan?: ComposePlan; texteDuPlan?: string; edits: Record<string, ComposeAction>; retires: string[]; majLe: string }
+export const BROUILLON_KEY = (patientId: string) => `locus-studio-brouillon-${patientId}`;
+export function readBrouillon(patientId: string): Brouillon | null { try { const raw = localStorage.getItem(BROUILLON_KEY(patientId)); return raw ? (JSON.parse(raw) as Brouillon) : null; } catch { return null; } }
+export function writeBrouillon(b: Brouillon) { try { localStorage.setItem(BROUILLON_KEY(b.patientId), JSON.stringify(b)); } catch {} }
+export function clearBrouillon(patientId: string) { try { localStorage.removeItem(BROUILLON_KEY(patientId)); } catch {} }
+/** Tous les brouillons du poste, les plus récents d'abord. */
+export function listBrouillons(): Brouillon[] {
+  const out: Brouillon[] = [];
+  try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k?.startsWith("locus-studio-brouillon-")) { const b = JSON.parse(localStorage.getItem(k) ?? "null") as Brouillon | null; if (b && (b.texte.trim() || b.plan)) out.push(b); } } } catch {}
+  return out.sort((a, b) => b.majLe.localeCompare(a.majLe));
+}
+
+export function NoteEditor({ patientId, local, nom, retour, onSaved, script, motifInitial, consultHref, onRetour }: { patientId: string; local?: PatientLocal; nom: string; retour: string; onSaved?: (n: NoteLocal) => void; script?: string; motifInitial?: string; consultHref?: string; onRetour?: () => void }) {
   const cab = useCabinet();
   const composer = useCompose();
   const [texte, setTexte] = React.useState("");
   const [motif, setMotif] = React.useState(motifInitial ?? "");
   const [debut, setDebut] = React.useState<number | null>(null);
+  const [pret, setPret] = React.useState(false);
+  const [texteDuPlan, setTexteDuPlan] = React.useState<string | null>(null);
+  const [edits, setEdits] = React.useState<Record<string, ComposeAction>>({});
+  const [retires, setRetires] = React.useState<string[]>([]);
+  const [signee, setSignee] = React.useState<NoteLocal | null>(null);
+  const [repris, setRepris] = React.useState(false);
   const [tick, setTick] = React.useState(0);
   const [micro, setMicro] = React.useState<"absent" | "pret" | "ecoute" | "erreur">("absent");
   const [interim, setInterim] = React.useState("");
@@ -51,7 +74,24 @@ export function NoteEditor({ patientId, local, nom, retour, onSaved, script, mot
   const rec = React.useRef<SR | null>(null);
   const simPos = React.useRef(0);
 
-  React.useEffect(() => { ref.current?.focus(); setMicro(speechCtor() ? "pret" : "absent"); }, []);
+  /* À l'ouverture : le brouillon de ce patient, s'il y en a un, reprend sa place — note, chrono, plan, modifications. */
+  React.useEffect(() => {
+    setMicro(speechCtor() ? "pret" : "absent");
+    const b = readBrouillon(patientId);
+    if (b && (b.texte.trim() || b.plan)) {
+      setTexte(b.texte); setMotif(b.motif); setDebut(b.debut); chrono.current = b.chrono; setEdits(b.edits ?? {}); setRetires(b.retires ?? []); setTexteDuPlan(b.texteDuPlan ?? null); setRepris(true);
+      if (b.plan && b.input) composer.restore(b.input, b.plan);
+    }
+    setPret(true);
+    ref.current?.focus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [patientId]);
+  /* À chaque changement : le brouillon suit. */
+  React.useEffect(() => {
+    if (!pret || signee) return;
+    if (!texte.trim() && !composer.state.plan) { clearBrouillon(patientId); return; }
+    writeBrouillon({ patientId, nom, href: consultHref ?? retour, texte, motif, debut, chrono: chrono.current, input: composer.state.input, plan: composer.state.plan, texteDuPlan: texteDuPlan ?? undefined, edits, retires, majLe: new Date().toISOString() });
+  }, [pret, signee, texte, motif, debut, composer.state.plan, composer.state.input, edits, retires, texteDuPlan, patientId, nom, retour, consultHref]);
   React.useEffect(() => { if (debut === null) return; const id = setInterval(() => setTick((t) => t + 1), 1000); return () => clearInterval(id); }, [debut]);
   React.useEffect(() => { if (composer.state.plan && chrono.current.composeDebut && !chrono.current.composition) chrono.current.composition = Date.now() - chrono.current.composeDebut; }, [composer.state.plan]);
   const demarre = React.useCallback(() => setDebut((d) => d ?? Date.now()), []);
@@ -84,6 +124,7 @@ export function NoteEditor({ patientId, local, nom, retour, onSaved, script, mot
     rec.current?.stop(); setSimul((s) => (s === "en-cours" ? "pause" : s));
     chrono.current.saisie = debut ? Date.now() - debut : 0;
     chrono.current.composeDebut = Date.now(); chrono.current.composition = 0;
+    setEdits({}); setRetires([]); setTexteDuPlan(texte);
     composer.run({ texte: "", note: (motif ? `Motif : ${motif}\n` : "") + texte, ecran: "note", patientId, patient: local ? patientPayload(local) : undefined });
   }, [texte, motif, debut, composer, patientId, local]);
 
@@ -100,15 +141,20 @@ export function NoteEditor({ patientId, local, nom, retour, onSaved, script, mot
     const validation = Date.now() - (chrono.current.composeDebut + chrono.current.composition);
     const note: NoteLocal = { id: nid("n"), date: new Date().toISOString(), motif: motif || undefined, texte, actions, synthese: plan.synthese, via: plan.via, chrono: { saisie: chrono.current.saisie, composition: chrono.current.composition, validation } };
     if (local) cab.saveNote(local.id, note); else writeNotes(patientId, [note, ...readNotes(patientId)]);
+    setSignee(note); clearBrouillon(patientId);
     onSaved?.(note);
-    setTimeout(() => router.push(retour), 900);
-  }, [motif, texte, local, cab, patientId, onSaved, router, retour]);
+  }, [motif, texte, local, cab, patientId, onSaved]);
+
+  const modifiee = !!composer.state.plan && texteDuPlan !== null && texteDuPlan !== texte;
+  const nouvelle = () => { setTexte(""); setMotif(motifInitial ?? ""); setDebut(null); chrono.current = { saisie: 0, composeDebut: 0, composition: 0 }; setEdits({}); setRetires([]); setTexteDuPlan(null); setSignee(null); setRepris(false); simPos.current = 0; setSimul("non"); composer.reset(); clearBrouillon(patientId); ref.current?.focus(); };
 
   const ecoule = debut ? Date.now() - debut : 0;
   void tick;
 
   return (
     <div className="flex flex-col gap-4">
+      {repris && !signee && <div className="flex items-center gap-2.5 rounded-[10px] bg-accent-soft-2 px-3.5 py-2.5 text-sm"><span className="h-2 w-2 shrink-0 rounded-full bg-accent" /><span className="flex-1">Consultation reprise là où vous l'aviez laissée{composer.state.plan ? ` · ${composer.state.plan.actions.filter((a) => a.kind !== "naviguer" && !retires.includes(a.id)).length} action(s) à valider` : ""}.</span><button type="button" onClick={nouvelle} className="text-xs text-muted-2 hover:text-ink">Repartir de zéro</button></div>}
+      {signee && <div className="flex items-center gap-2.5 rounded-[10px] bg-ok-soft px-3.5 py-2.5 text-sm text-ok"><I.check size={14} w={2.5} /><span className="flex-1">Note signée et versée au dossier · saisie {fmtMs(signee.chrono.saisie)} · composition {fmtMs(signee.chrono.composition)} · validation {fmtMs(signee.chrono.validation)}</span></div>}
       <div className="flex flex-wrap items-center gap-2.5">
         <button type="button" onClick={ecouter} disabled={micro === "absent"} title={micro === "absent" ? "Reconnaissance vocale indisponible dans ce navigateur (Chrome recommandé)" : micro === "erreur" ? "Micro refusé : autorisez-le dans la barre d'adresse" : "Dicter au micro"} className={cn("flex items-center gap-2 rounded-full border px-3.5 py-[8px] text-sm", micro === "ecoute" ? "border-rec bg-paper text-rec-text" : "border-line bg-paper text-ink hover:bg-hover", micro === "absent" && "opacity-40")}>
           <span className={cn("h-2 w-2 rounded-full", micro === "ecoute" ? "bg-rec animate-pulse-soft" : "bg-gray-dot")} />{micro === "ecoute" ? "Écoute… arrêter" : micro === "erreur" ? "Micro refusé" : "Dicter"}
@@ -120,16 +166,21 @@ export function NoteEditor({ patientId, local, nom, retour, onSaved, script, mot
         <span className={cn("d text-[11px]", debut && "text-ink")}>{debut ? `⏱ ${fmtMs(ecoule)}` : "⏱ 0 s"}</span>
       </div>
       <div className="relative">
-        <textarea ref={ref} value={texte} onChange={(e) => { if (e.target.value.trim()) demarre(); setTexte(e.target.value); }} placeholder={`Dictez au micro, lancez la dictée simulée, collez la sortie d'un scribe, ou écrivez.\n\n${MODELE}`} rows={12} className="w-full resize-y rounded-[14px] border border-line bg-paper px-5 py-4 text-[17px] leading-[1.75] text-ink outline-none placeholder:text-muted-3 focus:border-accent-line" />
+        <textarea ref={ref} value={texte} readOnly={!!signee} onChange={(e) => { if (e.target.value.trim()) demarre(); setTexte(e.target.value); }} placeholder={`Dictez au micro, lancez la dictée simulée, collez la sortie d'un scribe, ou écrivez.\n\n${MODELE}`} rows={12} className="w-full resize-y rounded-[14px] border border-line bg-paper px-5 py-4 text-[17px] leading-[1.75] text-ink outline-none placeholder:text-muted-3 focus:border-accent-line" />
         {interim && <div className="pointer-events-none absolute inset-x-5 bottom-3 truncate text-[15px] text-muted-3">{interim}<span className="caret" /></div>}
       </div>
       <div className="flex flex-wrap items-center gap-2.5">
-        <button type="button" onClick={generer} disabled={!texte.trim() || composer.state.busy} className="flex items-center gap-2 rounded-[10px] bg-ink px-4 py-[9px] text-sm text-paper disabled:opacity-40">Générer les actions <Kbd dark>⌘⏎</Kbd></button>
+        {!signee && <button type="button" onClick={generer} disabled={!texte.trim() || composer.state.busy} className={cn("flex items-center gap-2 rounded-[10px] px-4 py-[9px] text-sm disabled:opacity-40", modifiee ? "border border-accent-line bg-accent-soft-2 text-ink" : composer.state.plan ? "border border-line bg-paper text-ink" : "bg-ink text-paper")}>{modifiee ? "Régénérer les actions · la note a changé" : composer.state.plan ? "Régénérer les actions" : "Générer les actions"} <Kbd dark={!composer.state.plan}>⌘⏎</Kbd></button>}
+        {signee && <button type="button" onClick={nouvelle} className="rounded-[10px] border border-line bg-paper px-4 py-[9px] text-sm text-ink hover:bg-hover">Nouvelle consultation</button>}
         <span className="text-xs text-muted-2">{nom}</span>
         <span className="flex-1" />
         {composer.state.plan && <span className="d text-[11px]">saisie {fmtMs(chrono.current.saisie)} · composition {fmtMs(chrono.current.composition)}</span>}
       </div>
-      {composer.open && <ComposeCard state={composer.state} onClose={composer.reset} suivreSeul={false} onValide={onValide} libelleValider="Signer et verser au dossier" />}
+      {composer.open && (
+        <ComposeCard key={composer.state.input ? `${texteDuPlan?.length ?? 0}-${composer.state.plan ? "p" : "c"}` : "x"} state={composer.state} onClose={composer.reset} suivreSeul={false} onValide={onValide} libelleValider="Signer et verser au dossier"
+          initialActions={{ edits, retires }} onChange={(e, r) => { setEdits(e); setRetires(r); }}
+          apres={<>{onRetour ? <button type="button" onClick={onRetour} className="rounded-[10px] bg-ink px-4 py-[9px] text-sm text-paper">Retour au dossier</button> : <Link href={retour} className="rounded-[10px] bg-ink px-4 py-[9px] text-sm text-paper hover:text-paper">Retour au dossier</Link>}<button type="button" onClick={nouvelle} className="rounded-[10px] border border-line bg-paper px-4 py-[9px] text-sm text-ink hover:bg-hover">Nouvelle consultation</button></>} />
+      )}
     </div>
   );
 }
@@ -157,6 +208,21 @@ export function NoteRow({ n, onDelete }: { n: NoteLocal; onDelete?: () => void }
   );
 }
 
+/** La consultation en cours d'un patient, s'il y en a une : le rappel qui ramène à l'éditeur. */
+export function BrouillonBanner({ patientId, href }: { patientId: string; href: string }) {
+  const [b, setB] = React.useState<Brouillon | null>(null);
+  React.useEffect(() => { setB(readBrouillon(patientId)); }, [patientId]);
+  if (!b || (!b.texte.trim() && !b.plan)) return null;
+  const n = b.plan ? b.plan.actions.filter((a) => a.kind !== "naviguer" && !(b.retires ?? []).includes(a.id)).length : 0;
+  return (
+    <Link href={href} className="flex items-center gap-3 rounded-[12px] border border-accent-line bg-accent-soft-2 px-4 py-3 text-sm text-ink hover:text-ink" style={{ boxShadow: "var(--shadow-accent)" }}>
+      <span className="h-2 w-2 shrink-0 rounded-full bg-accent animate-pulse-soft" />
+      <span className="flex min-w-0 flex-1 flex-col"><span className="font-medium">{b.plan ? `${n} action${n > 1 ? "s" : ""} à valider` : "Consultation en cours"}</span><span className="truncate text-[13px] text-muted-2">{b.motif ? `${b.motif} · ` : ""}{b.texte.replace(/\s+/g, " ").slice(0, 90) || "note vide"}</span></span>
+      <span className="text-[13px]">Reprendre →</span>
+    </Link>
+  );
+}
+
 /** Les notes de la session pour un patient du jeu de données (localStorage), affichées dans son dossier. */
 export function NotesSession({ patientId }: { patientId: string }) {
   const [notes, setNotes] = React.useState<NoteLocal[]>([]);
@@ -166,6 +232,26 @@ export function NotesSession({ patientId }: { patientId: string }) {
     <section className="flex flex-col gap-2">
       <span className="k px-1">Notes de la session · {notes.length}</span>
       {notes.map((n) => <NoteRow key={n.id} n={n} onDelete={() => { const next = notes.filter((x) => x.id !== n.id); writeNotes(patientId, next); setNotes(next); }} />)}
+    </section>
+  );
+}
+
+/** Sur l'accueil : les consultations laissées en cours sur ce poste, avec leurs actions à valider. */
+export function BrouillonsAccueil() {
+  const [list, setList] = React.useState<Brouillon[]>([]);
+  React.useEffect(() => { setList(listBrouillons()); }, []);
+  if (!list.length) return null;
+  return (
+    <section className="flex flex-col gap-1">
+      <div className="k px-3.5 pb-2" style={{ color: "var(--accent)" }}>À valider · {list.length}</div>
+      {list.map((b) => { const n = b.plan ? b.plan.actions.filter((a) => a.kind !== "naviguer" && !(b.retires ?? []).includes(a.id)).length : 0; return (
+        <Link key={b.patientId} href={b.href} className="flex items-center gap-3 rounded-[10px] px-3.5 py-3 text-ink hover:bg-hover hover:text-ink sm:gap-4">
+          <span className="h-2 w-2 shrink-0 rounded-full bg-accent" />
+          <span className="min-w-0 flex-1 truncate text-[15px]">{b.nom}</span>
+          <span className="hidden truncate text-[13px] text-muted-2 sm:inline">{b.plan ? `${n} action${n > 1 ? "s" : ""} à valider` : "note en cours"}{b.motif ? ` · ${b.motif}` : ""}</span>
+          <I.chevron />
+        </Link>
+      ); })}
     </section>
   );
 }

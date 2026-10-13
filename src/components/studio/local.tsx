@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Header, Omni, Kbd, I, Avatar } from "./chrome";
 import { ComposeCard, useCompose } from "./compose";
-import { NoteEditor, NoteRow } from "./note";
+import { NoteEditor, NoteRow, readBrouillon } from "./note";
 import { useCabinet, nid, patientPayload, ageDe, type PatientLocal } from "@/store/cabinet";
 import { initials } from "@/lib/format";
 import { cn } from "@/lib/cn";
@@ -128,6 +128,8 @@ export function DossierLocalView({ id }: { id: string }) {
   const p = cab.get(id);
   const [edit, setEdit] = React.useState(false);
   const [noteOpen, setNoteOpen] = React.useState(false);
+  // Un brouillon en cours rouvre l'éditeur directement.
+  React.useEffect(() => { const b = readBrouillon(id); if (b && (b.texte.trim() || b.plan)) setNoteOpen(true); }, [id]);
   if (!cab.ready) return <div className="flex min-h-dvh flex-col"><Header praticien={PRATICIEN} back="/d" /></div>;
   if (!p) return (
     <div className="flex min-h-dvh flex-col"><Header praticien={PRATICIEN} back="/d" /><main className="mx-auto flex max-w-[720px] flex-1 flex-col items-center justify-center gap-3 px-6 text-center"><h1 className="m-0 text-xl font-medium">Dossier introuvable sur ce poste</h1><p className="m-0 text-sm text-muted-2">Les dossiers créés sans carte Vitale vivent dans le navigateur qui les a créés. Importez l'export JSON pour le retrouver.</p><Link href="/d" className="text-sm" style={{ color: "var(--accent)" }}>Cabinet local →</Link></main></div>
@@ -170,7 +172,7 @@ export function DossierLocalView({ id }: { id: string }) {
         {edit && <section className="card px-5 py-5"><PatientForm initial={p} onDone={() => setEdit(false)} /></section>}
 
         {noteOpen ? (
-          <section className="card px-5 py-5"><NoteEditor patientId={p.id} local={p} nom={nom} retour={`/d/${p.id}`} onSaved={() => setNoteOpen(false)} /></section>
+          <section className="card px-5 py-5"><NoteEditor patientId={p.id} local={p} nom={nom} retour={`/d/${p.id}`} consultHref={`/d/${p.id}`} onRetour={() => setNoteOpen(false)} /></section>
         ) : (
           <section className="flex flex-col gap-2">
             <div className="flex items-center gap-3"><span className="k px-1">Notes</span><span className="flex-1" /><button type="button" onClick={() => setNoteOpen(true)} className="flex items-center gap-2 rounded-[10px] bg-ink px-3.5 py-[8px] text-sm text-paper"><I.plus /> Consultation</button></div>

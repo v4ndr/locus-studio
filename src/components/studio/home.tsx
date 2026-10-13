@@ -6,6 +6,7 @@ import type { HomeData, PatientRef } from "@/studio/types";
 import { Header, Kbd, I, Avatar } from "./chrome";
 import { ComposeCard, useCompose } from "./compose";
 import { useCabinet, ageDe } from "@/store/cabinet";
+import { BrouillonsAccueil } from "./note";
 import { initials } from "@/lib/format";
 import { norm } from "@/lib/norm";
 import { cn } from "@/lib/cn";
@@ -113,6 +114,7 @@ export function Home({ data }: { data: HomeData }) {
                 <Pill href="/d" label="Cabinet local" n={cab.patients.length} />
                 <Link href="/nouveau" className="flex items-center gap-1.5 rounded-lg border border-dashed border-line px-2.5 py-1.5 text-xs text-ink-2 hover:bg-hover hover:text-ink"><I.plus /> Nouveau patient</Link>
               </div>
+              <BrouillonsAccueil />
               <section className="flex flex-col gap-1">
                 {!all && (
                   <>
