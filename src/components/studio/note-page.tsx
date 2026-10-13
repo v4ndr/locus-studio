@@ -23,7 +23,7 @@ export function NoteView({ v, praticien }: { v: PatientView; praticien: { initia
           <span className="flex-1" />
           {scripte && <Link href={`/p/${v.ref.id}/actions`} className="text-xs text-muted-2 hover:text-ink">Scénario du design →</Link>}
         </div>
-        <NoteEditor patientId={v.ref.id} nom={v.ref.nom} retour={`/p/${v.ref.id}`} script={scripte ? script : undefined} motifInitial={v.rdv?.motif} />
+        <NoteEditor patientId={v.ref.id} nom={v.ref.nom} retour={`/p/${v.ref.id}`} consultHref={`/p/${v.ref.id}/rencontre`} script={scripte ? script : undefined} motifInitial={v.rdv?.motif} />
         <NotesSession patientId={v.ref.id} />
       </main>
     </div>

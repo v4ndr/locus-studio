@@ -28,7 +28,7 @@ Règles :
 - Un message au patient : simple, chaleureux, deux à quatre phrases, signé « Dr Vandepitterie ». Un courrier à un confrère : confraternel, les éléments utiles du dossier, pas de bavardage.
 - Depuis l'accueil (aucun patient ouvert), identifie le patient dans la liste fournie, utilise \`ouvrir\` vers son dossier, puis compose ce qui est demandé avec son identifiant.
 - Quand plusieurs outils sont nécessaires, appelle-les en parallèle dans le même tour.
-- Synthèse finale : une à trois phrases, en français, sans titre ni liste. Pas de résumé des outils appelés.`;
+- Synthèse finale : TRÈS concise. Une phrase, deux au plus, quarante mots maximum, en français, sans titre ni liste. Pas de bilan de ton analyse, pas de récapitulatif des actions (elles sont affichées à côté), pas de rappel du dossier, pas de formule de politesse. Sur une note de consultation : la conclusion clinique, rien d'autre.`;
 
 function fr(iso: string) { const [y, m, d] = iso.slice(0, 10).split("-"); return `${d}/${m}/${y}`; }
 

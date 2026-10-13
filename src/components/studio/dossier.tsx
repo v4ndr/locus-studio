@@ -5,7 +5,7 @@ import Link from "next/link";
 import type { PatientView, Chip, NoteAction } from "@/studio/types";
 import { Header, Omni, ResultCard, CtaLink, I, Rich } from "./chrome";
 import { ComposeCard, useCompose } from "./compose";
-import { NotesSession } from "./note";
+import { NotesSession, BrouillonBanner } from "./note";
 import { useRencontre } from "@/store/rencontre";
 import { cn } from "@/lib/cn";
 
@@ -39,6 +39,7 @@ export function DossierView({ v, praticien }: { v: PatientView; praticien: { ini
     <div className="flex min-h-dvh flex-col">
       <Header praticien={praticien} patient={{ id: v.ref.id, nom: v.ref.nom, initials: v.ref.initials, meta: v.meta }} />
       <main className="mx-auto flex w-full max-w-[720px] flex-1 flex-col gap-7 px-4 pb-8 pt-10 sm:px-6 sm:pt-16">
+        <BrouillonBanner patientId={v.ref.id} href={`/p/${v.ref.id}/rencontre`} />
         <div className="flex flex-col gap-3">
           <span className="k px-px">Overview{v.rdv ? ` · ${v.rdv.heure} · ${v.rdv.motif}` : ""}</span>
           <p className="m-0 text-[21px] leading-[1.45] tracking-[-.01em] sm:text-2xl"><Rich text={v.prose} /></p>
