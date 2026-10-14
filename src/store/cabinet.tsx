@@ -47,6 +47,8 @@ export interface NoteLocal {
   modifieLe?: string;
   /** « commande » : validée depuis ⌘K, hors consultation ; sinon une consultation. */
   origine?: "consultation" | "commande";
+  /** Le transcript brut de la dictée, quand la note en est la synthèse. */
+  transcript?: string;
 }
 
 interface State { patients: Record<string, PatientLocal> }
@@ -79,7 +81,7 @@ function sanitizeNote(v: unknown): NoteLocal | null {
   const n = v as Record<string, unknown>;
   if (!str(n.id) || !str(n.date)) return null;
   const chrono = (n.chrono && typeof n.chrono === "object" ? n.chrono : {}) as Record<string, unknown>;
-  return { id: str(n.id), date: str(n.date), motif: str(n.motif) || undefined, texte: str(n.texte), actions: Array.isArray(n.actions) ? (n.actions as ComposeAction[]).filter((a) => a && typeof a === "object" && typeof a.id === "string") : [], synthese: str(n.synthese) || undefined, via: n.via === "claude" ? "claude" : n.via === "simulation" ? "simulation" : undefined, chrono: { saisie: num(chrono.saisie), composition: num(chrono.composition), validation: num(chrono.validation) }, modifieLe: str(n.modifieLe) || undefined, origine: n.origine === "commande" ? "commande" : undefined };
+  return { id: str(n.id), date: str(n.date), motif: str(n.motif) || undefined, texte: str(n.texte), actions: Array.isArray(n.actions) ? (n.actions as ComposeAction[]).filter((a) => a && typeof a === "object" && typeof a.id === "string") : [], synthese: str(n.synthese) || undefined, via: n.via === "claude" ? "claude" : n.via === "simulation" ? "simulation" : undefined, chrono: { saisie: num(chrono.saisie), composition: num(chrono.composition), validation: num(chrono.validation) }, modifieLe: str(n.modifieLe) || undefined, origine: n.origine === "commande" ? "commande" : undefined, transcript: str(n.transcript) || undefined };
 }
 export function sanitizePatient(v: unknown): PatientLocal | null {
   if (!v || typeof v !== "object") return null;
