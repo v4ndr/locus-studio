@@ -11,6 +11,7 @@ import { FPS } from "./theme";
  *   hook    la rencontre : qui entre, ce qu'il dit
  *   plan    ce que le médecin a déjà décidé
  *   avant   le LGC d'aujourd'hui : menus, clics, saisie, pendant que le patient parle
+ *   transition  le bilan se rembobine : même patient, même décision
  *   apres   Locus Studio : la note, l'agent, le carrousel de relecture, la validation
  *   compare 25 clics contre 8 secondes
  *   outro   le message, la marque
@@ -19,10 +20,11 @@ export const timeline = (s: Story) => {
   const hook = { from: 0, to: 165 };
   const plan = { from: hook.to, to: hook.to + 135 };
   const avant = { from: plan.to, to: plan.to + dureeAvant(s) };
-  const apres = { from: avant.to, to: avant.to + 105 + s.secondes * FPS + 75 };
+  const transition = { from: avant.to, to: avant.to + 96 };
+  const apres = { from: transition.to, to: transition.to + 105 + s.secondes * FPS + 75 };
   const compare = { from: apres.to, to: apres.to + 130 };
   const outro = { from: compare.to, to: compare.to + 165 };
-  return { hook, plan, avant, apres, compare, outro, duree: outro.to };
+  return { hook, plan, avant, transition, apres, compare, outro, duree: outro.to };
 };
 
 export const clamp = { extrapolateLeft: "clamp", extrapolateRight: "clamp" } as const;

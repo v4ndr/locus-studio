@@ -52,6 +52,8 @@ export type Story = {
   avant: EcranAvant[];
   /** Ce que demande le patient pendant la saisie : la consultation continue. */
   pendant: string[];
+  /** La phrase de la transition, pendant que le compteur se rembobine. */
+  transition: string;
   /** La note, telle que le médecin l'écrit. */
   note: string;
   /** Ce que l'agent affiche pendant qu'il compose. */
@@ -123,6 +125,7 @@ export const RENCONTRE: Story = {
     "« Est-ce que c'est douloureux ? »",
     "« Où est-ce que je peux le faire ? »",
   ],
+  transition: "Même patient. Même décision.",
   note: "RO TA.\nParesthésies nocturnes des deux mains, examen normal.\nENMG pour éliminer un canal carpien.\nOrthèses nocturnes en attendant le résultat.",
   etapes: [
     "Lecture de la note…",

@@ -34,6 +34,7 @@ Studio sont à montrer à AlmaPro avant publication.
 | hook | l'heure, le patient, sa phrase tapée |
 | plan | les trois décisions du médecin |
 | avant | le LGC : pour chaque document, menu puis entrée du menu, chaque champ (recherche dans la base au clavier, liste de résultats, abréviation qui ne donne rien et qu'il faut retaper), l'alerte du LAP, les boutons de fin ; clics et frappes comptés en haut, le patient qui parle en bas ; saisie accélérée ×2, indiqué à l'écran |
+| transition | le bilan (25 clics, les frappes) se rembobine à zéro : « Même patient. Même décision. » |
 | après | Studio : la note, « Générer les actions », l'agent compose ; le médecin ouvre le premier document et fait défiler les trois au clavier (carrousel de relecture), puis valide ; le chrono démarre à « Générer » et s'arrête à la validation |
 | compare | 25 clics barrés, 8 secondes, le nombre de frappes |
 | outro | le message, la constellation, « Démonstrateur · patient fictif » |
