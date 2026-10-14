@@ -48,12 +48,12 @@ export function writeNotes(patientId: string, notes: NoteLocal[]) { try { localS
  * Une consultation nouvelle et la modification d'une note signée ont chacune
  * leur clé : ouvrir « Modifier » n'écrase jamais ce qu'on était en train de dicter.
  */
-export interface Brouillon { patientId: string; nom: string; href: string; texte: string; motif: string; debut: number | null; chrono: { saisie: number; composeDebut: number; composition: number; validation?: number }; input?: ComposeInput; plan?: ComposePlan; texteDuPlan?: string; edits: Record<string, ComposeAction>; retires: string[]; majLe: string; noteId?: string; noteDate?: string }
+export interface Brouillon { patientId: string; nom: string; href: string; texte: string; motif: string; debut: number | null; chrono: { saisie: number; composeDebut: number; composition: number; validation?: number }; input?: ComposeInput; plan?: ComposePlan; texteDuPlan?: string; edits: Record<string, ComposeAction>; retires: string[]; majLe: string; noteId?: string; noteDate?: string; transcript?: string }
 export const BROUILLON_KEY = (patientId: string, noteId?: string) => `locus-studio-brouillon-${patientId}${noteId ? `-mod-${noteId}` : ""}`;
 export function readBrouillon(patientId: string, noteId?: string): Brouillon | null { try { const raw = localStorage.getItem(BROUILLON_KEY(patientId, noteId)); const b = raw ? (JSON.parse(raw) as Brouillon) : null; return b && typeof b === "object" && typeof b.texte === "string" ? b : null; } catch { return null; } }
 export function writeBrouillon(b: Brouillon) { try { localStorage.setItem(BROUILLON_KEY(b.patientId, b.noteId), JSON.stringify(b)); } catch {} }
 export function clearBrouillon(patientId: string, noteId?: string) { try { localStorage.removeItem(BROUILLON_KEY(patientId, noteId)); } catch {} }
-const vivant = (b: Brouillon | null): b is Brouillon => !!b && (b.texte.trim().length > 0 || !!b.plan);
+const vivant = (b: Brouillon | null): b is Brouillon => !!b && (b.texte.trim().length > 0 || !!b.plan || !!b.transcript?.trim());
 /** Tous les brouillons du poste, les plus récents d'abord (consultations en cours et modifications de notes). */
 export function listBrouillons(patientId?: string): Brouillon[] {
   const out: Brouillon[] = [];
@@ -95,6 +95,9 @@ export function NoteEditor({ patientId, local, nom, retour, onSaved, script, mot
   const [valideNonce, setValideNonce] = React.useState(0);
   const [menu, setMenu] = React.useState(false);
   const [texte, setTexte] = React.useState("");
+  const [transcript, setTranscript] = React.useState("");
+  const [transcriptOuvert, setTranscriptOuvert] = React.useState(false);
+  const [synth, setSynth] = React.useState<{ busy: boolean; erreur?: string; via?: string }>({ busy: false });
   const [motif, setMotif] = React.useState(motifInitial ?? "");
   const [debut, setDebut] = React.useState<number | null>(null);
   const [pret, setPret] = React.useState(false);
@@ -119,11 +122,11 @@ export function NoteEditor({ patientId, local, nom, retour, onSaved, script, mot
     setMicro(speechCtor() ? "pret" : "absent");
     const b = readBrouillon(patientId, noteId);
     if (vivant(b)) {
-      setTexte(b.texte); setMotif(b.motif); setDebut(b.debut); setChrono({ saisie: b.chrono?.saisie ?? 0, composeDebut: b.chrono?.composeDebut ?? 0, composition: b.chrono?.composition ?? 0, validation: b.chrono?.validation ?? 0 }); setEdits(b.edits ?? {}); setRetires(b.retires ?? []); setTexteDuPlan(b.texteDuPlan ?? null); setRepris(true);
+      setTexte(b.texte); setTranscript(b.transcript ?? ""); setMotif(b.motif); setDebut(b.debut); setChrono({ saisie: b.chrono?.saisie ?? 0, composeDebut: b.chrono?.composeDebut ?? 0, composition: b.chrono?.composition ?? 0, validation: b.chrono?.validation ?? 0 }); setEdits(b.edits ?? {}); setRetires(b.retires ?? []); setTexteDuPlan(b.texteDuPlan ?? null); setRepris(true);
       if (b.plan && b.input) composer.restore(b.input, b.plan);
     } else if (base) {
       // Modifier une note signée, en place : sa note et ses documents reviennent dans l'éditeur ; ce qui est modifié sera renvoyé.
-      setTexte(base.texte); setMotif(base.motif ?? ""); setDebut(null); setChrono({ saisie: 0, composeDebut: 0, composition: 0, validation: 0 }); setEdits({}); setRetires([]); setTexteDuPlan(base.texte);
+      setTexte(base.texte); setTranscript(base.transcript ?? ""); setMotif(base.motif ?? ""); setDebut(null); setChrono({ saisie: 0, composeDebut: 0, composition: 0, validation: 0 }); setEdits({}); setRetires([]); setTexteDuPlan(base.texte);
       const p: ComposePlan = { synthese: base.synthese ?? "", actions: base.actions, references: [], via: base.via ?? "simulation", locus: 0 };
       composer.restore({ texte: "", note: base.texte, motif: base.motif, ecran: "note", patientId }, p);
     }
@@ -135,26 +138,45 @@ export function NoteEditor({ patientId, local, nom, retour, onSaved, script, mot
   /* À chaque changement : le brouillon suit. Une modification sans aucun changement ne laisse pas de brouillon fantôme. */
   React.useEffect(() => {
     if (!pret || signee) return;
-    const vide = !texte.trim() && !plan;
+    const vide = !texte.trim() && !plan && !transcript.trim();
     const inchangee = !!base && texte === base.texte && motif === (base.motif ?? "") && !Object.keys(edits).length && !retires.length && (!plan || plan.actions === base.actions);
     if (vide || inchangee) { clearBrouillon(patientId, noteId); return; }
-    writeBrouillon({ patientId, nom, href: consultHref ?? retour, texte, motif, debut, chrono, input: composer.state.input, plan, texteDuPlan: texteDuPlan ?? undefined, edits, retires, majLe: new Date().toISOString(), noteId, noteDate: base?.date });
-  }, [pret, signee, texte, motif, debut, plan, composer.state.input, edits, retires, texteDuPlan, patientId, nom, retour, consultHref, noteId, base, chrono]);
+    writeBrouillon({ patientId, nom, href: consultHref ?? retour, texte, transcript: transcript || undefined, motif, debut, chrono, input: composer.state.input, plan, texteDuPlan: texteDuPlan ?? undefined, edits, retires, majLe: new Date().toISOString(), noteId, noteDate: base?.date });
+  }, [pret, signee, texte, transcript, motif, debut, plan, composer.state.input, edits, retires, texteDuPlan, patientId, nom, retour, consultHref, noteId, base, chrono]);
   /* Le chrono : la saisie court tant qu'il n'y a pas de plan ; la validation court dès qu'il y en a un, jusqu'à la signature. */
   useHorloge(!signee && debut !== null && !plan, () => setChrono((c) => ({ ...c, saisie: c.saisie + 1000 })));
   useHorloge(!signee && !!plan && !composer.state.busy, () => setChrono((c) => ({ ...c, validation: c.validation + 1000 })));
   React.useEffect(() => { if (plan && chrono.composeDebut && !chrono.composition) setChrono((c) => ({ ...c, composition: Math.max(0, Date.now() - c.composeDebut) })); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [plan]);
   const demarre = React.useCallback(() => setDebut((d) => d ?? Date.now()), []);
-  const ajoute = React.useCallback((t: string) => { demarre(); setTexte((prev) => (prev && !/\s$/.test(prev) ? prev + " " : prev) + t); }, [demarre]);
+  const ajoute = React.useCallback((t: string) => { demarre(); setTranscript((prev) => (prev && !/\s$/.test(prev) ? prev + " " : prev) + t); }, [demarre]);
 
   /* Dictée simulée : le script s'écrit dans la note, au rythme d'une voix, ⌥ espace pour pause. */
   React.useEffect(() => {
     if (simul !== "en-cours" || !script) return;
     if (simPos.current >= script.length) { setSimul("fini"); return; }
-    const id = setTimeout(() => { const n = Math.min(script.length, simPos.current + (Math.random() < 0.08 ? 1 : 3)); const chunk = script.slice(simPos.current, n); simPos.current = n; demarre(); setTexte((p) => p + chunk); }, 28);
+    const id = setTimeout(() => { const n = Math.min(script.length, simPos.current + (Math.random() < 0.08 ? 1 : 3)); const chunk = script.slice(simPos.current, n); simPos.current = n; demarre(); setTranscript((p) => p + chunk); }, 28);
     return () => clearTimeout(id);
-  }, [simul, script, texte, demarre]);
-  const simuler = () => { if (!script) return; if (simul === "en-cours") { setSimul("pause"); return; } if (simul === "fini") { simPos.current = 0; } if (simul === "non" || simul === "fini") setTexte((p) => (p.trim() ? p.replace(/\s*$/, "\n") : "")); setSimul("en-cours"); };
+  }, [simul, script, transcript, demarre]);
+  const simuler = () => { if (!script) return; if (simul === "en-cours") { setSimul("pause"); return; } if (simul === "fini") { simPos.current = 0; } if (simul === "non" || simul === "fini") setTranscript((p) => (p.trim() ? p.replace(/\s*$/, "\n") : "")); setSimul("en-cours"); };
+
+  /* La passe de synthèse : le transcript devient une note très courte, que l'on relit et corrige. « Régénérer » recommence depuis le transcript. */
+  const synthCtrl = React.useRef<AbortController | null>(null);
+  const synthetiser = React.useCallback(async () => {
+    const t = transcript.trim(); if (!t) return;
+    synthCtrl.current?.abort(); const ac = new AbortController(); synthCtrl.current = ac;
+    setSynth({ busy: true });
+    try {
+      const r = await fetch("/api/note", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ transcript: t, motif: motif || undefined, patientId, patient: local ? patientPayload(local) : undefined }), signal: ac.signal });
+      const j = (await r.json().catch(() => null)) as { note?: string; via?: string; error?: string } | null;
+      if (!r.ok || !j?.note) throw new Error(j?.error ?? "La synthèse n'a pas abouti.");
+      setTexte(j.note); setSynth({ busy: false, via: j.via }); setTranscriptOuvert(false);
+    } catch (e) { if (ac.signal.aborted) return; setSynth({ busy: false, erreur: e instanceof Error ? e.message : String(e) }); }
+  }, [transcript, motif, patientId, local]);
+  // Dès que la dictée s'arrête (micro ou simulée), la note se synthétise toute seule si elle est encore vide.
+  const autoSynth = React.useRef(false);
+  React.useEffect(() => { if (autoSynth.current && micro !== "ecoute" && simul !== "en-cours" && transcript.trim() && !texte.trim() && !synth.busy) { autoSynth.current = false; void synthetiser(); } /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [micro, simul]);
+  React.useEffect(() => { if (micro === "ecoute" || simul === "en-cours") autoSynth.current = true; }, [micro, simul]);
+  React.useEffect(() => () => synthCtrl.current?.abort(), []);
 
   /* Dictée au micro. */
   const ecouter = () => {
@@ -186,7 +208,9 @@ export function NoteEditor({ patientId, local, nom, retour, onSaved, script, mot
     const onKey = (e: KeyboardEvent) => {
       // ⌘⏎ dans la note : générer ; une fois le plan là et la note inchangée, c'est la carte qui valide (le focus peut rester dans la note).
       if ((e.metaKey || e.ctrlKey) && e.key === "Enter" && noteId && !signee && !dialogOuvert()) { e.preventDefault(); e.stopPropagation(); enregistrer(); return; }
-      if ((e.metaKey || e.ctrlKey) && e.key === "Enter" && document.activeElement === ref.current) { if (plan && !modifiee) return; e.preventDefault(); e.stopPropagation(); generer(); }
+      if ((e.metaKey || e.ctrlKey) && e.key === "Enter" && document.activeElement === ref.current) { if (plan && !modifiee) return; e.preventDefault(); e.stopPropagation(); generer(); return; }
+      // ⌘⏎ hors de tout champ, sans plan encore : générer (le bouton, au clavier).
+      if ((e.metaKey || e.ctrlKey) && e.key === "Enter" && !plan && !signee && !dialogOuvert() && !(e.target as HTMLElement | null)?.closest("input, textarea, select")) { e.preventDefault(); e.stopPropagation(); generer(); }
       if (e.altKey && e.code === "Space" && script) { e.preventDefault(); simuler(); }
       if (e.key === "Escape" && menu) { e.preventDefault(); e.stopPropagation(); setMenu(false); }
     };
@@ -199,7 +223,7 @@ export function NoteEditor({ patientId, local, nom, retour, onSaved, script, mot
     // Un document déjà envoyé et modifié est renvoyé : même identifiant, nouvel envoi, l'ancien est remplacé. Inchangé : il garde sa date d'envoi.
     const avant = base?.actions ?? [];
     const envoyees = actions.map((a) => { const prev = avant.find((x) => x.id === a.id); const change = !prev || JSON.stringify(prev.charge) !== JSON.stringify(a.charge); return change ? { ...a, envoyeLe: now, renvoye: !!prev } : { ...prev, ...a, envoyeLe: prev.envoyeLe ?? now, renvoye: false }; });
-    const note: NoteLocal = { id: noteId ?? nid("n"), date: base?.date ?? now, modifieLe: noteId ? now : undefined, motif: motif || undefined, texte, actions: envoyees, synthese: p.synthese, via: p.via, chrono: base ? base.chrono : { saisie: chrono.saisie, composition: chrono.composition, validation: chrono.validation }, origine: texte.trim() ? "consultation" : "commande" };
+    const note: NoteLocal = { id: noteId ?? nid("n"), date: base?.date ?? now, modifieLe: noteId ? now : undefined, motif: motif || undefined, texte, actions: envoyees, synthese: p.synthese, via: p.via, chrono: base ? base.chrono : { saisie: chrono.saisie, composition: chrono.composition, validation: chrono.validation }, origine: texte.trim() ? "consultation" : "commande", transcript: transcript.trim() || base?.transcript || undefined };
     if (local) {
       cab.saveNote(local.id, note);
       // Ce qui entre dans la fiche y entre vraiment : antécédent, allergie, traitement de fond.
@@ -218,7 +242,7 @@ export function NoteEditor({ patientId, local, nom, retour, onSaved, script, mot
     // Une note modifiée : on enregistre et on revient, sans écran de confirmation.
     if (noteId) { if (onRetour) onRetour(); else router.push(retour); }
     return envoyees;
-  }, [motif, texte, local, cab, patientId, onSaved, noteId, base, chrono, onRetour, router, retour]);
+  }, [motif, texte, transcript, local, cab, patientId, onSaved, noteId, base, chrono, onRetour, router, retour]);
 
   const inchangee = !!base && texte === base.texte && motif === (base.motif ?? "") && !touche && (!plan || plan.actions === base.actions);
   const enregistrer = () => {
@@ -227,7 +251,7 @@ export function NoteEditor({ patientId, local, nom, retour, onSaved, script, mot
     const gardes = plan.actions.filter((a) => a.kind !== "naviguer" && !retires.includes(a.id));
     if (gardes.length) setValideNonce((n) => n + 1); else onValide([], plan);
   };
-  const nouvelle = () => { setTexte(""); setMotif(motifInitial ?? ""); setDebut(null); setChrono({ saisie: 0, composeDebut: 0, composition: 0, validation: 0 }); setEdits({}); setRetires([]); setTexteDuPlan(null); setSignee(null); setRepris(false); simPos.current = 0; setSimul("non"); composer.reset(); clearBrouillon(patientId, noteId); if (noteId) onAnnuler?.(); else ref.current?.focus(); };
+  const nouvelle = () => { setTexte(""); setTranscript(""); setSynth({ busy: false }); setMotif(motifInitial ?? ""); setDebut(null); setChrono({ saisie: 0, composeDebut: 0, composition: 0, validation: 0 }); setEdits({}); setRetires([]); setTexteDuPlan(null); setSignee(null); setRepris(false); simPos.current = 0; setSimul("non"); composer.reset(); clearBrouillon(patientId, noteId); if (noteId) onAnnuler?.(); else ref.current?.focus(); };
   const enCours = debut !== null && !signee;
   const aValider = plan ? plan.actions.filter((a) => a.kind !== "naviguer" && !retires.includes(a.id)).length : 0;
 
@@ -246,9 +270,21 @@ export function NoteEditor({ patientId, local, nom, retour, onSaved, script, mot
         <input name="locus-motif" autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck={false} data-1p-ignore data-lpignore="true" value={motif} onChange={(e) => setMotif(e.target.value)} placeholder="Motif" aria-label="Motif de consultation" readOnly={!!signee} className="min-h-10 w-full min-w-0 rounded-[8px] border border-line bg-paper px-3 py-1.5 text-base text-ink placeholder:text-muted-3 sm:w-[220px] sm:text-sm" />
         <span className={cn("d text-[11px]", enCours && "text-ink")} title="Temps de saisie, hors absences">{enCours || plan ? `⏱ ${fmtMs(chrono.saisie)}` : "⏱ 0 s"}</span>
       </div>
+      {(transcript.trim() || micro === "ecoute" || simul === "en-cours") && (
+        <section className={cn("flex flex-col rounded-[12px] border", micro === "ecoute" || simul === "en-cours" ? "border-rec/40 bg-paper" : "border-line-3 bg-bg")} aria-label="Transcript de la dictée">
+          <div className="flex flex-wrap items-center gap-2 px-3.5 py-2">
+            <button type="button" onClick={() => setTranscriptOuvert((o) => !o)} aria-expanded={transcriptOuvert || micro === "ecoute" || simul === "en-cours"} className="flex min-h-9 items-center gap-2 text-sm text-ink-2 hover:text-ink"><I.chevron open={transcriptOuvert || micro === "ecoute" || simul === "en-cours"} /> Transcript <span className="d">{transcript.trim().split(/\s+/).filter(Boolean).length} mots</span></button>
+            <span className="flex-1" />
+            {synth.busy && <span className="flex items-center gap-2 text-xs text-muted-2"><span className="h-2 w-2 rounded-full bg-accent animate-pulse-soft" /> Synthèse en cours…</span>}
+            {!synth.busy && !signee && transcript.trim() && micro !== "ecoute" && simul !== "en-cours" && <button type="button" onClick={() => void synthetiser()} className="min-h-9 rounded-[8px] border border-line bg-paper px-3 py-1.5 text-xs text-ink hover:bg-hover">{texte.trim() ? "Régénérer la note" : "Synthétiser en note"}</button>}
+          </div>
+          {(transcriptOuvert || micro === "ecoute" || simul === "en-cours") && <div className="border-t border-line-4 px-3.5 py-3 text-[14px] leading-[1.6] text-ink-2"><span className="whitespace-pre-wrap">{transcript}</span>{interim && <span className="text-muted-3"> {interim}</span>}{(micro === "ecoute" || simul === "en-cours") && <span className="caret" />}</div>}
+          {synth.erreur && <div className="border-t border-line-4 px-3.5 py-2 text-xs text-rec-text">{synth.erreur}</div>}
+        </section>
+      )}
       <div className="relative">
-        <textarea ref={ref} autoComplete="off" value={texte} readOnly={!!signee} aria-label="Note de consultation" data-cmd-enter={plan && !modifiee && !signee ? "valider" : undefined} onChange={(e) => { if (e.target.value.trim()) demarre(); setTexte(e.target.value); }} placeholder={`Dictez au micro, lancez la dictée simulée, collez la sortie d'un scribe, ou écrivez.\n\n${MODELE}`} rows={12} className="w-full resize-y rounded-[14px] border border-line bg-paper px-5 py-4 text-[17px] leading-[1.75] text-ink placeholder:text-muted-3" />
-        {interim && <div className="pointer-events-none absolute inset-x-5 bottom-3 truncate text-[15px] text-muted-3">{interim}<span className="caret" /></div>}
+        <textarea ref={ref} autoComplete="off" value={texte} readOnly={!!signee} aria-label="Note de consultation" data-cmd-enter={plan && !modifiee && !signee ? "valider" : undefined} onChange={(e) => { if (e.target.value.trim()) demarre(); setTexte(e.target.value); }} placeholder={transcript.trim() ? "La note synthétique s'écrit ici. Corrigez-la, puis générez les actions." : `Dictez au micro (la note se synthétise toute seule), collez la sortie d'un scribe, ou écrivez.\n\n${MODELE}`} rows={transcript.trim() ? 7 : 12} className="w-full resize-y rounded-[14px] border border-line bg-paper px-5 py-4 text-[17px] leading-[1.75] text-ink placeholder:text-muted-3" />
+        {texte.trim() && synth.via && !signee && <span className="d pointer-events-none absolute right-4 top-3 text-[10px]">note synthétisée · {synth.via === "claude" ? "Claude" : "règles"}</span>}
       </div>
       <div className="flex flex-wrap items-center gap-2.5">
         {!signee && noteId && <><button type="button" onClick={enregistrer} className="flex min-h-11 items-center gap-2 rounded-[10px] bg-ink px-4 py-[9px] text-sm text-paper">{inchangee ? "Retour" : "Enregistrer"} {!inchangee && <Kbd dark>⌘⏎</Kbd>}</button><button type="button" onClick={nouvelle} className="min-h-11 rounded-[10px] px-3 py-[9px] text-sm text-muted-2 hover:bg-hover hover:text-ink">Annuler</button>{modifiee && <button type="button" onClick={() => generer()} disabled={composer.state.busy} className="min-h-11 rounded-[10px] border border-line bg-paper px-3 py-[9px] text-sm text-ink hover:bg-hover disabled:opacity-40">Régénérer les actions</button>}</>}
@@ -285,6 +321,7 @@ export function NoteRow({ n, onDelete, onModifier, modifierHref, patient }: { n:
         <div className="flex flex-col gap-3 border-t border-line-4 px-4 py-3">
           {n.synthese && <p className="m-0 text-sm leading-relaxed">{n.synthese}</p>}
           {n.texte && <pre className="m-0 whitespace-pre-wrap rounded-[10px] bg-bg px-3.5 py-3 font-sans text-sm leading-relaxed text-ink-2">{n.texte}</pre>}
+          {n.transcript && <details className="rounded-[10px] border border-line-4 px-3.5 py-2 text-sm"><summary className="cursor-pointer text-xs text-muted-2">Transcript de la dictée · {n.transcript.trim().split(/\s+/).length} mots</summary><p className="m-0 mt-2 whitespace-pre-wrap text-[13px] leading-relaxed text-ink-2">{n.transcript}</p></details>}
           {n.actions.length > 0 && <div className="flex flex-col gap-0.5">{n.actions.map((a) => <button key={a.id} type="button" onClick={() => setDoc(a)} className="flex min-h-11 items-center gap-3 rounded-[8px] px-2 py-1.5 text-left text-sm hover:bg-hover" title="Voir le document envoyé"><span className="d flex h-6 min-w-6 shrink-0 items-center justify-center rounded-[6px] bg-soft px-1 text-[10px] text-ink-3">{a.code}</span><span className="min-w-0 flex-1 truncate">{a.titre}</span><span className="hidden text-[11px] text-muted-2 sm:inline">{a.destination}</span>{a.renvoye && <span className="text-[11px] text-ok">renvoyé</span>}<I.chevron /></button>)}</div>}
           <div className="flex flex-wrap items-center gap-3">
             {modifierHref && <Link href={modifierHref} className="flex min-h-9 items-center rounded-[8px] border border-line bg-paper px-3 py-1.5 text-xs text-ink hover:bg-hover hover:text-ink">Modifier</Link>}

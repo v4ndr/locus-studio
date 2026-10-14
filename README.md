@@ -17,7 +17,7 @@ l'omni-saisie. Une rencontre se déroule en cinq temps, dans l'ordre du design :
 |---|---|---|
 | 0 · Qui voyez-vous ? | `/` | une recherche (`⌘K`), l'agenda du matin, rien d'autre |
 | 1 · Overview | `/p/[id]` | le dossier en une phrase, trois choses à noter, le reste à un clic ; raccourcis préparés (RDV, mail, ordonnance) et questions à locus-core dans une carte à valider |
-| 2 · Consultation | `/p/[id]/rencontre` | un seul éditeur qui cumule la dictée au micro (reconnaissance vocale du navigateur), la dictée simulée (le script du patient, `⌥ espace`) et la note libre ou collée depuis un scribe ; `⌘⏎` génère les actions via le composer, « Signer » enregistre la note ; chrono saisie / composition / validation |
+| 2 · Consultation | `/p/[id]/rencontre` | la dictée au micro (reconnaissance vocale du navigateur) ou simulée (le script du patient, `⌥ espace`) remplit un **transcript** ; à l'arrêt, une **passe de synthèse** en fait une note très courte (Claude, ou des règles à sec), que l'on corrige ; le transcript reste consultable, « Régénérer la note » repart de lui ; on peut aussi écrire ou coller la note directement ; `⌘⏎` génère les actions via le composer, « Signer » enregistre la note ; chrono saisie / composition / validation |
 | 3 · Actions, scénario du design | `/p/[id]/actions` | les documents scriptés du patient, une question avant de signer (accessible depuis la consultation des patients scriptés) |
 | 4 · Signature | `/p/[id]/signature` | la liste avec les destinations, l'aperçu papier, un geste (e-CPS) ; puis « rencontre clôturée » |
 | 1b · Tout | `/p/[id]/documents` | tout le dossier en une table, filtrable ; chaque ligne s'ouvre |
