@@ -1,0 +1,26 @@
+{
+  "name": "@locus-studio/motion",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Les motions de Locus Studio — Remotion. Posts LinkedIn tirés de cas de consultation.",
+  "type": "module",
+  "scripts": {
+    "studio": "remotion studio src/index.ts",
+    "render": "remotion render src/index.ts Rencontre out/rencontre-4x5.mp4",
+    "still": "remotion still src/index.ts Rencontre out/still.png --frame=700",
+    "typecheck": "tsc --noEmit"
+  },
+  "packageManager": "pnpm@10.28.2",
+  "dependencies": {
+    "@fontsource/geist-mono": "^5.3.0",
+    "@fontsource/geist-sans": "^5.3.0",
+    "@remotion/cli": "4.0.527",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "remotion": "4.0.527"
+  },
+  "devDependencies": {
+    "@types/react": "19.2.4",
+    "typescript": "5.7.3"
+  }
+}
