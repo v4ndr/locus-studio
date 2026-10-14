@@ -155,7 +155,7 @@ export const RENCONTRE: Story = {
     },
   ],
   secondes: 8,
-  message: ["Le médecin a déjà décidé.", "Au logiciel de rédiger, au médecin de valider."],
+  message: ["Le médecin décide une fois.", "Le logiciel s'occupe du reste."],
 };
 
 export const CABINET_ENTETE = CABINET;
