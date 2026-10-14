@@ -1,6 +1,7 @@
 import { AbsoluteFill, interpolate } from "remotion";
 import type { Story } from "../story";
-import { totalClics, totalFrappes } from "../avant";
+import { totalClics } from "../avant";
+import { CLICS_APRES } from "./Apres";
 import { C, FONT } from "../theme";
 import { clamp, pop, ramp, timeline, typed } from "../timeline";
 import { Avatar, Check, K, Mark, Wordmark } from "../ui/kit";
@@ -71,26 +72,27 @@ export const Plan: React.FC<{ f: number; s: Story }> = ({ f, s }) => {
   );
 };
 
+/** Le chiffre : les clics d'aujourd'hui face aux clics de demain, qui deviennent des secondes. */
 export const Compare: React.FC<{ f: number; s: Story }> = ({ f, s }) => {
   const { from, to } = timeline(s).compare;
   const a = pop(f, from + 6);
-  const b = pop(f, from + 30);
-  const barre = ramp(f, from + 50, from + 66);
+  const b = pop(f, from + 26);
+  const bascule = ramp(f, from + 62, from + 74);
+  const gros = { fontSize: 168, fontWeight: 600, letterSpacing: "-.05em", lineHeight: 1 } as const;
   return (
     <Scene f={f} from={from} to={to}>
       <AbsoluteFill style={{ padding: "0 96px", justifyContent: "center", gap: 70 }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 10, opacity: a, transform: `translateY(${(1 - a) * 30}px)` }}>
           <K size={22}>Aujourd'hui</K>
-          <span style={{ position: "relative", alignSelf: "flex-start", fontSize: 168, fontWeight: 600, letterSpacing: "-.05em", lineHeight: 1, color: C.muted3 }}>
-            {totalClics(s)} clics
-            <span style={{ position: "absolute", left: -8, right: -8, top: "54%", height: 10, background: C.rec, transformOrigin: "left", transform: `scaleX(${barre})`, borderRadius: 6 }} />
-          </span>
+          <span style={{ ...gros, color: C.muted3 }}>{totalClics(s)} clics</span>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 10, opacity: b, transform: `translateY(${(1 - b) * 30}px)` }}>
-          <K size={22} color={C.accent}>Avec Locus</K>
-          <span style={{ fontSize: 168, fontWeight: 600, letterSpacing: "-.05em", lineHeight: 1, color: C.accent }}>{s.secondes} secondes</span>
+          <K size={22} color={C.accent}>Demain</K>
+          <div style={{ position: "relative", height: 168, overflow: "hidden" }}>
+            <span style={{ ...gros, position: "absolute", left: 0, top: 0, color: C.accent, opacity: 1 - bascule, transform: `translateY(${-bascule * 120}px)` }}>{CLICS_APRES} clics</span>
+            <span style={{ ...gros, position: "absolute", left: 0, top: 0, color: C.accent, opacity: bascule, transform: `translateY(${(1 - bascule) * 120}px)`, whiteSpace: "nowrap" }}>{s.secondes} secondes</span>
+          </div>
         </div>
-        <p style={{ margin: 0, fontSize: 34, lineHeight: 1.35, color: C.muted2, opacity: ramp(f, from + 60, from + 74) }}>Et {totalFrappes(s)} frappes au clavier, contre une note déjà écrite.<br />Les mêmes {s.actions.length} documents, plus complets.</p>
       </AbsoluteFill>
     </Scene>
   );

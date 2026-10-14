@@ -20,6 +20,8 @@ import { Scene } from "../ui/Scene";
  */
 
 const ECHELLE = 1.45;
+/** Les clics du médecin côté Studio : « Générer », ouvrir le premier document, « Valider ». */
+export const CLICS_APRES = 3;
 const WIN = { x: 60, y: 210 };
 const IW = 662;
 const IH = 745;
@@ -75,7 +77,7 @@ export const Apres: React.FC<{ f: number; s: Story }> = ({ f, s }) => {
       <AbsoluteFill>
         <div style={{ position: "absolute", left: 60, right: 60, top: 70, display: "flex", alignItems: "flex-end", justifyContent: "space-between" }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <K size={22} color={C.accent}>Avec Locus</K>
+            <K size={22} color={C.accent}>Demain</K>
             <span style={{ fontSize: 36, fontWeight: 500, letterSpacing: "-.02em" }}>Une note, une validation</span>
           </div>
           <span style={{ fontFamily: FONT.mono, fontSize: 84, fontWeight: 500, lineHeight: 1, color: lance ? C.accent : C.grayDot }}>{fmt(chrono, signe)}</span>
@@ -164,7 +166,7 @@ export const Apres: React.FC<{ f: number; s: Story }> = ({ f, s }) => {
               ) : (
                 <>
                   <div style={{ height: 28, display: "flex", alignItems: "center", gap: 10 }}>
-                    <K color={C.accent}>{f >= pret ? `${s.actions.length} actions à valider` : "locus · composer"}</K>
+                    <K color={C.accent}>{f >= pret ? `${s.actions.length} actions à valider` : "locus · agent"}</K>
                     {f < pret && <span style={{ fontSize: 13, color: C.muted2 }}>« {s.note.replace(/\s+/g, " ").slice(0, 46)}… »</span>}
                   </div>
                   <div style={{ position: "absolute", left: 18, right: 18, top: CARD.synth - Y.card, height: 74 }}>
