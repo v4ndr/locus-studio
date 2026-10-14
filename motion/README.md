@@ -12,15 +12,16 @@ logiciel générique, gris et dense : aucun éditeur réel n'est représenté.
 ## Une story = des données
 
 Le motion est une mise en scène de `src/story.ts`. Pour un nouveau post, on
-écrit une nouvelle `Story` (le patient, sa phrase en entrant, ce que le
-médecin sait devoir faire, les écrans et champs du LGC, la note, les actions
+écrit une nouvelle `Story` (le patient, sa phrase en entrant, les décisions du
+médecin, les écrans et champs du LGC avec leurs saisies, la note, les actions
 composées, le chrono) et on l'enregistre comme composition dans
 `src/Root.tsx`. Le nombre de clics se calcule depuis les écrans (`clicsAvant`).
 
 Première story : **`Rencontre`** — un artisan hypertendu vient pour son
 renouvellement et parle de fourmillements nocturnes dans les deux mains
 (réunion du 14/10/2026). Renouvellement 3 mois, ENMG des deux membres
-supérieurs, orthèses nocturnes : 25 clics contre 8 secondes.
+supérieurs, orthèses nocturnes : 25 clics et une centaine de frappes contre
+8 secondes.
 
 Patients **fictifs uniquement** : le cas réel de la réunion a reçu une identité
 inventée. Le contenu médical est à relire avant diffusion, et les visuels
@@ -28,17 +29,20 @@ Studio sont à montrer à AlmaPro avant publication.
 
 ## Le récit
 
-| Temps | Frames | Ce qu'on voit |
-|---|---|---|
-| hook | 0–165 | l'heure, le patient, sa phrase tapée |
-| plan | 165–285 | les trois choses que le médecin sait devoir faire |
-| avant | 285–615 | le LGC : trois écrans, chaque champ coûte un clic, le compteur tourne ; en bas, le patient continue de parler |
-| après | 615–1035 | Studio : la note, « Générer les actions », l'agent compose, le médecin relit et signe ; le chrono s'arrête à la signature |
-| compare | 1035–1155 | 25 clics barrés, 8 secondes |
-| outro | 1155–1320 | le message, la constellation, « Démonstrateur · patient fictif » |
+| Temps | Ce qu'on voit |
+|---|---|
+| hook | l'heure, le patient, sa phrase tapée |
+| plan | les trois décisions du médecin |
+| avant | le LGC : pour chaque document, menu puis entrée du menu, chaque champ (recherche dans la base au clavier, liste de résultats, abréviation qui ne donne rien et qu'il faut retaper), l'alerte du LAP, les boutons de fin ; clics et frappes comptés en haut, le patient qui parle en bas ; saisie accélérée ×2, indiqué à l'écran |
+| après | Studio : la note, « Générer les actions », l'agent compose ; le médecin ouvre le premier document et fait défiler les trois au clavier (carrousel de relecture), puis valide ; le chrono démarre à « Générer » et s'arrête à la validation |
+| compare | 25 clics barrés, 8 secondes, le nombre de frappes |
+| outro | le message, la constellation, « Démonstrateur · patient fictif » |
 
-Les fenêtres vivent dans `src/timeline.ts` ; les instants fins de chaque
-scène en tête de leur fichier (`src/scenes/`).
+Les fenêtres sont calculées dans `src/timeline.ts`. La durée de « avant »
+vient du scénario du LGC (`src/avant.ts`), qui transforme les écrans de la
+story en événements datés (clics, saisies) : le curseur, les compteurs et
+l'état des champs se lisent dedans. Les instants fins de la scène Studio
+sont en tête de `src/scenes/Apres.tsx`.
 
 ## Commandes
 

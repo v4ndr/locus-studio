@@ -1,27 +1,29 @@
 import { Easing, interpolate, spring } from "remotion";
+import { dureeAvant } from "./avant";
+import type { Story } from "./story";
 import { FPS } from "./theme";
 
 /**
  * Le découpage du motion, en frames (30 i/s). Chaque temps du récit a sa
  * fenêtre : pour décaler un passage, on touche ici, pas dans les composants.
+ * La fenêtre « avant » dure ce que dure le scénario du LGC (`avant.ts`).
  *
  *   hook    la rencontre : qui entre, ce qu'il dit
- *   plan    ce que le médecin sait déjà devoir faire
- *   avant   le LGC d'aujourd'hui : les clics, pendant que le patient parle
- *   apres   Locus Studio : la note, l'agent, la signature
+ *   plan    ce que le médecin a déjà décidé
+ *   avant   le LGC d'aujourd'hui : menus, clics, saisie, pendant que le patient parle
+ *   apres   Locus Studio : la note, l'agent, le carrousel de relecture, la validation
  *   compare 25 clics contre 8 secondes
  *   outro   le message, la marque
  */
-export const T = {
-  hook: { from: 0, to: 165 },
-  plan: { from: 165, to: 285 },
-  avant: { from: 285, to: 615 },
-  apres: { from: 615, to: 1035 },
-  compare: { from: 1035, to: 1155 },
-  outro: { from: 1155, to: 1320 },
-} as const;
-
-export const DURATION = T.outro.to;
+export const timeline = (s: Story) => {
+  const hook = { from: 0, to: 165 };
+  const plan = { from: hook.to, to: hook.to + 135 };
+  const avant = { from: plan.to, to: plan.to + dureeAvant(s) };
+  const apres = { from: avant.to, to: avant.to + 105 + s.secondes * FPS + 75 };
+  const compare = { from: apres.to, to: apres.to + 130 };
+  const outro = { from: compare.to, to: compare.to + 165 };
+  return { hook, plan, avant, apres, compare, outro, duree: outro.to };
+};
 
 export const clamp = { extrapolateLeft: "clamp", extrapolateRight: "clamp" } as const;
 

@@ -1,15 +1,15 @@
 import { AbsoluteFill, interpolate } from "remotion";
 import type { Story } from "../story";
-import { clicsAvant } from "../story";
+import { totalClics, totalFrappes } from "../avant";
 import { C, FONT } from "../theme";
-import { T, clamp, pop, ramp, typed } from "../timeline";
+import { clamp, pop, ramp, timeline, typed } from "../timeline";
 import { Avatar, Check, K, Mark, Wordmark } from "../ui/kit";
 import { Scene } from "../ui/Scene";
 
 /* Les scènes de texte : la rencontre, le plan, la comparaison, le message. */
 
 export const Hook: React.FC<{ f: number; s: Story }> = ({ f, s }) => {
-  const { from, to } = T.hook;
+  const { from, to } = timeline(s).hook;
   const carte = pop(f, from + 14);
   const debutCitation = from + 40;
   const texte = typed(s.citation, f, debutCitation, 46);
@@ -43,11 +43,11 @@ export const Hook: React.FC<{ f: number; s: Story }> = ({ f, s }) => {
 };
 
 export const Plan: React.FC<{ f: number; s: Story }> = ({ f, s }) => {
-  const { from, to } = T.plan;
+  const { from, to } = timeline(s).plan;
   return (
     <Scene f={f} from={from} to={to}>
       <AbsoluteFill style={{ padding: "0 96px", justifyContent: "center", gap: 40 }}>
-        <K size={22}>Ce que je sais devoir faire</K>
+        <K size={22}>La décision du médecin</K>
         <div style={{ display: "flex", flexDirection: "column", gap: 26 }}>
           {s.plan.map((p, i) => {
             const a = pop(f, from + 14 + i * 16);
@@ -56,15 +56,15 @@ export const Plan: React.FC<{ f: number; s: Story }> = ({ f, s }) => {
                 <span style={{ display: "flex", width: 52, height: 52, flexShrink: 0, alignItems: "center", justifyContent: "center", borderRadius: 999, background: C.accentSoft, color: C.accent }}>
                   <Check size={28} w={2.6} />
                 </span>
-                <span style={{ fontSize: 46, fontWeight: 500, letterSpacing: "-.02em" }}>{p}</span>
+                <span style={{ fontSize: 42, lineHeight: 1.2, fontWeight: 500, letterSpacing: "-.02em" }}>{p}</span>
               </div>
             );
           })}
         </div>
         <p style={{ margin: "24px 0 0", fontSize: 34, lineHeight: 1.35, color: C.muted2, opacity: ramp(f, from + 70, from + 84) }}>
-          Le savoir prend dix secondes.
+          {s.constat[0]}
           <br />
-          <span style={{ color: C.ink }}>Le faire, dans le logiciel, c'est autre chose.</span>
+          <span style={{ color: C.ink }}>{s.constat[1]}</span>
         </p>
       </AbsoluteFill>
     </Scene>
@@ -72,7 +72,7 @@ export const Plan: React.FC<{ f: number; s: Story }> = ({ f, s }) => {
 };
 
 export const Compare: React.FC<{ f: number; s: Story }> = ({ f, s }) => {
-  const { from, to } = T.compare;
+  const { from, to } = timeline(s).compare;
   const a = pop(f, from + 6);
   const b = pop(f, from + 30);
   const barre = ramp(f, from + 50, from + 66);
@@ -82,7 +82,7 @@ export const Compare: React.FC<{ f: number; s: Story }> = ({ f, s }) => {
         <div style={{ display: "flex", flexDirection: "column", gap: 10, opacity: a, transform: `translateY(${(1 - a) * 30}px)` }}>
           <K size={22}>Aujourd'hui</K>
           <span style={{ position: "relative", alignSelf: "flex-start", fontSize: 168, fontWeight: 600, letterSpacing: "-.05em", lineHeight: 1, color: C.muted3 }}>
-            {clicsAvant(s)} clics
+            {totalClics(s)} clics
             <span style={{ position: "absolute", left: -8, right: -8, top: "54%", height: 10, background: C.rec, transformOrigin: "left", transform: `scaleX(${barre})`, borderRadius: 6 }} />
           </span>
         </div>
@@ -90,14 +90,14 @@ export const Compare: React.FC<{ f: number; s: Story }> = ({ f, s }) => {
           <K size={22} color={C.accent}>Avec Locus</K>
           <span style={{ fontSize: 168, fontWeight: 600, letterSpacing: "-.05em", lineHeight: 1, color: C.accent }}>{s.secondes} secondes</span>
         </div>
-        <p style={{ margin: 0, fontSize: 34, color: C.muted2, opacity: ramp(f, from + 60, from + 74) }}>Les mêmes {s.actions.length} documents. Mieux rédigés.</p>
+        <p style={{ margin: 0, fontSize: 34, lineHeight: 1.35, color: C.muted2, opacity: ramp(f, from + 60, from + 74) }}>Et {totalFrappes(s)} frappes au clavier, contre une note déjà écrite.<br />Les mêmes {s.actions.length} documents, plus complets.</p>
       </AbsoluteFill>
     </Scene>
   );
 };
 
 export const Outro: React.FC<{ f: number; s: Story }> = ({ f, s }) => {
-  const { from, to } = T.outro;
+  const { from, to } = timeline(s).outro;
   const l1 = ramp(f, from + 4, from + 18);
   const l2 = ramp(f, from + 30, from + 44);
   const m = pop(f, from + 74);
