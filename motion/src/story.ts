@@ -18,7 +18,7 @@ export type Action = {
 };
 
 /** Une source affichée sous une réponse : un document du dossier, une recommandation. */
-export type Encart = { titre?: string; texte: string; sources: string[] };
+export type Encart = { titre?: string; texte: string; sources: string[]; /** Les sources affichées en rouge d'alerte. */ alertes?: string[] };
 
 /** Une jauge du tableau de bord : un libellé, une valeur, un remplissage de 0 à 1, une note. */
 export type Jauge = { label: string; valeur: string; pct: number; note?: string; /** La cible, de 0 à 1, marquée sur la jauge. */ cible?: number };
@@ -55,6 +55,12 @@ export type EcranAvant = {
    * La dernière ouverte est celle qu'on cherchait.
    */
   defile?: { lignes: string[]; ouvre: { i: number; apercu: string }[] };
+  /** Un portail web : un fil d'Ariane au-dessus du titre. */
+  ariane?: string;
+  /** Des cartes de paiement, lues, puis `choix` ouverte d'un clic. */
+  cartes?: { liste: { titre: string; montant: string; date: string }[]; choix: number };
+  /** Un tableau d'indicateurs avec leur taux, lu, puis `choix` ouvert d'un clic. */
+  indicateurs?: { lignes: { label: string; taux: string; pct: number; cible?: number }[]; maj: string; choix: number };
   /** Les boutons de fin, un clic chacun. */
   boutons: string[];
 };
@@ -77,6 +83,8 @@ export type Story = {
   /** La phrase sous le plan. */
   constat: [string, string];
   avant: EcranAvant[];
+  /** Le compteur du logiciel actuel : les clics (par défaut), ou la durée réelle estimée, en secondes. */
+  temps?: number;
   /** Ce que demande le patient pendant la saisie : la consultation continue. */
   pendant: string[];
   /** La phrase de la transition, pendant que le compteur se rembobine. */

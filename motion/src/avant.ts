@@ -20,6 +20,10 @@ const APERCU = 16;
 const APERCU_FIN = 40;
 /** Une alerte qui bloque se lit. */
 export const LECTURE_ALERTE = 40;
+/** Une page de portail se lit avant d'y cliquer. */
+const LECTURE_PAGE = 30;
+/** Le temps de lecture d'une alerte : longue si elle bloque ou si elle explique un indicateur. */
+export const lectureAlerte = (e: EcranAvant) => (e.alerte?.grave || e.indicateurs ? LECTURE_ALERTE : 8);
 /** Entre deux écrans. */
 const ENTRE = 10;
 
@@ -30,6 +34,8 @@ export type Cible =
   | { k: "option"; j: number }
   | { k: "alerte" }
   | { k: "ligne"; i: number }
+  | { k: "carte"; i: number }
+  | { k: "indicateur"; i: number }
   | { k: "bouton"; b: number };
 
 export type Evt =
@@ -62,6 +68,8 @@ export function scenarioEcran(e: EcranAvant, t0: number): Scenario {
       avant = i;
     });
   }
+  if (e.cartes) { t += LECTURE_PAGE; clic({ k: "carte", i: e.cartes.choix }); }
+  if (e.indicateurs) { t += LECTURE_PAGE; clic({ k: "indicateur", i: e.indicateurs.choix }); }
   e.champs.forEach((c, j) => {
     clic({ k: "champ", j });
     (c.saisies ?? []).forEach((s, i, all) => {
@@ -73,7 +81,7 @@ export function scenarioEcran(e: EcranAvant, t0: number): Scenario {
     });
     if (c.options) { t += LECTURE; clic({ k: "option", j }); }
   });
-  if (e.alerte) { t += e.alerte.grave ? LECTURE_ALERTE : 8; clic({ k: "alerte" }); }
+  if (e.alerte) { t += lectureAlerte(e); clic({ k: "alerte" }); }
   e.boutons.forEach((_, b) => clic({ k: "bouton", b }));
   return { evts, debut: t0, fin: t + 6 };
 }
@@ -103,3 +111,6 @@ export function compteurs(scs: Scenario[], f: number) {
 
 export const totalClics = (s: Story) => compteurs(scenario(s, 0), Infinity).clics;
 export const totalFrappes = (s: Story) => compteurs(scenario(s, 0), Infinity).frappes;
+
+/** Une durée en secondes, écrite « 1 min 30 » ou « 45 s ». */
+export const duree = (n: number) => { const m = Math.floor(n / 60); const r = Math.round(n % 60); return m ? `${m} min${r ? ` ${String(r).padStart(2, "0")}` : ""}` : `${r} s`; };

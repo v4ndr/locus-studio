@@ -373,30 +373,33 @@ const Feuille: React.FC<{ s: Story; a: Action; relu: boolean }> = ({ s, a, relu 
 const PRESCRIPTION: Action["code"][] = ["Rx", "BIO", "IMG", "DM"];
 
 /** Les puces de sources sous une réponse. */
-const Sources: React.FC<{ sources: string[] }> = ({ sources }) => (
+const Sources: React.FC<{ sources: string[]; alertes?: string[] }> = ({ sources, alertes = [] }) => (
   <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-    {sources.map((x) => (
-      <span key={x} style={{ display: "flex", alignItems: "center", gap: 6, height: 22, padding: "0 9px", borderRadius: 999, border: `1px solid ${C.line}`, background: C.bg, fontSize: 11, color: C.ink3, whiteSpace: "nowrap" }}>
-        <span style={{ width: 5, height: 5, borderRadius: 99, background: C.accent }} />
-        {x}
-      </span>
-    ))}
+    {sources.map((x) => {
+      const a = alertes.includes(x);
+      return (
+        <span key={x} style={{ display: "flex", alignItems: "center", gap: 6, height: 22, padding: "0 9px", borderRadius: 999, border: `1px solid ${a ? C.rec : C.line}`, background: a ? C.recSoft : C.bg, fontSize: 11, fontWeight: a ? 600 : 400, color: a ? C.recText : C.ink3, whiteSpace: "nowrap" }}>
+          <span style={{ width: 5, height: 5, borderRadius: 99, background: a ? C.rec : C.accent }} />
+          {x}
+        </span>
+      );
+    })}
   </div>
 );
 
 const Reponse: React.FC<{ e: Encart }> = ({ e }) => (
   <div style={{ height: H_REPONSE, display: "flex", flexDirection: "column", gap: 8 }}>
     <span style={{ fontSize: 17, fontWeight: 600, letterSpacing: "-.01em" }}>{e.texte}</span>
-    <Sources sources={e.sources} />
+    <Sources sources={e.sources} alertes={e.alertes} />
   </div>
 );
 
-/** L'aide à la décision : un encart à filet bleu, sa phrase, ses sources. */
+/** L'aide à la décision : un encart teinté, sa phrase, ses sources. */
 const Aide: React.FC<{ e: Encart }> = ({ e }) => (
-  <div style={{ height: H_AIDE, borderRadius: 10, background: C.accentSoft2, borderLeft: `3px solid ${C.accent}`, padding: "10px 14px", display: "flex", flexDirection: "column", gap: 6 }}>
+  <div style={{ height: H_AIDE, borderRadius: 10, background: C.accentSoft2, padding: "10px 14px", display: "flex", flexDirection: "column", gap: 6 }}>
     <K color={C.accent}>{e.titre ?? "Aide à la décision"}</K>
     <span style={{ fontSize: 14, lineHeight: 1.45, color: C.ink, flex: 1 }}>{e.texte}</span>
-    <Sources sources={e.sources} />
+    <Sources sources={e.sources} alertes={e.alertes} />
   </div>
 );
 

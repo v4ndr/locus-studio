@@ -1,6 +1,6 @@
 import { AbsoluteFill, interpolate } from "remotion";
 import type { Story } from "../story";
-import { totalClics, totalFrappes } from "../avant";
+import { duree, totalClics, totalFrappes } from "../avant";
 import { CLICS_APRES } from "./Apres";
 import { C, FONT } from "../theme";
 import { clamp, pop, ramp, timeline, typed } from "../timeline";
@@ -86,11 +86,11 @@ export const Transition: React.FC<{ f: number; s: Story }> = ({ f, s }) => {
       <AbsoluteFill style={{ padding: "0 96px", justifyContent: "center", gap: 48 }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 8, opacity: a, transform: `scale(${0.96 + 0.04 * a})`, transformOrigin: "left center" }}>
           <div style={{ display: "flex", alignItems: "baseline", gap: 20 }}>
-            <span style={{ fontFamily: FONT.mono, fontSize: 200, fontWeight: 500, lineHeight: 1, letterSpacing: "-.04em", color: retour >= 1 ? C.muted3 : C.recText }}>{clics}</span>
-            <span style={{ fontSize: 56, color: C.muted2 }}>clics</span>
+            <span style={{ fontFamily: FONT.mono, fontSize: s.temps ? 150 : 200, fontWeight: 500, lineHeight: 1, letterSpacing: "-.04em", color: retour >= 1 ? C.muted3 : C.recText }}>{s.temps ? duree(s.temps * (1 - retour)) : clics}</span>
+            {!s.temps && <span style={{ fontSize: 56, color: C.muted2 }}>clics</span>}
             <span style={{ marginLeft: "auto", fontFamily: FONT.mono, fontSize: 44, color: C.muted2, opacity: rembobine ? 1 : 0 }}>◀◀</span>
           </div>
-          {totalFrappes(s) > 0 && <span style={{ fontFamily: FONT.mono, fontSize: 40, color: C.muted2 }}>{frappes} frappes</span>}
+          {!s.temps && totalFrappes(s) > 0 && <span style={{ fontFamily: FONT.mono, fontSize: 40, color: C.muted2 }}>{frappes} frappes</span>}
         </div>
         <p style={{ margin: 0, fontSize: 64, lineHeight: 1.15, letterSpacing: "-.03em", fontWeight: 600, opacity: texte, transform: `translateY(${(1 - texte) * 20}px)` }}>{s.transition}</p>
       </AbsoluteFill>

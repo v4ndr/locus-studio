@@ -1,5 +1,5 @@
 import { AbsoluteFill } from "remotion";
-import { CLIC, CPS, LECTURE_ALERTE, compteurs, scenario, type Cible, type Evt, type Scenario } from "../avant";
+import { CLIC, CPS, compteurs, duree, lectureAlerte, scenario, type Cible, type Evt, type Scenario } from "../avant";
 import type { EcranAvant, Story } from "../story";
 import { C, FONT } from "../theme";
 import { pop, ramp, timeline } from "../timeline";
@@ -32,6 +32,13 @@ const POLICE = "Tahoma, 'Segoe UI', Arial, sans-serif";
 /* La liste qu'on fait défiler : 12 lignes visibles, la ligne visée s'arrête à la 8e. */
 const LISTE = { y: MODAL.y + 64, h: 40, vues: 12, arret: 7 };
 const decalage = (i: number) => Math.max(0, i - LISTE.arret);
+/* Un portail web : un bandeau, le fil d'Ariane et le titre, puis la page. */
+const PORTAIL = { bandeau: 52, titre: 128, haut: MODAL.y + 172 };
+const CARTE = { x: MODAL.x + 26, w: 240, h: 150, gap: 14 };
+const carteXY = (i: number) => ({ x: CARTE.x + (i % 3) * (CARTE.w + CARTE.gap), y: PORTAIL.haut + Math.floor(i / 3) * (CARTE.h + CARTE.gap) });
+const IND = { h: 56, barre: { x: 380, w: 250 } };
+const indY = (i: number) => PORTAIL.haut + i * IND.h;
+const portail = (e: EcranAvant) => !!(e.cartes || e.indicateurs);
 
 const menuIdx = (e: EcranAvant) => Math.max(0, MENUS.indexOf(e.menu ?? ""));
 const sousMenus = (e: EcranAvant) => {
@@ -49,6 +56,8 @@ function position(e: EcranAvant, c: Cible) {
     case "alerte": return { x: ALERTE.x + ALERTE.w - 80, y: ALERTE.y + ALERTE.h - 44 };
     case "bouton": return { x: btnX(e.boutons.length, c.b) + BTN.w / 2, y: BTN.y + BTN.h / 2 };
     case "ligne": return { x: MODAL.x + 220, y: LISTE.y + (c.i - decalage(c.i)) * LISTE.h + LISTE.h / 2 };
+    case "carte": { const p = carteXY(c.i); return { x: p.x + 150, y: p.y + CARTE.h - 26 }; }
+    case "indicateur": return { x: MODAL.x + 200, y: indY(c.i) + IND.h / 2 };
   }
 }
 
@@ -150,7 +159,7 @@ const Chrome: React.FC<{ e: EcranAvant }> = ({ e }) => {
           </>
         )}
       </div>
-      <div style={{ position: "absolute", left: 26, top: 60, fontSize: 17, fontWeight: 700, color: "#333" }}>{e.titre}</div>
+      {!portail(e) && <div style={{ position: "absolute", left: 26, top: 60, fontSize: 17, fontWeight: 700, color: "#333" }}>{e.titre}</div>}
     </>
   );
 };
@@ -197,12 +206,59 @@ const Liste: React.FC<{ e: EcranAvant; sc: Scenario; f: number }> = ({ e, sc, f 
   );
 };
 
+/** Une page de portail : bandeau sans logo, fil d'Ariane, titre, puis cartes de paiement ou indicateurs. */
+const Portail: React.FC<{ e: EcranAvant; sc: Scenario; f: number }> = ({ e, sc, f }) => {
+  const clic = sc.evts.find((v): v is Extract<Evt, { t: "clic" }> => v.t === "clic" && (v.cible.k === "carte" || v.cible.k === "indicateur"));
+  const choisi = clic && f >= clic.at - 3 ? (clic.cible as { i: number }).i : -1;
+  const BLEU = "#1B3F7A";
+  return (
+    <>
+      <div style={{ position: "absolute", left: 0, right: 0, top: PORTAIL.bandeau, height: 40, background: BLEU, display: "flex", alignItems: "center", padding: "0 26px", gap: 26, fontSize: 15, color: "#FFF" }}>
+        <span style={{ fontWeight: 700 }}>Espace professionnel</span>
+        <span style={{ opacity: 0.8 }}>Activités</span>
+        <span style={{ opacity: 0.8 }}>Services patients</span>
+        <span style={{ marginLeft: "auto", opacity: 0.8 }}>Mon compte</span>
+      </div>
+      <div style={{ position: "absolute", left: 26, top: PORTAIL.bandeau + 52, fontSize: 13, color: "#667" }}>{e.ariane}</div>
+      <div style={{ position: "absolute", left: 26, top: PORTAIL.titre, fontSize: 21, fontWeight: 700, color: BLEU }}>{e.titre}</div>
+      {e.indicateurs && <div style={{ position: "absolute", right: 26, top: PORTAIL.titre + 5, fontSize: 13, color: "#667" }}>{e.indicateurs.maj}</div>}
+      {e.cartes?.liste.map((c, i) => {
+        const p = carteXY(i);
+        const on = i === choisi;
+        const zero = /^0 /.test(c.montant);
+        return (
+          <div key={c.titre} style={{ position: "absolute", left: p.x - MODAL.x, top: p.y - MODAL.y, width: CARTE.w, height: CARTE.h, boxSizing: "border-box", background: on ? "#F0F5FC" : "#FFF", border: `${on ? 2 : 1}px solid ${on ? "#2C5AA0" : "#D5DCE6"}`, borderRadius: 8, padding: "14px 16px", display: "flex", flexDirection: "column", gap: 6 }}>
+            <span style={{ fontSize: 14, fontWeight: 700, color: BLEU }}>{c.titre}</span>
+            <span style={{ fontSize: 30, fontWeight: 700, color: zero ? "#999" : "#111", letterSpacing: "-.01em" }}>{c.montant}</span>
+            <span style={{ fontSize: 13, color: "#667" }}>{c.date}</span>
+            <span style={{ marginTop: "auto", fontSize: 13, color: "#2C5AA0", textDecoration: on ? "underline" : "none" }}>Voir le détail ›</span>
+          </div>
+        );
+      })}
+      {e.indicateurs?.lignes.map((l, i) => {
+        const on = i === choisi;
+        const y = indY(i) - MODAL.y;
+        return (
+          <div key={l.label} style={{ position: "absolute", left: 14, right: 14, top: y, height: IND.h - 6, borderRadius: 6, background: on ? "#EEF3FA" : i % 2 ? "#FFF" : "#F7F8FA", display: "flex", alignItems: "center", padding: "0 12px", fontSize: 15, color: "#222" }}>
+            <span style={{ width: 340, fontWeight: on ? 700 : 400 }}>{l.label}</span>
+            <div style={{ position: "relative", width: IND.barre.w, height: 10, borderRadius: 99, background: "#E2E6EC" }}>
+              <div style={{ width: `${l.pct * 100}%`, height: "100%", borderRadius: 99, background: "#2C5AA0" }} />
+              {l.cible !== undefined && <div style={{ position: "absolute", left: `${l.cible * 100}%`, top: -5, width: 2, height: 20, background: "#111" }} />}
+            </div>
+            <span style={{ marginLeft: "auto", fontSize: 18, fontWeight: 700 }}>{l.taux}</span>
+          </div>
+        );
+      })}
+    </>
+  );
+};
+
 const Modale: React.FC<{ e: EcranAvant; sc: Scenario; f: number; ouvre: number }> = ({ e, sc, f, ouvre }) => {
   const a = pop(f, ouvre, { damping: 18, stiffness: 260 });
   const etats = etatChamps(e, sc, f);
   const clics = sc.evts.filter((v): v is Extract<Evt, { t: "clic" }> => v.t === "clic");
   const alerteClic = clics.find((c) => c.cible.k === "alerte");
-  const alerteOuverte = alerteClic && f >= alerteClic.at - CLIC - (e.alerte?.grave ? LECTURE_ALERTE - 2 : 6) && f < alerteClic.at + 2;
+  const alerteOuverte = alerteClic && f >= alerteClic.at - CLIC - (lectureAlerte(e) - 2) && f < alerteClic.at + 2;
   /* Une alerte qui bloque retire la ligne : les champs restent, barrés. */
   const retire = !!e.alerte?.grave && !!alerteClic && f >= alerteClic.at;
   const presse = (b: number) => clics.some((c) => c.cible.k === "bouton" && c.cible.b === b && f >= c.at - 2 && f < c.at + 4);
@@ -211,6 +267,7 @@ const Modale: React.FC<{ e: EcranAvant; sc: Scenario; f: number; ouvre: number }
       <div style={{ position: "absolute", left: MODAL.x, top: MODAL.y, width: MODAL.w, height: MODAL.h, background: "#FCFCFC", border: "1px solid #B9B9B9", borderRadius: 6, boxShadow: "0 18px 50px rgba(0,0,0,.22)", fontFamily: POLICE, color: "#222" }}>
         <Chrome e={e} />
         {e.defile && <Liste e={e} sc={sc} f={f} />}
+        {portail(e) && <Portail e={e} sc={sc} f={f} />}
         {e.champs.map((c, j) => {
           const st = etats[j];
           const affiche = st.valeur ?? st.texte;
@@ -277,18 +334,27 @@ export const Avant: React.FC<{ f: number; s: Story }> = ({ f, s }) => {
             <span style={{ fontSize: 36, fontWeight: 500, letterSpacing: "-.02em" }}>Logiciel actuel</span>
           </div>
           <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
-            <div style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
-              <span style={{ fontFamily: FONT.mono, fontSize: 84, fontWeight: 500, color: C.recText, transform: `scale(${bump})`, transformOrigin: "right bottom", display: "inline-block", lineHeight: 1 }}>{nClics}</span>
-              <span style={{ fontSize: 30, color: C.muted2 }}>clics</span>
-            </div>
-            <span style={{ fontFamily: FONT.mono, fontSize: 22, color: C.muted2 }}>{frappes} frappes</span>
+            {s.temps ? (
+              <>
+                <span style={{ fontFamily: FONT.mono, fontSize: 72, fontWeight: 500, color: C.recText, lineHeight: 1 }}>{duree(s.temps * ramp(f, from + 4, to - 16))}</span>
+                <span style={{ fontFamily: FONT.mono, fontSize: 22, color: C.muted2 }}>en temps réel</span>
+              </>
+            ) : (
+              <>
+                <div style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
+                  <span style={{ fontFamily: FONT.mono, fontSize: 84, fontWeight: 500, color: C.recText, transform: `scale(${bump})`, transformOrigin: "right bottom", display: "inline-block", lineHeight: 1 }}>{nClics}</span>
+                  <span style={{ fontSize: 30, color: C.muted2 }}>clics</span>
+                </div>
+                <span style={{ fontFamily: FONT.mono, fontSize: 22, color: C.muted2 }}>{frappes} frappes</span>
+              </>
+            )}
           </div>
         </div>
         <Lgc s={s} menuActif={menuOuvert ? menuIdx(e) : -1} />
         {menuOuvert && <MenuDeroulant e={e} survol={f >= cSous.at - 6} />}
         {f >= ouvre && <Modale e={e} sc={sc} f={f} ouvre={ouvre} />}
         <Cursor x={cur.x} y={cur.y} press={cur.press} ripple={cur.ripple} scale={1.3} />
-        <span style={{ position: "absolute", right: 64, top: WIN.y + WIN.h + 12, fontFamily: FONT.mono, fontSize: 16, color: C.muted3 }}>saisie accélérée ×2</span>
+        <span style={{ position: "absolute", right: 64, top: WIN.y + WIN.h + 12, fontFamily: FONT.mono, fontSize: 16, color: C.muted3 }}>{s.temps ? "accéléré" : "saisie accélérée ×2"}</span>
         <div style={{ position: "absolute", left: 60, right: 60, top: WIN.y + WIN.h + 56, display: "flex", alignItems: "flex-start", gap: 20, opacity: bulle * (1 - ramp(f, finBulle - 8, finBulle)) }}>
           <Avatar initials={s.pendantQui ?? s.patient.initiales} size={60} />
           <div style={{ background: C.paper, border: `1px solid ${C.line}`, borderRadius: "6px 22px 22px 22px", padding: "18px 26px", fontSize: 32, lineHeight: 1.3, color: C.ink2, transform: `translateY(${(1 - bulle) * 14}px)` }}>{s.pendant[i] ?? ""}</div>
