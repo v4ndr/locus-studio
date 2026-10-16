@@ -1,5 +1,5 @@
 import { AbsoluteFill } from "remotion";
-import { CLIC, CPS, compteurs, scenario, type Cible, type Evt, type Scenario } from "../avant";
+import { CLIC, CPS, LECTURE_ALERTE, compteurs, scenario, type Cible, type Evt, type Scenario } from "../avant";
 import type { EcranAvant, Story } from "../story";
 import { C, FONT } from "../theme";
 import { pop, ramp, timeline } from "../timeline";
@@ -29,6 +29,9 @@ const BTN = { y: MODAL.y + MODAL.h - 78, h: 52, w: 240, gap: 16 };
 const btnX = (n: number, b: number) => MODAL.x + MODAL.w - 30 - (n - b) * BTN.w - (n - 1 - b) * BTN.gap;
 const ALERTE = { x: MODAL.x + 150, y: MODAL.y + 170, w: 500, h: 200 };
 const POLICE = "Tahoma, 'Segoe UI', Arial, sans-serif";
+/* La liste qu'on fait défiler : 12 lignes visibles, la ligne visée s'arrête à la 8e. */
+const LISTE = { y: MODAL.y + 64, h: 40, vues: 12, arret: 7 };
+const decalage = (i: number) => Math.max(0, i - LISTE.arret);
 
 const menuIdx = (e: EcranAvant) => Math.max(0, MENUS.indexOf(e.menu ?? ""));
 const sousMenus = (e: EcranAvant) => {
@@ -45,6 +48,7 @@ function position(e: EcranAvant, c: Cible) {
     case "option": { const ch = e.champs[c.j]; return { x: INPUT.x + 170, y: optionY(c.j, Math.max(0, ch.options!.indexOf(ch.valeur))) + OPT_H / 2 }; }
     case "alerte": return { x: ALERTE.x + ALERTE.w - 80, y: ALERTE.y + ALERTE.h - 44 };
     case "bouton": return { x: btnX(e.boutons.length, c.b) + BTN.w / 2, y: BTN.y + BTN.h / 2 };
+    case "ligne": return { x: MODAL.x + 220, y: LISTE.y + (c.i - decalage(c.i)) * LISTE.h + LISTE.h / 2 };
   }
 }
 
@@ -151,17 +155,62 @@ const Chrome: React.FC<{ e: EcranAvant }> = ({ e }) => {
   );
 };
 
+/** La liste des documents qu'on fait défiler, et l'aperçu du document ouvert. */
+const Liste: React.FC<{ e: EcranAvant; sc: Scenario; f: number }> = ({ e, sc, f }) => {
+  const d = e.defile!;
+  const defs = sc.evts.filter((v): v is Extract<Evt, { t: "defile" }> => v.t === "defile");
+  const clics = sc.evts.filter((v): v is Extract<Evt, { t: "clic" }> => v.t === "clic" && v.cible.k === "ligne");
+  let haut = 0;
+  let prec = 0;
+  for (const ev of defs) {
+    if (f < ev.from) break;
+    const t = ramp(f, ev.from, ev.to);
+    haut = (decalage(prec) + (decalage(ev.i) - decalage(prec)) * t) * LISTE.h;
+    prec = ev.i;
+  }
+  const n = clics.findIndex((c, k) => f >= c.at && f < (defs[k + 1]?.from ?? Infinity));
+  const ouvert = n >= 0 ? d.ouvre[n] : null;
+  const dernier = n === d.ouvre.length - 1;
+  return (
+    <>
+      <div style={{ position: "absolute", left: 0, top: LISTE.y - MODAL.y, width: "100%", height: LISTE.vues * LISTE.h, overflow: "hidden" }}>
+        <div style={{ transform: `translateY(${-haut}px)` }}>
+          {d.lignes.map((l, i) => {
+            const actif = ouvert?.i === i;
+            return (
+              <div key={i} style={{ height: LISTE.h, display: "flex", alignItems: "center", gap: 14, padding: "0 26px", borderBottom: "1px solid #E6E6E6", fontSize: 17, background: actif ? (dernier ? "#DCEFD9" : "#D6E2F5") : i % 2 ? "#F7F7F7" : "#FCFCFC", color: "#222", whiteSpace: "nowrap" }}>
+                <span style={{ color: "#999", fontSize: 15 }}>📄</span>
+                {l}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+      <div style={{ position: "absolute", right: 22, top: LISTE.y - MODAL.y + LISTE.vues * LISTE.h + 4, fontSize: 14, color: "#888" }}>{d.lignes.length} documents</div>
+      {ouvert && (
+        <div style={{ position: "absolute", left: 380, top: 120, width: 400, background: "#FFF", border: `1px solid ${dernier ? "#7DB574" : "#B9B9B9"}`, borderRadius: 6, boxShadow: "0 14px 36px rgba(0,0,0,.22)", padding: "18px 20px", display: "flex", flexDirection: "column", gap: 10, zIndex: 6 }}>
+          <span style={{ fontSize: 15, color: "#666" }}>{d.lignes[ouvert.i]}</span>
+          <span style={{ fontSize: 19, fontWeight: dernier ? 700 : 400, color: dernier ? "#1F5A17" : "#333", lineHeight: 1.35 }}>{ouvert.apercu}</span>
+        </div>
+      )}
+    </>
+  );
+};
+
 const Modale: React.FC<{ e: EcranAvant; sc: Scenario; f: number; ouvre: number }> = ({ e, sc, f, ouvre }) => {
   const a = pop(f, ouvre, { damping: 18, stiffness: 260 });
   const etats = etatChamps(e, sc, f);
   const clics = sc.evts.filter((v): v is Extract<Evt, { t: "clic" }> => v.t === "clic");
   const alerteClic = clics.find((c) => c.cible.k === "alerte");
-  const alerteOuverte = alerteClic && f >= alerteClic.at - CLIC - 6 && f < alerteClic.at + 2;
+  const alerteOuverte = alerteClic && f >= alerteClic.at - CLIC - (e.alerte?.grave ? LECTURE_ALERTE - 2 : 6) && f < alerteClic.at + 2;
+  /* Une alerte qui bloque retire la ligne : les champs restent, barrés. */
+  const retire = !!e.alerte?.grave && !!alerteClic && f >= alerteClic.at;
   const presse = (b: number) => clics.some((c) => c.cible.k === "bouton" && c.cible.b === b && f >= c.at - 2 && f < c.at + 4);
   return (
     <div style={{ position: "absolute", inset: 0, opacity: a, transform: `scale(${0.95 + a * 0.05})`, transformOrigin: `${MODAL.x + MODAL.w / 2}px ${MODAL.y + MODAL.h / 2}px` }}>
       <div style={{ position: "absolute", left: MODAL.x, top: MODAL.y, width: MODAL.w, height: MODAL.h, background: "#FCFCFC", border: "1px solid #B9B9B9", borderRadius: 6, boxShadow: "0 18px 50px rgba(0,0,0,.22)", fontFamily: POLICE, color: "#222" }}>
         <Chrome e={e} />
+        {e.defile && <Liste e={e} sc={sc} f={f} />}
         {e.champs.map((c, j) => {
           const st = etats[j];
           const affiche = st.valeur ?? st.texte;
@@ -169,7 +218,7 @@ const Modale: React.FC<{ e: EcranAvant; sc: Scenario; f: number; ouvre: number }
             <div key={c.label} style={{ position: "absolute", left: 0, top: ROW(j) - MODAL.y, width: "100%", zIndex: st.liste || st.vide ? 5 : 1 }}>
               <span style={{ position: "absolute", left: 26, top: 13, fontSize: 17, color: "#444", width: 210 }}>{c.label}</span>
               <div style={{ position: "absolute", left: INPUT.x - MODAL.x, width: INPUT.w, height: INPUT.h, border: `${st.focus ? 2 : 1}px solid ${st.focus ? "#6A8FD8" : "#BDBDBD"}`, background: "#fff", borderRadius: 3, display: "flex", alignItems: "center", padding: "0 12px", fontSize: 18, color: "#111", overflow: "hidden", whiteSpace: "nowrap" }}>
-                <span style={{ background: st.selection ? "#B5CCF5" : "transparent" }}>{affiche}</span>
+                <span style={{ background: st.selection ? "#B5CCF5" : "transparent", textDecoration: retire ? "line-through" : "none", color: retire ? "#B3261E" : undefined }}>{affiche}</span>
                 {st.caret && <span style={{ display: "inline-block", width: 2, height: 22, background: "#111", marginLeft: 1 }} />}
                 {!affiche && !st.caret && <span style={{ color: "#AAA" }}>—</span>}
                 {c.options && <span style={{ marginLeft: "auto", fontSize: 13, color: "#888" }}>▼</span>}
@@ -192,8 +241,8 @@ const Modale: React.FC<{ e: EcranAvant; sc: Scenario; f: number; ouvre: number }
         ))}
       </div>
       {alerteOuverte && e.alerte && (
-        <div style={{ position: "absolute", left: ALERTE.x, top: ALERTE.y, width: ALERTE.w, height: ALERTE.h, background: "#FFFDF4", border: "1px solid #B9A96A", borderRadius: 6, boxShadow: "0 18px 40px rgba(0,0,0,.25)", fontFamily: POLICE, zIndex: 10 }}>
-          <div style={{ height: 46, background: "#F3E9B8", display: "flex", alignItems: "center", padding: "0 18px", fontSize: 18, fontWeight: 700, color: "#5A4A00" }}>⚠ {e.alerte.titre}</div>
+        <div style={{ position: "absolute", left: ALERTE.x, top: ALERTE.y, width: ALERTE.w, height: ALERTE.h, background: e.alerte.grave ? "#FFF7F6" : "#FFFDF4", border: `1px solid ${e.alerte.grave ? "#C9786E" : "#B9A96A"}`, borderRadius: 6, boxShadow: "0 18px 40px rgba(0,0,0,.25)", fontFamily: POLICE, zIndex: 10 }}>
+          <div style={{ height: 46, background: e.alerte.grave ? "#F6D5D1" : "#F3E9B8", display: "flex", alignItems: "center", padding: "0 18px", fontSize: 18, fontWeight: 700, color: e.alerte.grave ? "#8A1C12" : "#5A4A00" }}>{e.alerte.grave ? "⛔" : "⚠"} {e.alerte.titre}</div>
           <div style={{ padding: "18px 18px", fontSize: 17, color: "#333" }}>{e.alerte.texte}</div>
           <div style={{ position: "absolute", right: 24, bottom: 22, width: 110, height: 44, background: "#E3E3E3", border: "1px solid #A9A9A9", borderRadius: 4, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17 }}>{e.alerte.bouton}</div>
         </div>

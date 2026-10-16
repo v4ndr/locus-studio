@@ -4,20 +4,22 @@ import type { Story } from "./story";
  * Quatre motions de plus, tirés des scripts v2 du 16/10/2026
  * (`scripts-motions-studio-v2.md` dans les fichiers du projet) : l'aide à la
  * décision dans la note, une question sur un dossier, une question sur toute
- * la patientèle, et les indicateurs (ROSP et Donum). Patients et chiffres
+ * la patientèle, et la ROSP. Retours du 16/10 après-midi : alerte sans solution
+ * contre aide à la décision, défilement des documents, cohorte sans LGC,
+ * vrais indicateurs ROSP. Patients et chiffres
  * fictifs ; le contenu médical et réglementaire est à relire avant diffusion.
  */
 
 const MEDECIN = { nom: "Dr Romain Vandepitterie", prenomNom: "", initiales: "RV" };
 
-/** Aide à la décision : l'allergie notée en texte libre que le LAP ne voit pas. */
+/** Aide à la décision : le LAP bloque l'amoxicilline sans proposer d'alternative ; Locus la propose au moment de décider. */
 export const ANGINE: Story = {
   id: "angine-allergie",
   quand: "Mercredi, 11 h 15",
-  patient: { nom: "Mme Léa Garnier", prenomNom: "GARNIER Léa", initiales: "LG", meta: "34 ans · professeure des écoles", contexte: "sans traitement au long cours" },
+  patient: { nom: "Mme Léa Garnier", prenomNom: "GARNIER Léa", initiales: "LG", meta: "34 ans · professeure des écoles", contexte: "allergie aux pénicillines" },
   citation: "J'ai très mal à la gorge depuis deux jours, avec de la fièvre.",
   plan: ["Score de McIsaac à 3, TDR positif", "Angine à streptocoque", "Amoxicilline pendant 6 jours"],
-  constat: ["La décision est prise en quelques secondes.", "L'information qui la change est trois onglets plus loin."],
+  constat: ["La décision est prise en quelques secondes.", "Le logiciel la bloque, sans proposer d'alternative."],
   avant: [
     {
       menu: "Prescription",
@@ -28,62 +30,28 @@ export const ANGINE: Story = {
         { label: "Posologie", saisies: ["1 cp matin et soir"], valeur: "1 cp matin et soir" },
         { label: "Durée", saisies: ["6"], options: ["6 jours", "6 semaines", "6 mois"], valeur: "6 jours" },
       ],
-      alerte: { titre: "Analyse de l'ordonnance", texte: "Aucune interaction détectée · posologie conforme", bouton: "OK" },
-      boutons: ["Enregistrer"],
-    },
-    {
-      menu: "Patient",
-      sousMenu: "Antécédents",
-      titre: "Antécédents et allergies",
-      champs: [
-        { label: "Rechercher", saisies: ["allergie", "augm"], options: ["2015 · urticaire sous Augmentin (texte libre)"], valeur: "2015 · urticaire sous Augmentin (texte libre)" },
-      ],
-      boutons: ["Fermer"],
-    },
-    {
-      fenetre: "web",
-      url: "has-sante.fr › angine › choix de l'antibiothérapie",
-      titre: "Angine : choix et durée de l'antibiothérapie",
-      champs: [
-        { label: "Rechercher", saisies: ["allergie"], options: ["Allergie aux pénicillines sans gravité : céphalosporine", "Contre-indication aux bêtalactamines : macrolide"], valeur: "Allergie aux pénicillines sans gravité : céphalosporine" },
-      ],
+      alerte: { titre: "Allergie", texte: "Allergie déclarée : pénicillines (urticaire, 2015). Prescription contre-indiquée.", bouton: "Retirer", grave: true },
       boutons: [],
     },
-    {
-      menu: "Prescription",
-      sousMenu: "Ordonnance",
-      titre: "Ordonnance · modifier",
-      champs: [
-        { label: "Ligne 1", options: ["Modifier", "Supprimer la ligne", "Dupliquer"], valeur: "Supprimer la ligne" },
-        { label: "Médicament", saisies: ["cefpodox"], options: ["CEFPODOXIME 100 mg cp", "CEFPODOXIME 40 mg/5 ml susp"], valeur: "CEFPODOXIME 100 mg cp" },
-        { label: "Posologie", saisies: ["1 cp matin et soir"], valeur: "1 cp matin et soir" },
-        { label: "Durée", saisies: ["5"], options: ["5 jours", "5 semaines"], valeur: "5 jours" },
-      ],
-      alerte: { titre: "Analyse de l'ordonnance", texte: "Aucune interaction détectée · posologie conforme", bouton: "OK" },
-      boutons: ["Signer et imprimer"],
-    },
   ],
-  pendant: [
-    "« Ça passe en combien de temps ? »",
-    "« Je peux retourner en classe ? »",
-    "« C'est contagieux ? »",
-    "« Je prends du paracétamol en attendant ? »",
-  ],
+  pendant: ["« Alors, qu'est-ce que vous me donnez ? »"],
   transition: "Même patiente. Même angine.",
   motif: "Angine",
   note: "Angine, McIsaac 3, TDR +.\nAmox 6 j.",
   etapes: [
     "Lecture de la note…",
-    "Dossier : urticaire sous amoxicilline-acide clavulanique (2015)",
+    "Dossier : allergie aux pénicillines (urticaire, 2015)",
     "Locus · angine à streptocoque et allergie aux pénicillines",
-    "2 actions composées",
+    "Une alternative proposée",
   ],
   synthese: "",
   aide: {
-    titre: "Allergie aux pénicillines au dossier",
-    texte: "Sans signe de gravité : céphalosporine orale à la place de l'amoxicilline. Cefpodoxime 100 mg matin et soir, 5 jours.",
-    sources: ["Urticaire sous Augmentin · 2015", "HAS · angine, antibiothérapie"],
+    titre: "Alternative à l'amoxicilline",
+    texte: "Allergie aux pénicillines sans signe de gravité : céphalosporine orale. Cefpodoxime 100 mg matin et soir, 5 jours.",
+    sources: ["Allergie au dossier · 2015", "HAS · angine, antibiothérapie"],
   },
+  zoom: true,
+  lecture: 80,
   actions: [
     {
       code: "Rx",
@@ -92,23 +60,26 @@ export const ANGINE: Story = {
       destination: "patiente · e-prescription",
       doc: { entete: "Ordonnance", lignes: ["CEFPODOXIME 100 mg, comprimé", "1 comprimé matin et soir pendant 5 jours", "PARACÉTAMOL 1 g : 1 comprimé jusqu'à 3 fois par jour si douleur ou fièvre"] },
     },
-    {
-      code: "ATCD",
-      titre: "Dossier · allergie aux pénicillines",
-      ligne: "Urticaire, 2015 · enregistrée en champ structuré",
-      destination: "dossier patient · lue par le LAP",
-      doc: { entete: "Allergies", lignes: ["Allergie : pénicillines (amoxicilline-acide clavulanique)", "Réaction : urticaire, 2015", "Champ structuré : lu par l'analyse d'ordonnance"] },
-    },
   ],
   secondes: 7,
-  message: ["L'allergie était dans le dossier.", "Elle est maintenant dans la décision."],
+  compare: { avant: "Une alerte", apres: "Une alternative" },
+  message: ["Une alerte bloque la prescription.", "L'aide à la décision propose la suite."],
 };
+
+/** Les documents d'un dossier de 7 ans, du plus récent au plus ancien ; le frottis est le 32e. */
+const TYPES = ["Compte rendu de laboratoire", "Courrier de correspondant", "Ordonnance", "Compte rendu d'imagerie", "Certificat"];
+const DOCUMENTS = Array.from({ length: 38 }, (_, i) => {
+  const mois = 9 - Math.round(i * 2.2);
+  const an = 2026 + Math.floor((mois - 1) / 12);
+  const m = ((((mois - 1) % 12) + 12) % 12) + 1;
+  return i === 31 ? "06/2019 · Compte rendu de laboratoire · CR_labo_0619.pdf" : `${String(m).padStart(2, "0")}/${an} · ${TYPES[(i * 3) % TYPES.length]}`;
+});
 
 /** Dossier unique : une question, une date, et ce qu'elle implique. */
 export const FROTTIS: Story = {
   id: "dernier-frottis",
   quand: "Jeudi, 16 h 30",
-  patient: { nom: "Mme Aïcha Diallo", prenomNom: "DIALLO Aïcha", initiales: "AD", meta: "42 ans · aide-soignante", contexte: "contraception orale" },
+  patient: { nom: "Mme Sandrine Morel", prenomNom: "MOREL Sandrine", initiales: "SM", meta: "42 ans · aide-soignante", contexte: "contraception orale" },
   citation: "Je viens pour renouveler ma pilule.",
   planTitre: "Ce que le médecin veut savoir",
   plan: ["Renouveler la pilule pour un an", "Retrouver la date du dernier frottis", "Prescrire le dépistage s'il est en retard"],
@@ -117,50 +88,22 @@ export const FROTTIS: Story = {
     {
       menu: "Patient",
       sousMenu: "Documents",
-      titre: "Documents · 38 fichiers",
-      champs: [
-        { label: "Rechercher", saisies: ["frottis", "cyto", "labo"], options: ["CR_labo_0621.pdf", "CR_labo_0320.pdf", "CR_labo_0619.pdf"], valeur: "CR_labo_0619.pdf" },
-        { label: "Dans le document", saisies: ["cervico"], options: ["Cytologie cervico-utérine : absence de lésion"], valeur: "Cytologie cervico-utérine : absence de lésion" },
-      ],
-      boutons: ["Fermer"],
-    },
-    {
-      fenetre: "web",
-      url: "has-sante.fr › dépistage du cancer du col de l'utérus",
-      titre: "Dépistage du cancer du col de l'utérus",
-      champs: [
-        { label: "Rechercher", saisies: ["30 ans"], options: ["De 30 à 65 ans : test HPV, 3 ans après une cytologie normale", "De 25 à 29 ans : examen cytologique"], valeur: "De 30 à 65 ans : test HPV, 3 ans après une cytologie normale" },
-      ],
+      titre: "Documents · du plus récent au plus ancien",
+      champs: [],
+      defile: {
+        lignes: DOCUMENTS,
+        ouvre: [
+          { i: 5, apercu: "Bilan lipidique, glycémie à jeun. Pas de frottis." },
+          { i: 12, apercu: "Courrier du gynécologue : contraception. Pas de résultat de frottis." },
+          { i: 20, apercu: "NFS, ferritine. Pas de frottis." },
+          { i: 27, apercu: "Courrier de l'ORL : sinusite. Sans rapport." },
+          { i: 31, apercu: "Cytologie cervico-utérine du 12/06/2019 : absence de lésion." },
+        ],
+      },
       boutons: [],
     },
-    {
-      menu: "Examens",
-      sousMenu: "Demande d'examen",
-      titre: "Demande d'examen complémentaire",
-      champs: [
-        { label: "Examen", saisies: ["frottis", "HPV"], options: ["Recherche de HPV à haut risque", "Examen cytologique cervico-utérin", "Sérologie HPV"], valeur: "Recherche de HPV à haut risque" },
-        { label: "Renseignements cliniques", saisies: ["Dernière cytologie normale 06/2019"], valeur: "Dernière cytologie normale 06/2019" },
-      ],
-      boutons: ["Imprimer"],
-    },
-    {
-      menu: "Prescription",
-      sousMenu: "Ordonnance",
-      titre: "Ordonnance · renouveler",
-      champs: [
-        { label: "Ordonnance", options: ["14/10/2025 · LÉVONORGESTREL/ÉTHINYLESTRADIOL", "02/04/2025 · Certificat"], valeur: "14/10/2025 · LÉVONORGESTREL/ÉTHINYLESTRADIOL" },
-        { label: "Durée", saisies: ["12"], options: ["12 mois", "12 semaines"], valeur: "12 mois" },
-      ],
-      alerte: { titre: "Analyse de l'ordonnance", texte: "Aucune interaction détectée · posologie conforme", bouton: "OK" },
-      boutons: ["Signer et imprimer"],
-    },
   ],
-  pendant: [
-    "« C'est encore utile à mon âge ? »",
-    "« Je peux le faire ici ? »",
-    "« Ça se passe comment ? »",
-    "« Et la pilule, c'est pour un an ? »",
-  ],
+  pendant: ["« C'est encore utile à mon âge ? »"],
   transition: "Même patiente. Même question.",
   mode: "question",
   apresTitre: "Une question, une validation",
@@ -195,6 +138,7 @@ export const FROTTIS: Story = {
     },
   ],
   secondes: 7,
+  compare: { avant: "38 documents", apres: "1 question", bascule: "7 secondes" },
   message: ["Une question, une date.", "Et ce qu'elle implique."],
 };
 
@@ -204,52 +148,13 @@ export const COHORTE: Story = {
   quand: "Lundi, 8 h 05",
   patient: { ...MEDECIN, meta: "Médecine générale", contexte: "aucun dossier ouvert" },
   lgcTitre: "Patientèle · 1 312 dossiers",
-  pendantQui: "S",
   citation: "Qui, parmi mes diabétiques, n'a pas eu d'HbA1c depuis six mois ?",
   planTitre: "La question",
   plan: ["Les patients diabétiques, codés ou non", "Sans HbA1c depuis plus de 6 mois", "Les plus déséquilibrés en premier"],
-  constat: ["La question tient en une ligne.", "Le logiciel n'a pas de case pour elle."],
-  avant: [
-    {
-      menu: "Outils",
-      sousMenu: "Requêtes",
-      titre: "Requête multicritère",
-      champs: [
-        { label: "Critère 1 · Diagnostic", saisies: ["diab"], options: ["Diabète de type 1", "Diabète de type 2", "Diabète gestationnel"], valeur: "Diabète de type 2" },
-        { label: "OU · Médicament", saisies: ["A10"], options: ["A10 · Antidiabétiques", "A10A · Insulines", "A10B · Hypoglycémiants oraux"], valeur: "A10 · Antidiabétiques" },
-        { label: "ET · Biologie", saisies: ["hba1c"], options: ["HbA1c · dernière valeur", "HbA1c · absente depuis 6 mois", "HbA1c · date"], valeur: "HbA1c · absente depuis 6 mois" },
-      ],
-      alerte: { titre: "Requête", texte: "Critère non disponible : absence de résultat sur une période.", bouton: "OK" },
-      boutons: ["Exporter en CSV"],
-    },
-    {
-      menu: "Outils",
-      sousMenu: "Requêtes",
-      titre: "Requête · résultats de biologie",
-      champs: [
-        { label: "Examen", saisies: ["hba1c"], options: ["HbA1c · tous les résultats", "HbA1c · dernier résultat"], valeur: "HbA1c · tous les résultats" },
-        { label: "Période", options: ["12 derniers mois", "24 derniers mois"], valeur: "24 derniers mois" },
-      ],
-      boutons: ["Exporter en CSV"],
-    },
-    {
-      fenetre: "tableur",
-      url: "patients_diabete.csv",
-      titre: "Croiser les deux exports",
-      champs: [
-        { label: "Colonne D", saisies: ["=RECHERCHEV(A2;hba1c!A:C;3;FAUX)"], valeur: "=RECHERCHEV(A2;hba1c!A:C;3;FAUX)" },
-        { label: "Trier", options: ["Date croissante", "Date décroissante"], valeur: "Date croissante" },
-        { label: "Filtrer", saisies: ["< 16/04/2026"], valeur: "< 16/04/2026" },
-      ],
-      boutons: ["Enregistrer"],
-    },
-  ],
-  pendant: [
-    "« Votre patient de 8 h 15 est arrivé. »",
-    "« Le laboratoire en ligne 2. »",
-    "« La salle d'attente se remplit. »",
-  ],
-  transition: "Même question. Posée au logiciel.",
+  constat: ["La question tient en une ligne.", "Locus la pose à toute la patientèle."],
+  avant: [],
+  pendant: [],
+  transition: "",
   mode: "question",
   apresTitre: "Une question, toute la patientèle",
   note: "Mes diabétiques sans HbA1c depuis plus de 6 mois ?",
@@ -264,9 +169,9 @@ export const COHORTE: Story = {
     colonnes: ["Patient", "Âge", "Dernière HbA1c"],
     lignes: [
       ["Mme Odette Marchal", "78", "11/2025 · 9,1 %"],
-      ["M. Karim Haddad", "61", "01/2026 · 8,6 %"],
+      ["M. Bernard Lefèvre", "61", "01/2026 · 8,6 %"],
       ["M. Jean-Pierre Roux", "70", "09/2025 · 8,4 %"],
-      ["Mme Fatoumata Keïta", "57", "02/2026 · 8,2 %"],
+      ["Mme Monique Girard", "57", "02/2026 · 8,2 %"],
       ["M. Thierry Laurent", "66", "12/2025 · 8,1 %"],
       ["Mme Hélène Dupuis", "73", "08/2025 · 7,4 %"],
     ],
@@ -289,99 +194,123 @@ export const COHORTE: Story = {
       doc: { entete: "Message", pour: "5 patients diabétiques", lignes: ["Votre dernière HbA1c était au-dessus de l'objectif.", "Je vous propose une consultation dans les prochaines semaines.", "Créneaux réservés en fin de matinée"] },
     },
   ],
-  secondes: 9,
+  tempo: 1.8,
+  lecture: 110,
+  secondes: 12,
   message: ["Une question sur un patient.", "La même, sur toute la patientèle."],
 };
 
-/** Indicateurs : la ROSP et la Donum sur un seul écran, avec les noms et les euros. */
+/**
+ * ROSP : aujourd'hui, le relevé de l'espace professionnel donne un taux par
+ * indicateur, mis à jour au trimestre et sans aucun nom. Demain, Locus
+ * recalcule les indicateurs depuis le dossier, dit combien de patients
+ * manquent à la cible et lesquels, et prépare les relances. Libellés,
+ * taux au 31/12/2025 et cible tirés d'un vrai relevé (anonymisé) ; les taux
+ * « du jour » et les patients sont fictifs.
+ */
 export const INDICATEURS: Story = {
-  id: "rosp-donum",
+  id: "rosp",
   quand: "Vendredi, 19 h 10",
   patient: { ...MEDECIN, meta: "Médecine générale", contexte: "fin de journée" },
   lgcTitre: "Patientèle · 1 312 dossiers",
-  citation: "Où j'en suis cette année, ROSP et Donum ?",
+  citation: "Où en est ma ROSP, et qui me manque-t-il ?",
   planTitre: "La question",
-  plan: ["Les indicateurs ROSP de l'année", "Ce qui reste à aller chercher sur la Donum", "Les patients à relancer"],
-  constat: ["Deux dispositifs, deux espaces, deux calendriers.", "Et aucun nom derrière les chiffres."],
+  plan: ["Où en est ma ROSP clinique ?", "Quels patients manquent à la cible ?", "Que faire dès cette semaine ?"],
+  constat: ["Le relevé donne un taux, au 31 décembre.", "Il ne dit pas quels patients relancer."],
   avant: [
     {
       fenetre: "web",
-      url: "espace professionnel Assurance maladie › activité",
-      titre: "Mon activité · indicateurs",
+      url: "espace professionnel › connexion",
+      titre: "Connexion",
       champs: [
-        { label: "Connexion", options: ["Carte CPS", "e-CPS"], valeur: "Carte CPS" },
-        { label: "Code", saisies: ["••••"], valeur: "••••" },
-        { label: "Rubrique", options: ["ROSP · relevé 2025", "Donum · 2026", "Activité"], valeur: "ROSP · relevé 2025" },
-        { label: "Indicateur", options: ["Fond d'œil des diabétiques · 58 %", "Grippe, 65 ans et plus · 54 %", "Dépistage du col · 63 %"], valeur: "Fond d'œil des diabétiques · 58 %" },
+        { label: "Se connecter", options: ["Carte CPS ou CPE", "Identifiant et mot de passe"], valeur: "Carte CPS ou CPE" },
+        { label: "Code porteur", saisies: ["••••"], valeur: "••••" },
+      ],
+      boutons: ["Valider"],
+    },
+    {
+      fenetre: "web",
+      url: "espace professionnel › accueil",
+      titre: "Activités",
+      champs: [
+        { label: "Rubrique", options: ["Services paiements", "Convention", "Patientèle médecin traitant"], valeur: "Convention" },
+        { label: "Rémunération", options: ["Forfait structure", "ROSP clinique", "ROSP MT enfants"], valeur: "ROSP clinique" },
       ],
       boutons: [],
     },
     {
       fenetre: "web",
-      url: "espace professionnel Assurance maladie › Donum",
-      titre: "Donum 2026 · critères",
+      url: "espace professionnel › convention › ROSP clinique",
+      titre: "Suivi des pathologies chroniques · MT adultes",
       champs: [
-        { label: "Rubrique", options: ["ROSP · relevé 2025", "Donum · 2026", "Activité"], valeur: "Donum · 2026" },
-        { label: "Critère", options: ["Socle", "DMP et ordonnance numérique", "ApCV et messagerie"], valeur: "DMP et ordonnance numérique" },
+        { label: "Indicateur", options: ["Nombre de dosages HbA1c · 70,2 %", "Fond d'œil chez le diabétique · 73,8 %", "Dépistage maladie rénale chronique · 54,8 %"], valeur: "Dépistage maladie rénale chronique · 54,8 %" },
       ],
+      alerte: { titre: "Dépistage maladie rénale chronique", texte: "Votre taux : 54,8 %. Cible : 58,6 %. Dernière mise à jour : 31/12/2025.", bouton: "Fermer" },
       boutons: [],
     },
-    {
-      fenetre: "tableur",
-      url: "indicateurs_2026.xlsx",
-      titre: "Additionner",
-      champs: [
-        { label: "Cellule B7", saisies: ["=B2+B3+B4"], valeur: "=B2+B3+B4" },
-        { label: "Patients", saisies: ["?"], valeur: "?" },
-      ],
-      boutons: ["Enregistrer"],
-    },
   ],
-  pendant: [
-    "« Des pourcentages, mais lesquels de mes patients ? »",
-    "« Le relevé date de l'an dernier. »",
-    "« Il est 19 h 52. »",
-  ],
-  transition: "Mêmes chiffres. Avec ce qu'il y a derrière.",
+  pendant: ["« La carte, puis le code. »", "« La ROSP, c'est dans Convention. »", "« Il m'en manque combien, et lesquels ? »"],
+  transition: "Même ROSP. Avec les noms.",
   mode: "question",
   apresTitre: "Une question, des noms",
-  note: "Où j'en suis, ROSP et Donum ?",
+  note: "Où en est ma ROSP, et qui manque ?",
   etapes: [
-    "Lecture de 1 312 dossiers et de l'activité 2026…",
-    "Donum : socle et options",
-    "ROSP : indicateurs du médecin traitant",
-    "71 patients à relancer · 600 € à aller chercher",
+    "Lecture de 1 312 dossiers…",
+    "6 indicateurs recalculés au 16/10/2026",
+    "Dépistage MRC : 55,1 %, cible 58,6 %",
+    "38 diabétiques sans RAC ou créatinine cette année",
   ],
   synthese: "",
+  tempo: 1.3,
+  lecture: 150,
   jauges: [
     {
-      titre: "Donum 2026",
-      total: "2 340 € sur 2 940 €",
+      titre: "Diabète · MT adultes",
+      total: "Recalculé le 16/10/2026",
       lignes: [
-        { label: "Socle", valeur: "1 960 €", pct: 1 },
-        { label: "DMP et e-prescription", valeur: "380 / 420 €", pct: 0.9, note: "11 % d'e-prescriptions en moins" },
-        { label: "ApCV et messagerie", valeur: "0 / 140 €", pct: 0, note: "ApCV jamais utilisée" },
+        { label: "Dosages HbA1c", valeur: "71,4 %", pct: 0.714 },
+        { label: "Fond d'œil", valeur: "74,6 %", pct: 0.746 },
+        { label: "Dépistage MRC", valeur: "55,1 %", pct: 0.551, cible: 0.586, note: "4 patients pour atteindre la cible" },
       ],
     },
     {
-      titre: "ROSP",
-      total: "71 patients à relancer",
+      titre: "Autres indicateurs",
       lignes: [
-        { label: "Fond d'œil · diabétiques", valeur: "58 %", pct: 0.58, note: "12 patients" },
-        { label: "Grippe · 65 ans et plus", valeur: "54 %", pct: 0.54, note: "41 patients" },
-        { label: "Dépistage du col", valeur: "63 %", pct: 0.63, note: "18 patientes" },
+        { label: "Dépistage MRC · hypertendus", valeur: "22,3 %", pct: 0.223 },
+        { label: "Prévention secondaire CV", valeur: "38,0 %", pct: 0.38 },
+        { label: "Surveillance AVK", valeur: "66,7 %", pct: 0.667 },
       ],
     },
   ],
+  tableau: {
+    colonnes: ["Dépistage MRC · à faire", "Âge", "Manque", "RDV"],
+    lignes: [
+      ["M. Gérard Blanchard", "76", "RAC", "21/10"],
+      ["Mme Josiane Perrin", "68", "RAC, créatinine", "23/10"],
+      ["M. Alain Mercier", "71", "RAC", "28/10"],
+      ["Mme Colette Brunet", "79", "créatinine", "—"],
+      ["M. Patrick Fabre", "63", "RAC", "—"],
+      ["Mme Nicole Gauthier", "74", "RAC, créatinine", "—"],
+    ],
+    plus: "+ 32 autres patients",
+  },
   actions: [
     {
-      code: "MSG",
-      titre: "Rétinographie · 12 patients diabétiques",
-      ligne: "Message avec la prescription jointe",
-      destination: "12 patients · messagerie",
-      doc: { entete: "Message", pour: "12 patients diabétiques", lignes: ["Votre dernier fond d'œil date de plus de 2 ans.", "Vous trouverez ci-joint la prescription d'une rétinographie.", "Le résultat arrivera directement dans votre dossier."] },
+      code: "BIO",
+      titre: "Ordonnance · créatinine, DFG, RAC · 38 patients",
+      ligne: "Envoyée par message, avec un mot",
+      destination: "38 patients · messagerie",
+      doc: { entete: "Ordonnance · biologie", pour: "38 patients diabétiques", lignes: ["Créatininémie avec estimation du DFG", "Rapport albuminurie / créatininurie sur échantillon d'urines", "« Ce bilan annuel n'a pas encore été fait cette année. »"] },
+    },
+    {
+      code: "RV",
+      titre: "Rappel au prochain rendez-vous · 9 patients",
+      ligne: "Ajouté à la fiche du rendez-vous",
+      destination: "agenda · 9 rendez-vous",
+      doc: { entete: "Rappel", pour: "9 patients avec un rendez-vous d'ici fin octobre", lignes: ["Dépistage MRC à faire : RAC et créatinine", "Ordonnance prête à remettre", "Indicateur : dépistage de la maladie rénale chronique"] },
     },
   ],
-  secondes: 8,
-  message: ["Un indicateur, ce sont des patients.", "Et des euros qu'on peut encore aller chercher."],
+  secondes: 12,
+  compare: { avant: "Un taux", apres: "38 noms" },
+  message: ["La ROSP donne un taux.", "Locus donne les noms."],
 };

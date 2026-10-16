@@ -2,7 +2,7 @@ import { AbsoluteFill } from "remotion";
 import { CABINET_ENTETE, type Action, type Encart, type Story } from "../story";
 import { C, FONT, SHADOW, SHADOW_ACCENT } from "../theme";
 import { FPS } from "../theme";
-import { mix, pop, ramp, timeline, typed } from "../timeline";
+import { inOut, mix, pop, ramp, timeline, typed } from "../timeline";
 import { Avatar, Check, Chevron, Cursor, K, Kbd, Wordmark } from "../ui/kit";
 import { suivre } from "../ui/path";
 import { Scene } from "../ui/Scene";
@@ -50,7 +50,8 @@ const mise = (s: Story) => {
   const note = q ? { top: 80, h: 60 } : { top: 134, h: 150 };
   const btn = note.top + note.h + 14;
   const card = btn + 56;
-  const blocs = [s.reponse ? H_REPONSE : 0, s.aide ? H_AIDE : 0, hTableau(s), hJauges(s)].filter(Boolean);
+  /* Le tableau de bord puis la liste occupent la même place, l'un après l'autre. */
+  const blocs = [s.reponse ? H_REPONSE : 0, s.aide ? H_AIDE : 0, ...(s.jauges && s.tableau ? [Math.max(hTableau(s), hJauges(s))] : [hTableau(s), hJauges(s)])].filter(Boolean);
   const hSynth = blocs.length ? blocs.reduce((a, b) => a + b, 0) + (blocs.length - 1) * ESPACE : H_SYNTHESE;
   const synth = card + 56;
   const list = synth + hSynth + 8;
@@ -74,11 +75,11 @@ export const Apres: React.FC<{ f: number; s: Story }> = ({ f, s }) => {
   const rowY = (i: number) => CARD.list + 4 + i * ROW_H;
   const G = from + K0.generer;
   const V = G + s.secondes * FPS;
-  const etape = (k: number) => G + 8 + k * 22;
+  const etape = (k: number) => G + 8 + Math.round(k * 22 * (s.tempo ?? 1));
   const pret = etape(s.etapes.length - 1);
   const actionAt = (i: number) => pret + 4 + i * 12;
   /* Le carrousel : ouvert d'un clic sur la première ligne, → pour passer au suivant, esc pour fermer. */
-  const lecture = s.reponse || s.aide || s.tableau || s.jauges ? 36 : 0;
+  const lecture = s.lecture ?? (s.reponse || s.aide || s.tableau || s.jauges ? 36 : 0);
   const C0 = actionAt(s.actions.length - 1) + 12 + lecture;
   const PAS = 30;
   const passe = (k: number) => C0 + k * PAS - 8;
@@ -104,17 +105,23 @@ export const Apres: React.FC<{ f: number; s: Story }> = ({ f, s }) => {
   const survol = f >= C0 - 8 && f < C0 + 4 ? 0 : -1;
   const fenetre = pop(f, from + 2, { damping: 20 });
 
+  /* Le zoom sur l'aide à la décision, le temps de la lire. */
+  const z = s.zoom && s.aide ? inOut(f, pret + 16, pret + 32, C0 - 26, C0 - 10) : 0;
+  const zx = WIN.x + (IW / 2) * ECHELLE;
+  const zy = WIN.y + (L.synth + (s.reponse ? H_REPONSE + ESPACE : 0) + H_AIDE / 2) * ECHELLE;
+
   return (
     <Scene f={f} from={from} to={to}>
       <AbsoluteFill>
         <div style={{ position: "absolute", left: 60, right: 60, top: 70, display: "flex", alignItems: "flex-end", justifyContent: "space-between" }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <K size={22} color={C.accent}>Demain</K>
+            <K size={22} color={C.accent}>{s.avant.length ? "Demain" : "Locus Studio"}</K>
             <span style={{ fontSize: 36, fontWeight: 500, letterSpacing: "-.02em" }}>{s.apresTitre ?? "Une note, une validation"}</span>
           </div>
           <span style={{ fontFamily: FONT.mono, fontSize: 84, fontWeight: 500, lineHeight: 1, color: lance ? C.accent : C.grayDot }}>{fmt(chrono, signe)}</span>
         </div>
 
+        <div style={{ position: "absolute", inset: 0, transformOrigin: `${zx}px ${zy}px`, transform: `translate(${(540 - zx) * z}px, ${(720 - zy) * z}px) scale(${1 + 0.22 * z})` }}>
         <div
           style={{
             position: "absolute",
@@ -227,7 +234,7 @@ export const Apres: React.FC<{ f: number; s: Story }> = ({ f, s }) => {
                         {s.etapes[Math.max(0, nEtape - 1)]}
                       </div>
                     ) : (
-                      <Blocs s={s} f={f} pret={pret} />
+                      <Blocs s={s} f={f} pret={pret} lecture={lecture} />
                     )}
                   </div>
                   <div style={{ position: "absolute", left: 18, right: 18, top: CARD.list - L.card, display: "flex", flexDirection: "column", gap: 0, padding: 4, borderRadius: 12, border: `1px solid ${C.line3}`, background: C.bg, minHeight: s.actions.length * ROW_H + 8, opacity: f >= pret ? 1 : 0.5 }}>
@@ -265,6 +272,7 @@ export const Apres: React.FC<{ f: number; s: Story }> = ({ f, s }) => {
 
           {carrousel > 0 && <Carrousel s={s} f={f} pos={pos} relu={relu} opacite={carrousel} touche={touche} />}
           <div style={{ opacity: 1 - carrousel }}><Cursor x={cur.x} y={cur.y} press={cur.press} ripple={cur.ripple} scale={0.85} /></div>
+        </div>
         </div>
       </AbsoluteFill>
     </Scene>
@@ -394,7 +402,9 @@ const Aide: React.FC<{ e: Encart }> = ({ e }) => (
 
 /** Une liste de patients : les premières lignes, puis « + N autres ». Les `marques` premières lignes sont en tête de liste (les plus à risque). */
 const Tableau: React.FC<{ t: NonNullable<Story["tableau"]>; f: number; at: number }> = ({ t, f, at }) => {
-  const cols = `1fr ${t.colonnes.slice(1).map(() => "auto").join(" ")}`;
+  /* Des colonnes de largeur fixe (une grille par ligne) : la plus longue valeur de chaque colonne. */
+  const larg = t.colonnes.slice(1).map((c, k) => Math.max(c.length * 7.6, ...t.lignes.map((l) => l[k + 1].length * 7.8)) + 4);
+  const cols = `1fr ${larg.map((w) => `${Math.round(w)}px`).join(" ")}`;
   return (
     <div style={{ height: hTableau({ tableau: t } as Story), display: "flex", flexDirection: "column" }}>
       <div style={{ height: 30, display: "grid", gridTemplateColumns: cols, columnGap: 22, alignItems: "center", borderBottom: `1px solid ${C.line2}` }}>
@@ -413,7 +423,7 @@ const Tableau: React.FC<{ t: NonNullable<Story["tableau"]>; f: number; at: numbe
 };
 
 /** Le tableau de bord : une colonne par dispositif, une jauge par critère, le total en pied. */
-const Jauges: React.FC<{ cols: NonNullable<Story["jauges"]>; f: number; at: number }> = ({ cols, f, at }) => (
+const Jauges: React.FC<{ cols: NonNullable<Story["jauges"]>; f: number; at: number; vise?: boolean }> = ({ cols, f, at, vise }) => (
   <div style={{ height: hJauges({ jauges: cols } as Story), display: "grid", gridTemplateColumns: cols.map(() => "1fr").join(" "), columnGap: 22 }}>
     {cols.map((c, ci) => (
       <div key={c.titre} style={{ display: "flex", flexDirection: "column" }}>
@@ -422,13 +432,14 @@ const Jauges: React.FC<{ cols: NonNullable<Story["jauges"]>; f: number; at: numb
           const t = ramp(f, at + ci * 6 + i * 4, at + ci * 6 + i * 4 + 16);
           const plein = j.pct >= 1;
           return (
-            <div key={j.label} style={{ height: H_JAUGE, display: "flex", flexDirection: "column", justifyContent: "center", gap: 4 }}>
+            <div key={j.label} style={{ height: H_JAUGE, display: "flex", flexDirection: "column", justifyContent: "center", gap: 4, margin: "0 -6px", padding: "0 6px", borderRadius: 6, background: vise && j.cible !== undefined ? C.accentSoft2 : "transparent", boxShadow: vise && j.cible !== undefined ? `inset 0 0 0 1px ${C.accentLine}` : "none" }}>
               <div style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: 12.5 }}>
                 <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{j.label}</span>
                 <span style={{ fontFamily: FONT.mono, fontSize: 12, color: C.ink3, whiteSpace: "nowrap" }}>{j.valeur}</span>
               </div>
-              <div style={{ height: 6, borderRadius: 99, background: C.soft, overflow: "hidden" }}>
+              <div style={{ position: "relative", height: 6, borderRadius: 99, background: C.soft }}>
                 <div style={{ width: `${Math.max(0.02, j.pct) * 100 * t}%`, height: "100%", borderRadius: 99, background: plein ? C.ok : C.accent }} />
+                {j.cible !== undefined && <span style={{ position: "absolute", left: `${j.cible * 100}%`, top: -4, width: 2, height: 14, background: C.ink, opacity: t }} />}
               </div>
               {j.note && <span style={{ fontSize: 11, color: C.warn, whiteSpace: "nowrap" }}>{j.note}</span>}
             </div>
@@ -442,12 +453,23 @@ const Jauges: React.FC<{ cols: NonNullable<Story["jauges"]>; f: number; at: numb
 );
 
 /** Ce que l'agent rend avant les actions : la réponse, l'aide, la liste, le tableau de bord ; à défaut, la synthèse. */
-const Blocs: React.FC<{ s: Story; f: number; pret: number }> = ({ s, f, pret }) => {
+const Blocs: React.FC<{ s: Story; f: number; pret: number; lecture: number }> = ({ s, f, pret, lecture }) => {
   const blocs: React.ReactNode[] = [];
   if (s.reponse) blocs.push(<Reponse key="r" e={s.reponse} />);
   if (s.aide) blocs.push(<Aide key="a" e={s.aide} />);
-  if (s.tableau) blocs.push(<Tableau key="t" t={s.tableau} f={f} at={pret + 6} />);
-  if (s.jauges) blocs.push(<Jauges key="j" cols={s.jauges} f={f} at={pret + 6} />);
+  if (s.jauges && s.tableau) {
+    /* Le tableau de bord, l'indicateur visé surligné, puis la liste de ses patients à la même place. */
+    const sw = pret + Math.round(lecture * 0.45);
+    blocs.push(
+      <div key="jt" style={{ position: "relative", height: Math.max(hTableau(s), hJauges(s)) }}>
+        <div style={{ position: "absolute", inset: 0, opacity: 1 - ramp(f, sw, sw + 10) }}><Jauges cols={s.jauges} f={f} at={pret + 6} vise={f >= sw - 24} /></div>
+        {f >= sw && <div style={{ position: "absolute", inset: 0, opacity: ramp(f, sw + 6, sw + 16) }}><Tableau t={s.tableau} f={f} at={sw + 8} /></div>}
+      </div>,
+    );
+  } else {
+    if (s.tableau) blocs.push(<Tableau key="t" t={s.tableau} f={f} at={pret + 6} />);
+    if (s.jauges) blocs.push(<Jauges key="j" cols={s.jauges} f={f} at={pret + 6} />);
+  }
   if (!blocs.length) return <p style={{ margin: 0, fontSize: 14.5, lineHeight: 1.55, opacity: ramp(f, pret, pret + 8) }}>{s.synthese}</p>;
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: ESPACE }}>

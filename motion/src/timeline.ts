@@ -19,10 +19,12 @@ import { FPS } from "./theme";
 export const timeline = (s: Story) => {
   const hook = { from: 0, to: 165 };
   const plan = { from: hook.to, to: hook.to + 135 };
+  /* Sans écran du LGC (une story « Locus Studio seul »), ni rembobinage ni comparaison. */
+  const seul = !s.avant.length;
   const avant = { from: plan.to, to: plan.to + dureeAvant(s) };
-  const transition = { from: avant.to, to: avant.to + 96 };
+  const transition = { from: avant.to, to: avant.to + (seul ? 0 : 96) };
   const apres = { from: transition.to, to: transition.to + 105 + s.secondes * FPS + 75 };
-  const compare = { from: apres.to, to: apres.to + 130 };
+  const compare = { from: apres.to, to: apres.to + (seul ? 0 : 130) };
   const outro = { from: compare.to, to: compare.to + 165 };
   return { hook, plan, avant, transition, apres, compare, outro, duree: outro.to };
 };

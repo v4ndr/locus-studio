@@ -21,7 +21,7 @@ export type Action = {
 export type Encart = { titre?: string; texte: string; sources: string[] };
 
 /** Une jauge du tableau de bord : un libellé, une valeur, un remplissage de 0 à 1, une note. */
-export type Jauge = { label: string; valeur: string; pct: number; note?: string };
+export type Jauge = { label: string; valeur: string; pct: number; note?: string; /** La cible, de 0 à 1, marquée sur la jauge. */ cible?: number };
 
 /**
  * Un champ d'un formulaire du LGC. Un clic pour y entrer ; puis, s'il y a
@@ -47,8 +47,14 @@ export type EcranAvant = {
   url?: string;
   titre: string;
   champs: Champ[];
-  /** Une fenêtre d'alerte (le LAP, par exemple), fermée d'un clic. */
-  alerte?: { titre: string; texte: string; bouton: string };
+  /** Une fenêtre d'alerte (le LAP, par exemple), fermée d'un clic. `grave` : l'alerte bloque. */
+  alerte?: { titre: string; texte: string; bouton: string; grave?: boolean };
+  /**
+   * Une liste qu'on fait défiler (les documents du dossier) : on descend
+   * jusqu'à chaque ligne de `ouvre`, on l'ouvre d'un clic, on lit son aperçu.
+   * La dernière ouverte est celle qu'on cherchait.
+   */
+  defile?: { lignes: string[]; ouvre: { i: number; apercu: string }[] };
   /** Les boutons de fin, un clic chacun. */
   boutons: string[];
 };
@@ -89,7 +95,7 @@ export type Story = {
   aide?: Encart;
   /** Une liste de patients (une cohorte). */
   tableau?: { colonnes: string[]; lignes: string[][]; plus?: string; marques?: number };
-  /** Un tableau de bord en colonnes de jauges. */
+  /** Un tableau de bord en colonnes de jauges. Avec un `tableau`, le tableau de bord vient d'abord, puis laisse la place à la liste. */
   jauges?: { titre: string; total?: string; lignes: Jauge[] }[];
   /** Ce que l'agent affiche pendant qu'il compose. */
   etapes: string[];
@@ -97,6 +103,14 @@ export type Story = {
   actions: Action[];
   /** Le chrono affiché côté Studio, en secondes. */
   secondes: number;
+  /** Le rythme des étapes de l'agent (1 par défaut ; plus grand = plus lent). */
+  tempo?: number;
+  /** Le temps laissé pour lire ce que l'agent a rendu, avant la relecture, en frames. */
+  lecture?: number;
+  /** Un zoom sur l'aide à la décision pendant la lecture. */
+  zoom?: boolean;
+  /** La comparaison finale, si ce ne sont pas les clics : aujourd'hui, demain, puis (facultatif) ce que devient demain. */
+  compare?: { avant: string; apres: string; bascule?: string };
   message: [string, string];
 };
 

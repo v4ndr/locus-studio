@@ -26,18 +26,24 @@ supérieurs, orthèses nocturnes : 25 clics et une centaine de frappes contre
 Quatre stories de plus (`src/stories.ts`, scripts v2 du 16/10/2026), sur
 les mêmes composants :
 
-| Composition | Cas | Ce que montre « Demain » |
-|---|---|---|
-| `Angine` | aide à la décision : angine, TDR +, allergie aux pénicillines en texte libre que le LAP ne voit pas | l'encart d'aide à la décision dans la note, avec ses sources |
-| `Frottis` | question sur un dossier : « De quand date le dernier frottis ? » | la réponse sourcée, puis l'aide à la décision (test HPV en retard) |
-| `Cohorte` | question sur la patientèle, sans dossier ouvert : HbA1c en retard | la liste des patients, puis les envois groupés |
-| `Indicateurs` | ROSP et Donum sur un seul écran | le tableau de bord à jauges, puis la relance |
+| Composition | Cas | Aujourd'hui | Demain |
+|---|---|---|---|
+| `Angine` | angine, TDR +, allergie aux pénicillines | le LAP bloque l'amoxicilline, sans alternative | l'aide à la décision propose le cefpodoxime, avec un zoom |
+| `Frottis` | « De quand date le dernier frottis ? » | on fait défiler les 38 documents | la réponse sourcée, puis le test HPV en retard |
+| `Cohorte` | diabétiques sans HbA1c depuis 6 mois | rien : Locus Studio seul | la liste des patients, puis les envois groupés |
+| `Indicateurs` | ROSP clinique (vrais libellés, taux et cible d'un relevé anonymisé) | un taux par indicateur, au 31/12, sans nom | les indicateurs recalculés, puis les 38 patients qui manquent et les relances |
 
 Les options de `Story` qui le permettent : `mode: "question"` (le composer
-⌘K au lieu de la note), `reponse`, `aide`, `tableau`, `jauges`, `lgcTitre`
-(pas de dossier ouvert), `pendantQui`, `planTitre`, `apresTitre`, `motif`.
-Côté LGC, un écran peut être un navigateur ou un tableur (`fenetre`,
-`url`), et s'ouvrir sans passer par les menus (`menu` absent).
+⌘K au lieu de la note), `reponse`, `aide` (et `zoom` dessus), `tableau`,
+`jauges` (avec un `tableau` : le tableau de bord, puis la liste),
+`lgcTitre` (pas de dossier ouvert), `pendantQui`, `planTitre`,
+`apresTitre`, `motif`, `tempo` et `lecture` (le rythme de Studio),
+`compare` (une comparaison autre que les clics). Sans écran du LGC
+(`avant: []`), le motion passe directement à Locus Studio, sans
+rembobinage ni comparaison. Côté LGC, un écran peut être un navigateur ou
+un tableur (`fenetre`, `url`), s'ouvrir sans passer par les menus (`menu`
+absent), être une liste qu'on fait défiler (`defile`), et son alerte peut
+bloquer (`alerte.grave`).
 
 Patients **fictifs uniquement** : le cas réel de la réunion a reçu une identité
 inventée. Le contenu médical est à relire avant diffusion, et les visuels

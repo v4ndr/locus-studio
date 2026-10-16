@@ -90,7 +90,7 @@ export const Transition: React.FC<{ f: number; s: Story }> = ({ f, s }) => {
             <span style={{ fontSize: 56, color: C.muted2 }}>clics</span>
             <span style={{ marginLeft: "auto", fontFamily: FONT.mono, fontSize: 44, color: C.muted2, opacity: rembobine ? 1 : 0 }}>◀◀</span>
           </div>
-          <span style={{ fontFamily: FONT.mono, fontSize: 40, color: C.muted2 }}>{frappes} frappes</span>
+          {totalFrappes(s) > 0 && <span style={{ fontFamily: FONT.mono, fontSize: 40, color: C.muted2 }}>{frappes} frappes</span>}
         </div>
         <p style={{ margin: 0, fontSize: 64, lineHeight: 1.15, letterSpacing: "-.03em", fontWeight: 600, opacity: texte, transform: `translateY(${(1 - texte) * 20}px)` }}>{s.transition}</p>
       </AbsoluteFill>
@@ -104,19 +104,22 @@ export const Compare: React.FC<{ f: number; s: Story }> = ({ f, s }) => {
   const a = pop(f, from + 6);
   const b = pop(f, from + 26);
   const bascule = ramp(f, from + 62, from + 74);
-  const gros = { fontSize: 168, fontWeight: 600, letterSpacing: "-.05em", lineHeight: 1 } as const;
+  const cmp = s.compare ?? { avant: `${totalClics(s)} clics`, apres: `${CLICS_APRES} clics`, bascule: `${s.secondes} secondes` };
+  const taille = Math.max(...[cmp.avant, cmp.apres, cmp.bascule ?? ""].map((t) => t.length)) > 11 ? 112 : 168;
+  const gros = { fontSize: taille, fontWeight: 600, letterSpacing: "-.05em", lineHeight: 1 } as const;
+  const flip = cmp.bascule ? bascule : 0;
   return (
     <Scene f={f} from={from} to={to}>
       <AbsoluteFill style={{ padding: "0 96px", justifyContent: "center", gap: 70 }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 10, opacity: a, transform: `translateY(${(1 - a) * 30}px)` }}>
           <K size={22}>Aujourd'hui</K>
-          <span style={{ ...gros, color: C.muted3 }}>{totalClics(s)} clics</span>
+          <span style={{ ...gros, color: C.muted3, whiteSpace: "nowrap" }}>{cmp.avant}</span>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 10, opacity: b, transform: `translateY(${(1 - b) * 30}px)` }}>
           <K size={22} color={C.accent}>Demain</K>
-          <div style={{ position: "relative", height: 168, overflow: "hidden" }}>
-            <span style={{ ...gros, position: "absolute", left: 0, top: 0, color: C.accent, opacity: 1 - bascule, transform: `translateY(${-bascule * 120}px)` }}>{CLICS_APRES} clics</span>
-            <span style={{ ...gros, position: "absolute", left: 0, top: 0, color: C.accent, opacity: bascule, transform: `translateY(${(1 - bascule) * 120}px)`, whiteSpace: "nowrap" }}>{s.secondes} secondes</span>
+          <div style={{ position: "relative", height: taille, overflow: "hidden" }}>
+            <span style={{ ...gros, position: "absolute", left: 0, top: 0, color: C.accent, opacity: 1 - flip, transform: `translateY(${-flip * 120}px)`, whiteSpace: "nowrap" }}>{cmp.apres}</span>
+            <span style={{ ...gros, position: "absolute", left: 0, top: 0, color: C.accent, opacity: flip, transform: `translateY(${(1 - flip) * 120}px)`, whiteSpace: "nowrap" }}>{cmp.bascule}</span>
           </div>
         </div>
       </AbsoluteFill>

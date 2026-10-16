@@ -12,10 +12,10 @@ export const Rencontre: React.FC<{ story: Story }> = ({ story }) => {
     <AbsoluteFill style={{ background: C.bg, fontFamily: FONT.sans, color: C.ink, WebkitFontSmoothing: "antialiased" }}>
       <Hook f={f} s={story} />
       <Plan f={f} s={story} />
-      <Avant f={f} s={story} />
-      <Transition f={f} s={story} />
+      {story.avant.length > 0 && <Avant f={f} s={story} />}
+      {story.avant.length > 0 && <Transition f={f} s={story} />}
       <Apres f={f} s={story} />
-      <Compare f={f} s={story} />
+      {story.avant.length > 0 && <Compare f={f} s={story} />}
       <Outro f={f} s={story} />
     </AbsoluteFill>
   );
