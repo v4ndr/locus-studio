@@ -23,6 +23,28 @@ renouvellement et parle de fourmillements nocturnes dans les deux mains
 supérieurs, orthèses nocturnes : 25 clics et une centaine de frappes contre
 8 secondes.
 
+Quatre stories de plus (`src/stories.ts`, scripts v2 du 16/10/2026), sur
+les mêmes composants :
+
+| Composition | Cas | Aujourd'hui | Demain |
+|---|---|---|---|
+| `Angine` | angine, TDR +, allergie aux pénicillines | le LAP bloque l'amoxicilline, sans alternative | l'aide à la décision propose le cefpodoxime, avec un zoom |
+| `Frottis` | « De quand date le dernier frottis ? » | on fait défiler les 38 documents | la réponse sourcée, puis le test HPV en retard |
+| `Cohorte` | diabétiques sans HbA1c depuis 6 mois | rien : Locus Studio seul | la liste des patients, puis les envois groupés |
+| `Indicateurs` | ROSP clinique (vrais libellés, taux et cible d'un relevé anonymisé) | un taux par indicateur, au 31/12, sans nom | les indicateurs recalculés, puis les 38 patients qui manquent et les relances |
+
+Les options de `Story` qui le permettent : `mode: "question"` (le composer
+⌘K au lieu de la note), `reponse`, `aide` (et `zoom` dessus), `tableau`,
+`jauges` (avec un `tableau` : le tableau de bord, puis la liste),
+`lgcTitre` (pas de dossier ouvert), `pendantQui`, `planTitre`,
+`apresTitre`, `motif`, `tempo` et `lecture` (le rythme de Studio),
+`compare` (une comparaison autre que les clics). Sans écran du LGC
+(`avant: []`), le motion passe directement à Locus Studio, sans
+rembobinage ni comparaison. Côté LGC, un écran peut être un navigateur ou
+un tableur (`fenetre`, `url`), s'ouvrir sans passer par les menus (`menu`
+absent), être une liste qu'on fait défiler (`defile`), et son alerte peut
+bloquer (`alerte.grave`).
+
 Patients **fictifs uniquement** : le cas réel de la réunion a reçu une identité
 inventée. Le contenu médical est à relire avant diffusion, et les visuels
 Studio sont à montrer à AlmaPro avant publication.
@@ -56,6 +78,7 @@ cd motion
 pnpm install
 pnpm studio      # prévisualiser et scrubber
 pnpm render      # → out/rencontre-4x5.mp4
+pnpm render:tous # → out/<Composition>.mp4, les cinq motions
 pnpm still       # une image (frame 700), pour vérifier
 pnpm typecheck
 ```

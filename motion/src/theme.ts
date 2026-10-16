@@ -33,6 +33,7 @@ export const C = {
   warn: "#A35400",
   rec: "#D93A2B",
   recText: "#B3261E",
+  recSoft: "#FDECEA",
   grayDot: "#C7C6BF",
 } as const;
 
