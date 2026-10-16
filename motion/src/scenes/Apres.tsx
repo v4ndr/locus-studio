@@ -1,5 +1,5 @@
 import { AbsoluteFill } from "remotion";
-import { CABINET_ENTETE, type Action, type Story } from "../story";
+import { CABINET_ENTETE, type Action, type Encart, type Story } from "../story";
 import { C, FONT, SHADOW, SHADOW_ACCENT } from "../theme";
 import { FPS } from "../theme";
 import { mix, pop, ramp, timeline, typed } from "../timeline";
@@ -26,10 +26,37 @@ const WIN = { x: 60, y: 210 };
 const IW = 662;
 const IH = 745;
 const PAD = 22;
-const Y = { tool: 80, note: 134, btn: 298, card: 354 };
-const CARD = { head: Y.card + 16, synth: Y.card + 56, list: Y.card + 138, btns: Y.card + 314 };
 const ROW_H = 52;
-const rowY = (i: number) => CARD.list + 4 + i * ROW_H;
+
+/* Les hauteurs des blocs qui peuvent prendre la place de la synthèse, en pixels d'interface. */
+const H_SYNTHESE = 74;
+const H_REPONSE = 64;
+const H_AIDE = 128;
+const H_LIGNE = 32;
+const H_JAUGE = 50;
+const ESPACE = 10;
+const hTableau = (s: Story) => (s.tableau ? 30 + s.tableau.lignes.length * H_LIGNE + (s.tableau.plus ? 26 : 0) : 0);
+const hJauges = (s: Story) => (s.jauges ? 34 + Math.max(...s.jauges.map((j) => j.lignes.length)) * H_JAUGE + 30 : 0);
+
+/**
+ * La mise en page de l'écran : en mode « note », la barre de consultation, la
+ * note, « Générer », la carte ; en mode « question », le composer ⌘K sur une
+ * ligne, puis la carte. Sous l'en-tête de la carte : la réponse, l'aide à la
+ * décision, la liste ou le tableau de bord (ou, à défaut, la synthèse), puis
+ * les actions et les boutons.
+ */
+const mise = (s: Story) => {
+  const q = s.mode === "question";
+  const note = q ? { top: 80, h: 60 } : { top: 134, h: 150 };
+  const btn = note.top + note.h + 14;
+  const card = btn + 56;
+  const blocs = [s.reponse ? H_REPONSE : 0, s.aide ? H_AIDE : 0, hTableau(s), hJauges(s)].filter(Boolean);
+  const hSynth = blocs.length ? blocs.reduce((a, b) => a + b, 0) + (blocs.length - 1) * ESPACE : H_SYNTHESE;
+  const synth = card + 56;
+  const list = synth + hSynth + 8;
+  const btns = list + s.actions.length * ROW_H + 20;
+  return { q, note, btn, card, synth, hSynth, list, btns, tool: 80 };
+};
 
 /** Les instants clés, à partir du début de la scène. */
 const K0 = {
@@ -41,13 +68,18 @@ const fmt = (s: number, fini: boolean) => (fini ? `${Math.round(s)} s` : `${s.to
 
 export const Apres: React.FC<{ f: number; s: Story }> = ({ f, s }) => {
   const { from, to } = timeline(s).apres;
+  const L = mise(s);
+  const Y = L;
+  const CARD = { synth: L.synth, list: L.list, btns: L.btns };
+  const rowY = (i: number) => CARD.list + 4 + i * ROW_H;
   const G = from + K0.generer;
   const V = G + s.secondes * FPS;
   const etape = (k: number) => G + 8 + k * 22;
   const pret = etape(s.etapes.length - 1);
   const actionAt = (i: number) => pret + 4 + i * 12;
   /* Le carrousel : ouvert d'un clic sur la première ligne, → pour passer au suivant, esc pour fermer. */
-  const C0 = actionAt(s.actions.length - 1) + 12;
+  const lecture = s.reponse || s.aide || s.tableau || s.jauges ? 36 : 0;
+  const C0 = actionAt(s.actions.length - 1) + 12 + lecture;
   const PAS = 30;
   const passe = (k: number) => C0 + k * PAS - 8;
   const ferme = C0 + s.actions.length * PAS - 4;
@@ -56,7 +88,7 @@ export const Apres: React.FC<{ f: number; s: Story }> = ({ f, s }) => {
   const carrousel = f >= C0 && f < ferme + 10 ? Math.min(ramp(f, C0, C0 + 8), 1 - ramp(f, ferme, ferme + 8)) : 0;
   const touche = s.actions.findIndex((_, k) => k > 0 && f >= passe(k) - 2 && f < passe(k) + 5) > 0 ? "→" : f >= ferme - 2 && f < ferme + 5 ? "esc" : null;
 
-  const note = typed(s.note, f, from + K0.note, 70);
+  const note = typed(s.note, f, from + K0.note, L.q ? 40 : 70);
   const ecrit = note.length < s.note.length && f >= from + K0.note;
   const lance = f >= G;
   const signe = f >= V + 2;
@@ -65,7 +97,7 @@ export const Apres: React.FC<{ f: number; s: Story }> = ({ f, s }) => {
   const carte = pop(f, G + 2, { damping: 18, stiffness: 200 });
 
   const cur = suivre(f, { x: 470, y: 520 }, [
-    { x: PAD + 92, y: Y.btn + 21, at: G },
+    { x: PAD + (L.q ? 52 : 92), y: Y.btn + 21, at: G },
     { x: 300, y: rowY(0) + 26, at: C0 },
     { x: PAD + 18 + 62, y: CARD.btns + 21, at: V },
   ]);
@@ -78,7 +110,7 @@ export const Apres: React.FC<{ f: number; s: Story }> = ({ f, s }) => {
         <div style={{ position: "absolute", left: 60, right: 60, top: 70, display: "flex", alignItems: "flex-end", justifyContent: "space-between" }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             <K size={22} color={C.accent}>Demain</K>
-            <span style={{ fontSize: 36, fontWeight: 500, letterSpacing: "-.02em" }}>Une note, une validation</span>
+            <span style={{ fontSize: 36, fontWeight: 500, letterSpacing: "-.02em" }}>{s.apresTitre ?? "Une note, une validation"}</span>
           </div>
           <span style={{ fontFamily: FONT.mono, fontSize: 84, fontWeight: 500, lineHeight: 1, color: lance ? C.accent : C.grayDot }}>{fmt(chrono, signe)}</span>
         </div>
@@ -105,42 +137,61 @@ export const Apres: React.FC<{ f: number; s: Story }> = ({ f, s }) => {
           {/* L'en-tête de Studio : wordmark, le patient au centre, le praticien. */}
           <div style={{ height: 58, display: "flex", alignItems: "center", padding: "0 22px", borderBottom: `1px solid ${C.line2}`, background: C.bg }}>
             <div style={{ flex: 1 }}><Wordmark /></div>
-            <div style={{ display: "flex", alignItems: "center", gap: 9, border: `1px solid ${C.line}`, background: C.paper, borderRadius: 999, padding: "5px 14px 5px 6px" }}>
-              <Avatar initials={s.patient.initiales} size={26} />
-              <span style={{ fontSize: 14, fontWeight: 500 }}>{s.patient.nom}</span>
-              <span style={{ fontSize: 13, color: C.muted2 }}>{s.patient.meta}</span>
-            </div>
+            {s.lgcTitre ? (
+              <div style={{ display: "flex", alignItems: "center", gap: 9, border: `1px solid ${C.line}`, background: C.paper, borderRadius: 999, padding: "5px 14px" }}>
+                <span style={{ fontSize: 14, fontWeight: 500 }}>{s.lgcTitre}</span>
+              </div>
+            ) : (
+              <div style={{ display: "flex", alignItems: "center", gap: 9, border: `1px solid ${C.line}`, background: C.paper, borderRadius: 999, padding: "5px 14px 5px 6px" }}>
+                <Avatar initials={s.patient.initiales} size={26} />
+                <span style={{ fontSize: 14, fontWeight: 500 }}>{s.patient.nom}</span>
+                <span style={{ fontSize: 13, color: C.muted2 }}>{s.patient.meta}</span>
+              </div>
+            )}
             <div style={{ flex: 1, display: "flex", justifyContent: "flex-end" }}>
               <span style={{ display: "flex", width: 30, height: 30, alignItems: "center", justifyContent: "center", borderRadius: 999, background: C.ink, color: C.paper, fontSize: 11, fontWeight: 500 }}>RV</span>
             </div>
           </div>
 
-          {/* La barre de la consultation. */}
-          <div style={{ position: "absolute", left: PAD, right: PAD, top: Y.tool, height: 40, display: "flex", alignItems: "center", gap: 10 }}>
-            {["Dicter", "Structure"].map((t, i) => (
-              <span key={t} style={{ display: "flex", alignItems: "center", gap: 8, height: 38, padding: "0 14px", borderRadius: 999, border: `1px solid ${C.line}`, background: C.paper, fontSize: 14 }}>
-                {i === 0 && <span style={{ width: 8, height: 8, borderRadius: 99, background: C.grayDot }} />}
-                {t}
+          {L.q ? (
+            /* Le composer ⌘K : une ligne, la question. */
+            <div style={{ position: "absolute", left: PAD, right: PAD, top: L.note.top, height: L.note.h, borderRadius: 14, border: `1px solid ${ecrit ? C.accentLine : C.line}`, background: C.paper, boxShadow: ecrit ? SHADOW_ACCENT : "none", padding: "0 18px", display: "flex", alignItems: "center", gap: 12, fontSize: 17 }}>
+              <Kbd>⌘K</Kbd>
+              <span style={{ flex: 1, whiteSpace: "nowrap", overflow: "hidden" }}>
+                {note || <span style={{ color: C.muted3 }}>Demandez à Locus, ou dites ce qu'il faut faire.</span>}
+                {ecrit && <span style={{ display: "inline-block", width: 2, height: 20, background: C.accent, verticalAlign: -4, marginLeft: 2 }} />}
               </span>
-            ))}
-            <span style={{ flex: 1 }} />
-            <span style={{ height: 38, width: 190, display: "flex", alignItems: "center", padding: "0 12px", borderRadius: 8, border: `1px solid ${C.line}`, background: C.paper, fontSize: 14 }}>Renouvellement</span>
-            <span style={{ fontFamily: FONT.mono, fontSize: 11, color: C.muted2 }}>Consultation</span>
-          </div>
+            </div>
+          ) : (
+            <>
+              {/* La barre de la consultation. */}
+              <div style={{ position: "absolute", left: PAD, right: PAD, top: L.tool, height: 40, display: "flex", alignItems: "center", gap: 10 }}>
+                {["Dicter", "Structure"].map((t, i) => (
+                  <span key={t} style={{ display: "flex", alignItems: "center", gap: 8, height: 38, padding: "0 14px", borderRadius: 999, border: `1px solid ${C.line}`, background: C.paper, fontSize: 14 }}>
+                    {i === 0 && <span style={{ width: 8, height: 8, borderRadius: 99, background: C.grayDot }} />}
+                    {t}
+                  </span>
+                ))}
+                <span style={{ flex: 1 }} />
+                <span style={{ height: 38, width: 190, display: "flex", alignItems: "center", padding: "0 12px", borderRadius: 8, border: `1px solid ${C.line}`, background: C.paper, fontSize: 14 }}>{s.motif ?? "Renouvellement"}</span>
+                <span style={{ fontFamily: FONT.mono, fontSize: 11, color: C.muted2 }}>Consultation</span>
+              </div>
 
-          {/* La note, telle que le médecin l'écrit. */}
-          <div style={{ position: "absolute", left: PAD, right: PAD, top: Y.note, height: 150, borderRadius: 14, border: `1px solid ${C.line}`, background: C.paper, padding: "14px 20px", fontSize: 16, lineHeight: 1.7, whiteSpace: "pre-wrap" }}>
-            {note || <span style={{ color: C.muted3 }}>Dictez, collez la sortie d'un scribe, ou écrivez.</span>}
-            {ecrit && <span style={{ display: "inline-block", width: 2, height: 19, background: C.accent, verticalAlign: -4, marginLeft: 2 }} />}
-          </div>
+              {/* La note, telle que le médecin l'écrit. */}
+              <div style={{ position: "absolute", left: PAD, right: PAD, top: L.note.top, height: L.note.h, borderRadius: 14, border: `1px solid ${C.line}`, background: C.paper, padding: "14px 20px", fontSize: 16, lineHeight: 1.7, whiteSpace: "pre-wrap" }}>
+                {note || <span style={{ color: C.muted3 }}>Dictez, collez la sortie d'un scribe, ou écrivez.</span>}
+                {ecrit && <span style={{ display: "inline-block", width: 2, height: 19, background: C.accent, verticalAlign: -4, marginLeft: 2 }} />}
+              </div>
+            </>
+          )}
 
-          {/* Générer. */}
+          {/* Générer, ou Demander. */}
           <div style={{ position: "absolute", left: PAD, right: PAD, top: Y.btn, height: 42, display: "flex", alignItems: "center", gap: 10 }}>
             <span style={{ display: "flex", alignItems: "center", gap: 8, height: 42, padding: "0 16px", borderRadius: 10, fontSize: 14, background: lance ? C.paper : C.ink, color: lance ? C.ink : C.paper, border: lance ? `1px solid ${C.line}` : "none" }}>
-              {lance ? "Régénérer les actions" : "Générer les actions"} {!lance && <Kbd dark>⌘⏎</Kbd>}
+              {L.q ? (lance ? "Nouvelle question" : "Demander") : lance ? "Régénérer les actions" : "Générer les actions"} {!lance && <Kbd dark>{L.q ? "⏎" : "⌘⏎"}</Kbd>}
             </span>
-            <span style={{ height: 42, display: "flex", alignItems: "center", padding: "0 12px", borderRadius: 10, border: `1px solid ${C.line}`, background: C.paper, fontSize: 14 }}>+ Ajouter</span>
-            <span style={{ fontSize: 12, color: C.muted2 }}>{s.patient.nom}</span>
+            {!L.q && <span style={{ height: 42, display: "flex", alignItems: "center", padding: "0 12px", borderRadius: 10, border: `1px solid ${C.line}`, background: C.paper, fontSize: 14 }}>+ Ajouter</span>}
+            <span style={{ fontSize: 12, color: C.muted2 }}>{s.lgcTitre ?? s.patient.nom}</span>
           </div>
 
           {/* La carte du composer : l'agent travaille, puis le plan à valider, puis signé. */}
@@ -150,7 +201,7 @@ export const Apres: React.FC<{ f: number; s: Story }> = ({ f, s }) => {
                 position: "absolute",
                 left: PAD,
                 right: PAD,
-                top: Y.card,
+                top: L.card,
                 padding: "16px 18px",
                 borderRadius: 14,
                 background: C.paper,
@@ -158,7 +209,7 @@ export const Apres: React.FC<{ f: number; s: Story }> = ({ f, s }) => {
                 boxShadow: signe ? SHADOW : SHADOW_ACCENT,
                 opacity: carte,
                 transform: `translateY(${(1 - carte) * 12}px)`,
-                minHeight: 360,
+                minHeight: L.btns + 42 + 16 - L.card,
               }}
             >
               {signe ? (
@@ -166,20 +217,20 @@ export const Apres: React.FC<{ f: number; s: Story }> = ({ f, s }) => {
               ) : (
                 <>
                   <div style={{ height: 28, display: "flex", alignItems: "center", gap: 10 }}>
-                    <K color={C.accent}>{f >= pret ? `${s.actions.length} actions à valider` : "locus · agent"}</K>
+                    <K color={C.accent}>{f >= pret ? (s.actions.length > 1 ? `${s.actions.length} actions à valider` : "1 action à valider") : "locus · agent"}</K>
                     {f < pret && <span style={{ fontSize: 13, color: C.muted2 }}>« {s.note.replace(/\s+/g, " ").slice(0, 46)}… »</span>}
                   </div>
-                  <div style={{ position: "absolute", left: 18, right: 18, top: CARD.synth - Y.card, height: 74 }}>
+                  <div style={{ position: "absolute", left: 18, right: 18, top: CARD.synth - L.card, height: L.hSynth }}>
                     {f < pret ? (
                       <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 14, color: C.muted2 }}>
                         <span style={{ width: 8, height: 8, borderRadius: 99, background: C.accent, opacity: 0.5 + 0.5 * Math.sin(f / 3) }} />
                         {s.etapes[Math.max(0, nEtape - 1)]}
                       </div>
                     ) : (
-                      <p style={{ margin: 0, fontSize: 14.5, lineHeight: 1.55, opacity: ramp(f, pret, pret + 8) }}>{s.synthese}</p>
+                      <Blocs s={s} f={f} pret={pret} />
                     )}
                   </div>
-                  <div style={{ position: "absolute", left: 18, right: 18, top: CARD.list - Y.card, display: "flex", flexDirection: "column", gap: 0, padding: 4, borderRadius: 12, border: `1px solid ${C.line3}`, background: C.bg, minHeight: s.actions.length * ROW_H + 8, opacity: f >= pret ? 1 : 0.5 }}>
+                  <div style={{ position: "absolute", left: 18, right: 18, top: CARD.list - L.card, display: "flex", flexDirection: "column", gap: 0, padding: 4, borderRadius: 12, border: `1px solid ${C.line3}`, background: C.bg, minHeight: s.actions.length * ROW_H + 8, opacity: f >= pret ? 1 : 0.5 }}>
                     {s.actions.map((a, i) => {
                       const v = pop(f, actionAt(i), { damping: 16, stiffness: 220 });
                       if (f < actionAt(i)) return <div key={a.code} style={{ height: ROW_H }} />;
@@ -198,9 +249,9 @@ export const Apres: React.FC<{ f: number; s: Story }> = ({ f, s }) => {
                     })}
                   </div>
                   {f >= pret && (
-                    <div style={{ position: "absolute", left: 18, right: 18, top: CARD.btns - Y.card, height: 42, display: "flex", alignItems: "center", gap: 8, opacity: ramp(f, actionAt(s.actions.length - 1), actionAt(s.actions.length - 1) + 8) }}>
+                    <div style={{ position: "absolute", left: 18, right: 18, top: CARD.btns - L.card, height: 42, display: "flex", alignItems: "center", gap: 8, opacity: ramp(f, actionAt(s.actions.length - 1), actionAt(s.actions.length - 1) + 8) }}>
                       <span style={{ display: "flex", alignItems: "center", gap: 8, height: 42, padding: "0 16px", borderRadius: 10, background: C.ink, color: C.paper, fontSize: 14, transform: `scale(${f >= V - 3 ? 0.96 : 1})` }}>
-                        Valider les {s.actions.length} <Kbd dark>⌘⏎</Kbd>
+                        {s.actions.length > 1 ? `Valider les ${s.actions.length}` : "Valider"} <Kbd dark>⌘⏎</Kbd>
                       </span>
                       <span style={{ display: "flex", alignItems: "center", gap: 8, padding: "0 12px", fontSize: 14, color: C.muted2 }}>Annuler <Kbd>esc</Kbd></span>
                       <span style={{ flex: 1 }} />
@@ -227,7 +278,7 @@ const Signe: React.FC<{ s: Story; f: number; V: number }> = ({ s, f, V }) => {
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
         <span style={{ display: "flex", width: 26, height: 26, alignItems: "center", justifyContent: "center", borderRadius: 999, background: C.okSoft, color: C.ok, transform: `scale(${0.6 + 0.4 * a})` }}><Check size={14} w={2.6} /></span>
-        <span style={{ fontSize: 15, fontWeight: 500 }}>{s.actions.length} actions signées · envoyées et inscrites au dossier</span>
+        <span style={{ fontSize: 15, fontWeight: 500 }}>{s.actions.length > 1 ? `${s.actions.length} actions signées` : "1 action signée"} · envoyées et inscrites au dossier</span>
       </div>
       <div style={{ display: "flex", flexDirection: "column" }}>
         {s.actions.map((x, i) => (
@@ -283,7 +334,7 @@ const Feuille: React.FC<{ s: Story; a: Action; relu: boolean }> = ({ s, a, relu 
       <span>{CABINET_ENTETE}</span>
       <span>15/10/2026</span>
     </div>
-    <div style={{ fontSize: 12, color: C.muted2 }}>{s.patient.nom} · {s.patient.meta.split(" · ")[0]}</div>
+    <div style={{ fontSize: 12, color: C.muted2 }}>{a.doc.pour ?? `${s.patient.nom} · ${s.patient.meta.split(" · ")[0]}`}</div>
     <div style={{ borderTop: `1px solid ${C.line2}`, paddingTop: 16, display: "flex", alignItems: "center", gap: 10 }}>
       <span style={{ fontFamily: FONT.mono, display: "flex", height: 24, minWidth: 30, alignItems: "center", justifyContent: "center", borderRadius: 6, background: C.soft, padding: "0 4px", fontSize: 10, color: C.ink3 }}>{a.code}</span>
       <span style={{ fontSize: 16, fontWeight: 600 }}>{a.doc.entete}</span>
@@ -294,8 +345,14 @@ const Feuille: React.FC<{ s: Story; a: Action; relu: boolean }> = ({ s, a, relu 
     <span style={{ flex: 1 }} />
     <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <Qr />
-        <span style={{ fontSize: 10, color: C.muted2, lineHeight: 1.4 }}>Ordonnance numérique<br />{a.destination}</span>
+        {PRESCRIPTION.includes(a.code) ? (
+          <>
+            <Qr />
+            <span style={{ fontSize: 10, color: C.muted2, lineHeight: 1.4 }}>Ordonnance numérique<br />{a.destination}</span>
+          </>
+        ) : (
+          <span style={{ fontSize: 10, color: C.muted2, lineHeight: 1.4 }}>{a.destination}</span>
+        )}
       </div>
       <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 500, color: C.ok, background: C.okSoft, borderRadius: 999, padding: "5px 11px", opacity: relu ? 1 : 0, transform: `scale(${relu ? 1 : 0.8})` }}>
         <Check size={12} w={2.6} /> relu
@@ -303,6 +360,104 @@ const Feuille: React.FC<{ s: Story; a: Action; relu: boolean }> = ({ s, a, relu 
     </div>
   </div>
 );
+
+/** Les documents qui partent en ordonnance numérique (avec leur QR). */
+const PRESCRIPTION: Action["code"][] = ["Rx", "BIO", "IMG", "DM"];
+
+/** Les puces de sources sous une réponse. */
+const Sources: React.FC<{ sources: string[] }> = ({ sources }) => (
+  <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+    {sources.map((x) => (
+      <span key={x} style={{ display: "flex", alignItems: "center", gap: 6, height: 22, padding: "0 9px", borderRadius: 999, border: `1px solid ${C.line}`, background: C.bg, fontSize: 11, color: C.ink3, whiteSpace: "nowrap" }}>
+        <span style={{ width: 5, height: 5, borderRadius: 99, background: C.accent }} />
+        {x}
+      </span>
+    ))}
+  </div>
+);
+
+const Reponse: React.FC<{ e: Encart }> = ({ e }) => (
+  <div style={{ height: H_REPONSE, display: "flex", flexDirection: "column", gap: 8 }}>
+    <span style={{ fontSize: 17, fontWeight: 600, letterSpacing: "-.01em" }}>{e.texte}</span>
+    <Sources sources={e.sources} />
+  </div>
+);
+
+/** L'aide à la décision : un encart à filet bleu, sa phrase, ses sources. */
+const Aide: React.FC<{ e: Encart }> = ({ e }) => (
+  <div style={{ height: H_AIDE, borderRadius: 10, background: C.accentSoft2, borderLeft: `3px solid ${C.accent}`, padding: "10px 14px", display: "flex", flexDirection: "column", gap: 6 }}>
+    <K color={C.accent}>{e.titre ?? "Aide à la décision"}</K>
+    <span style={{ fontSize: 14, lineHeight: 1.45, color: C.ink, flex: 1 }}>{e.texte}</span>
+    <Sources sources={e.sources} />
+  </div>
+);
+
+/** Une liste de patients : les premières lignes, puis « + N autres ». Les `marques` premières lignes sont en tête de liste (les plus à risque). */
+const Tableau: React.FC<{ t: NonNullable<Story["tableau"]>; f: number; at: number }> = ({ t, f, at }) => {
+  const cols = `1fr ${t.colonnes.slice(1).map(() => "auto").join(" ")}`;
+  return (
+    <div style={{ height: hTableau({ tableau: t } as Story), display: "flex", flexDirection: "column" }}>
+      <div style={{ height: 30, display: "grid", gridTemplateColumns: cols, columnGap: 22, alignItems: "center", borderBottom: `1px solid ${C.line2}` }}>
+        {t.colonnes.map((c) => <K key={c}>{c}</K>)}
+      </div>
+      {t.lignes.map((l, i) => (
+        <div key={l[0]} style={{ height: H_LIGNE, display: "grid", gridTemplateColumns: cols, columnGap: 22, alignItems: "center", borderBottom: `1px solid ${C.line4}`, fontSize: 13.5, opacity: ramp(f, at + i * 3, at + i * 3 + 6) }}>
+          {l.map((x, k) => (
+            <span key={k} style={{ fontFamily: k ? FONT.mono : FONT.sans, fontSize: k ? 12.5 : 13.5, color: k === l.length - 1 && i < (t.marques ?? 0) ? C.recText : k ? C.ink3 : C.ink, whiteSpace: "nowrap", textAlign: k ? "right" : "left" }}>{x}</span>
+          ))}
+        </div>
+      ))}
+      {t.plus && <span style={{ height: 26, display: "flex", alignItems: "flex-end", fontSize: 12.5, color: C.muted2 }}>{t.plus}</span>}
+    </div>
+  );
+};
+
+/** Le tableau de bord : une colonne par dispositif, une jauge par critère, le total en pied. */
+const Jauges: React.FC<{ cols: NonNullable<Story["jauges"]>; f: number; at: number }> = ({ cols, f, at }) => (
+  <div style={{ height: hJauges({ jauges: cols } as Story), display: "grid", gridTemplateColumns: cols.map(() => "1fr").join(" "), columnGap: 22 }}>
+    {cols.map((c, ci) => (
+      <div key={c.titre} style={{ display: "flex", flexDirection: "column" }}>
+        <div style={{ height: 34, display: "flex", alignItems: "center", borderBottom: `1px solid ${C.line2}` }}><K color={C.ink}>{c.titre}</K></div>
+        {c.lignes.map((j, i) => {
+          const t = ramp(f, at + ci * 6 + i * 4, at + ci * 6 + i * 4 + 16);
+          const plein = j.pct >= 1;
+          return (
+            <div key={j.label} style={{ height: H_JAUGE, display: "flex", flexDirection: "column", justifyContent: "center", gap: 4 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: 12.5 }}>
+                <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{j.label}</span>
+                <span style={{ fontFamily: FONT.mono, fontSize: 12, color: C.ink3, whiteSpace: "nowrap" }}>{j.valeur}</span>
+              </div>
+              <div style={{ height: 6, borderRadius: 99, background: C.soft, overflow: "hidden" }}>
+                <div style={{ width: `${Math.max(0.02, j.pct) * 100 * t}%`, height: "100%", borderRadius: 99, background: plein ? C.ok : C.accent }} />
+              </div>
+              {j.note && <span style={{ fontSize: 11, color: C.warn, whiteSpace: "nowrap" }}>{j.note}</span>}
+            </div>
+          );
+        })}
+        <span style={{ flex: 1 }} />
+        {c.total && <div style={{ height: 30, display: "flex", alignItems: "center", borderTop: `1px solid ${C.line2}`, fontSize: 13, fontWeight: 600 }}>{c.total}</div>}
+      </div>
+    ))}
+  </div>
+);
+
+/** Ce que l'agent rend avant les actions : la réponse, l'aide, la liste, le tableau de bord ; à défaut, la synthèse. */
+const Blocs: React.FC<{ s: Story; f: number; pret: number }> = ({ s, f, pret }) => {
+  const blocs: React.ReactNode[] = [];
+  if (s.reponse) blocs.push(<Reponse key="r" e={s.reponse} />);
+  if (s.aide) blocs.push(<Aide key="a" e={s.aide} />);
+  if (s.tableau) blocs.push(<Tableau key="t" t={s.tableau} f={f} at={pret + 6} />);
+  if (s.jauges) blocs.push(<Jauges key="j" cols={s.jauges} f={f} at={pret + 6} />);
+  if (!blocs.length) return <p style={{ margin: 0, fontSize: 14.5, lineHeight: 1.55, opacity: ramp(f, pret, pret + 8) }}>{s.synthese}</p>;
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: ESPACE }}>
+      {blocs.map((b, i) => {
+        const a = ramp(f, pret + i * 10, pret + i * 10 + 10);
+        return <div key={i} style={{ opacity: a, transform: `translateY(${(1 - a) * 8}px)` }}>{b}</div>;
+      })}
+    </div>
+  );
+};
 
 /** Un QR de fantaisie, déterministe. */
 const Qr: React.FC = () => (

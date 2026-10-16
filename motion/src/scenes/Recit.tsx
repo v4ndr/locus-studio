@@ -35,8 +35,8 @@ export const Hook: React.FC<{ f: number; s: Story }> = ({ f, s }) => {
           </div>
         </div>
         <p style={{ margin: 0, fontSize: 58, lineHeight: 1.22, letterSpacing: "-.025em", fontWeight: 500, color: C.ink, minHeight: 300 }}>
-          « {texte}
-          {tape ? <span style={{ display: "inline-block", width: 4, height: 54, background: C.accent, verticalAlign: -8, marginLeft: 4 }} /> : " »"}
+          «&nbsp;{texte.replace(/ ([?!:;])/g, "\u00A0$1")}
+          {tape ? <span style={{ display: "inline-block", width: 4, height: 54, background: C.accent, verticalAlign: -8, marginLeft: 4 }} /> : "\u00A0»"}
         </p>
       </AbsoluteFill>
     </Scene>
@@ -48,7 +48,7 @@ export const Plan: React.FC<{ f: number; s: Story }> = ({ f, s }) => {
   return (
     <Scene f={f} from={from} to={to}>
       <AbsoluteFill style={{ padding: "0 96px", justifyContent: "center", gap: 40 }}>
-        <K size={22}>La décision du médecin</K>
+        <K size={22}>{s.planTitre ?? "La décision du médecin"}</K>
         <div style={{ display: "flex", flexDirection: "column", gap: 26 }}>
           {s.plan.map((p, i) => {
             const a = pop(f, from + 14 + i * 16);
@@ -138,7 +138,7 @@ export const Outro: React.FC<{ f: number; s: Story }> = ({ f, s }) => {
       <AbsoluteFill style={{ justifyContent: "flex-end", alignItems: "center", paddingBottom: 110, gap: 22, opacity: m }}>
         <Mark size={interpolate(m, [0, 1], [60, 84], clamp)} />
         <Wordmark size={40} />
-        <span style={{ fontFamily: FONT.mono, fontSize: 18, color: C.muted3, letterSpacing: ".04em" }}>Démonstrateur · patient fictif</span>
+        <span style={{ fontFamily: FONT.mono, fontSize: 18, color: C.muted3, letterSpacing: ".04em" }}>{s.lgcTitre ? "Démonstrateur · patients et chiffres fictifs" : "Démonstrateur · patient fictif"}</span>
       </AbsoluteFill>
     </Scene>
   );

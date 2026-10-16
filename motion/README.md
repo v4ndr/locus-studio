@@ -23,6 +23,22 @@ renouvellement et parle de fourmillements nocturnes dans les deux mains
 supérieurs, orthèses nocturnes : 25 clics et une centaine de frappes contre
 8 secondes.
 
+Quatre stories de plus (`src/stories.ts`, scripts v2 du 16/10/2026), sur
+les mêmes composants :
+
+| Composition | Cas | Ce que montre « Demain » |
+|---|---|---|
+| `Angine` | aide à la décision : angine, TDR +, allergie aux pénicillines en texte libre que le LAP ne voit pas | l'encart d'aide à la décision dans la note, avec ses sources |
+| `Frottis` | question sur un dossier : « De quand date le dernier frottis ? » | la réponse sourcée, puis l'aide à la décision (test HPV en retard) |
+| `Cohorte` | question sur la patientèle, sans dossier ouvert : HbA1c en retard | la liste des patients, puis les envois groupés |
+| `Indicateurs` | ROSP et Donum sur un seul écran | le tableau de bord à jauges, puis la relance |
+
+Les options de `Story` qui le permettent : `mode: "question"` (le composer
+⌘K au lieu de la note), `reponse`, `aide`, `tableau`, `jauges`, `lgcTitre`
+(pas de dossier ouvert), `pendantQui`, `planTitre`, `apresTitre`, `motif`.
+Côté LGC, un écran peut être un navigateur ou un tableur (`fenetre`,
+`url`), et s'ouvrir sans passer par les menus (`menu` absent).
+
 Patients **fictifs uniquement** : le cas réel de la réunion a reçu une identité
 inventée. Le contenu médical est à relire avant diffusion, et les visuels
 Studio sont à montrer à AlmaPro avant publication.
@@ -56,6 +72,7 @@ cd motion
 pnpm install
 pnpm studio      # prévisualiser et scrubber
 pnpm render      # → out/rencontre-4x5.mp4
+pnpm render:tous # → out/<Composition>.mp4, les cinq motions
 pnpm still       # une image (frame 700), pour vérifier
 pnpm typecheck
 ```

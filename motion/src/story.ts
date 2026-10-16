@@ -9,13 +9,19 @@
 
 export type Action = {
   /** Le code affiché dans la carte, comme dans Studio (`materialize.ts`). */
-  code: "Rx" | "BIO" | "IMG" | "K" | "DM" | "RV" | "CR" | "AT" | "MSG";
+  code: "Rx" | "BIO" | "IMG" | "K" | "DM" | "RV" | "CR" | "AT" | "MSG" | "ATCD";
   titre: string;
   ligne: string;
   destination: string;
   /** Le document tel qu'il part : son intitulé et ses lignes, pour le carrousel de relecture. */
-  doc: { entete: string; lignes: string[] };
+  doc: { entete: string; lignes: string[]; /** La ligne « pour qui », si ce n'est pas le patient de la story (une cohorte). */ pour?: string };
 };
+
+/** Une source affichée sous une réponse : un document du dossier, une recommandation. */
+export type Encart = { titre?: string; texte: string; sources: string[] };
+
+/** Une jauge du tableau de bord : un libellé, une valeur, un remplissage de 0 à 1, une note. */
+export type Jauge = { label: string; valeur: string; pct: number; note?: string };
 
 /**
  * Un champ d'un formulaire du LGC. Un clic pour y entrer ; puis, s'il y a
@@ -28,9 +34,17 @@ export type Champ = { label: string; valeur: string; saisies?: string[]; options
 
 /** Un écran du LGC d'aujourd'hui, ouvert depuis ses menus. */
 export type EcranAvant = {
-  /** Le menu de la barre, puis l'entrée du menu déroulant : deux clics. */
-  menu: string;
-  sousMenu: string;
+  /**
+   * Le menu de la barre, puis l'entrée du menu déroulant : deux clics. Sans
+   * menu, la fenêtre passe au premier plan directement (un autre onglet,
+   * un autre logiciel).
+   */
+  menu?: string;
+  sousMenu?: string;
+  /** La fenêtre : le LGC (par défaut), un navigateur, un tableur. */
+  fenetre?: "lgc" | "web" | "tableur";
+  /** L'adresse du navigateur, ou le nom du fichier du tableur. */
+  url?: string;
   titre: string;
   champs: Champ[];
   /** Une fenêtre d'alerte (le LAP, par exemple), fermée d'un clic. */
@@ -42,7 +56,14 @@ export type EcranAvant = {
 export type Story = {
   id: string;
   quand: string;
+  /** Le patient, ou celui qui parle quand il n'y a pas de patient (une question sur la patientèle). */
   patient: { nom: string; prenomNom: string; initiales: string; meta: string; contexte: string };
+  /** Le titre de la fenêtre du LGC, s'il n'y a pas de dossier ouvert. */
+  lgcTitre?: string;
+  /** Les initiales de qui parle pendant la saisie, si ce n'est pas le patient (le secrétariat). */
+  pendantQui?: string;
+  /** Le libellé au-dessus du plan (« La décision du médecin » par défaut). */
+  planTitre?: string;
   /** Ce que dit le patient en entrant. */
   citation: string;
   /** Ce que le médecin a déjà décidé, avant toute saisie. */
@@ -54,8 +75,22 @@ export type Story = {
   pendant: string[];
   /** La phrase de la transition, pendant que le compteur se rembobine. */
   transition: string;
-  /** La note, telle que le médecin l'écrit. */
+  /** La note, telle que le médecin l'écrit ; en mode « question », la question posée à ⌘K. */
   note: string;
+  /** « note » (par défaut) : l'écran de consultation. « question » : le composer ⌘K. */
+  mode?: "note" | "question";
+  /** Le motif affiché dans la barre de la consultation. */
+  motif?: string;
+  /** Le titre de la scène « Demain ». */
+  apresTitre?: string;
+  /** La réponse à la question, avec ses sources. */
+  reponse?: Encart;
+  /** L'aide à la décision, insérée avant les actions, avec ses sources. */
+  aide?: Encart;
+  /** Une liste de patients (une cohorte). */
+  tableau?: { colonnes: string[]; lignes: string[][]; plus?: string; marques?: number };
+  /** Un tableau de bord en colonnes de jauges. */
+  jauges?: { titre: string; total?: string; lignes: Jauge[] }[];
   /** Ce que l'agent affiche pendant qu'il compose. */
   etapes: string[];
   synthese: string;

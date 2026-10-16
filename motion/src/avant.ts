@@ -39,8 +39,10 @@ export function scenarioEcran(e: EcranAvant, t0: number): Scenario {
   const evts: Evt[] = [];
   let t = t0;
   const clic = (cible: Cible) => { t += CLIC; evts.push({ t: "clic", at: t, cible }); };
-  clic({ k: "menu" });
-  clic({ k: "sousMenu" });
+  if (e.menu) {
+    clic({ k: "menu" });
+    clic({ k: "sousMenu" });
+  }
   t += 6;
   e.champs.forEach((c, j) => {
     clic({ k: "champ", j });

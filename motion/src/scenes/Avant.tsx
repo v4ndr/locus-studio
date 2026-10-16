@@ -30,8 +30,12 @@ const btnX = (n: number, b: number) => MODAL.x + MODAL.w - 30 - (n - b) * BTN.w 
 const ALERTE = { x: MODAL.x + 150, y: MODAL.y + 170, w: 500, h: 200 };
 const POLICE = "Tahoma, 'Segoe UI', Arial, sans-serif";
 
-const menuIdx = (e: EcranAvant) => Math.max(0, MENUS.indexOf(e.menu));
-const sousMenus = (e: EcranAvant) => [e.menu === "Examens" ? "Biologie" : "Renouveler", e.sousMenu, "Courrier", "Certificat"];
+const menuIdx = (e: EcranAvant) => Math.max(0, MENUS.indexOf(e.menu ?? ""));
+const sousMenus = (e: EcranAvant) => {
+  const autres: Record<string, string[]> = { Examens: ["Biologie", "Courrier", "Certificat"], Patient: ["Fiche", "Courrier", "Historique"], Outils: ["Statistiques", "Exports", "Paramètres"] };
+  const [a, ...b] = autres[e.menu ?? ""] ?? ["Renouveler", "Courrier", "Certificat"];
+  return [a, e.sousMenu ?? "", ...b];
+};
 
 function position(e: EcranAvant, c: Cible) {
   switch (c.k) {
@@ -84,7 +88,7 @@ const Lgc: React.FC<{ s: Story; menuActif: number }> = ({ s, menuActif }) => (
   <div style={{ position: "absolute", left: WIN.x, top: WIN.y, width: WIN.w, height: WIN.h, background: "#F4F4F4", border: "1px solid #CFCFCF", borderRadius: 10, overflow: "hidden", boxShadow: "0 12px 40px rgba(0,0,0,.10)", fontFamily: POLICE }}>
     <div style={{ height: 40, background: "#E6E6E6", borderBottom: "1px solid #CFCFCF", display: "flex", alignItems: "center", gap: 8, padding: "0 14px" }}>
       {["#E0605A", "#E3B341", "#62B456"].map((c) => <span key={c} style={{ width: 12, height: 12, borderRadius: 99, background: c }} />)}
-      <span style={{ marginLeft: 16, fontSize: 15, color: "#555" }}>Logiciel médical · {s.patient.prenomNom} · {s.patient.meta.split(" · ")[0]}</span>
+      <span style={{ marginLeft: 16, fontSize: 15, color: "#555" }}>Logiciel médical · {s.lgcTitre ?? `${s.patient.prenomNom} · ${s.patient.meta.split(" · ")[0]}`}</span>
     </div>
     <div style={{ height: 44, background: "#FAFAFA", borderBottom: "1px solid #D8D8D8", display: "flex", alignItems: "center", padding: "0 6px" }}>
       {MENUS.map((m, i) => (
@@ -116,6 +120,37 @@ const MenuDeroulant: React.FC<{ e: EcranAvant; survol: boolean }> = ({ e, survol
   </div>
 );
 
+/**
+ * La barre de la fenêtre : le titre d'un écran du LGC ; ou, pour un navigateur
+ * et un tableur, l'adresse ou le fichier, avec le titre de la page en dessous.
+ */
+const Chrome: React.FC<{ e: EcranAvant }> = ({ e }) => {
+  if (!e.fenetre || e.fenetre === "lgc") {
+    return <div style={{ height: 52, background: "#E9E9E9", borderBottom: "1px solid #CFCFCF", display: "flex", alignItems: "center", padding: "0 22px", fontSize: 20, fontWeight: 700 }}>{e.titre}</div>;
+  }
+  const web = e.fenetre === "web";
+  return (
+    <>
+      <div style={{ height: 52, background: web ? "#DEE1E6" : "#1E6E42", borderBottom: "1px solid #C4C7CC", display: "flex", alignItems: "center", gap: 12, padding: "0 14px", borderRadius: "6px 6px 0 0" }}>
+        {web ? (
+          <>
+            <span style={{ fontSize: 18, color: "#666" }}>←  →  ⟳</span>
+            <span style={{ flex: 1, height: 34, borderRadius: 999, background: "#FFF", display: "flex", alignItems: "center", gap: 8, padding: "0 16px", fontSize: 16, color: "#333", overflow: "hidden", whiteSpace: "nowrap" }}>
+              <span style={{ color: "#888" }}>🔒</span>{e.url}
+            </span>
+          </>
+        ) : (
+          <>
+            <span style={{ width: 22, height: 22, borderRadius: 4, background: "#FFF", color: "#1E6E42", fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>X</span>
+            <span style={{ fontSize: 17, color: "#FFF" }}>Tableur · {e.url}</span>
+          </>
+        )}
+      </div>
+      <div style={{ position: "absolute", left: 26, top: 60, fontSize: 17, fontWeight: 700, color: "#333" }}>{e.titre}</div>
+    </>
+  );
+};
+
 const Modale: React.FC<{ e: EcranAvant; sc: Scenario; f: number; ouvre: number }> = ({ e, sc, f, ouvre }) => {
   const a = pop(f, ouvre, { damping: 18, stiffness: 260 });
   const etats = etatChamps(e, sc, f);
@@ -126,7 +161,7 @@ const Modale: React.FC<{ e: EcranAvant; sc: Scenario; f: number; ouvre: number }
   return (
     <div style={{ position: "absolute", inset: 0, opacity: a, transform: `scale(${0.95 + a * 0.05})`, transformOrigin: `${MODAL.x + MODAL.w / 2}px ${MODAL.y + MODAL.h / 2}px` }}>
       <div style={{ position: "absolute", left: MODAL.x, top: MODAL.y, width: MODAL.w, height: MODAL.h, background: "#FCFCFC", border: "1px solid #B9B9B9", borderRadius: 6, boxShadow: "0 18px 50px rgba(0,0,0,.22)", fontFamily: POLICE, color: "#222" }}>
-        <div style={{ height: 52, background: "#E9E9E9", borderBottom: "1px solid #CFCFCF", display: "flex", alignItems: "center", padding: "0 22px", fontSize: 20, fontWeight: 700 }}>{e.titre}</div>
+        <Chrome e={e} />
         {e.champs.map((c, j) => {
           const st = etats[j];
           const affiche = st.valeur ?? st.texte;
@@ -178,8 +213,8 @@ export const Avant: React.FC<{ f: number; s: Story }> = ({ f, s }) => {
   const e = s.avant[i];
   const cl = sc.evts.filter((v): v is Extract<Evt, { t: "clic" }> => v.t === "clic");
   const [cMenu, cSous] = cl;
-  const menuOuvert = f >= cMenu.at && f < cSous.at + 3;
-  const ouvre = cSous.at + 3;
+  const menuOuvert = !!e.menu && f >= cMenu.at && f < cSous.at + 3;
+  const ouvre = e.menu ? cSous.at + 3 : sc.debut + 4;
   const dernier = [...clics].reverse().find((c) => f >= c.at);
   const bump = dernier ? 1 + 0.16 * Math.max(0, 1 - (f - dernier.at) / 6) : 1;
   const bulle = pop(f, sc.debut + 14);
@@ -206,7 +241,7 @@ export const Avant: React.FC<{ f: number; s: Story }> = ({ f, s }) => {
         <Cursor x={cur.x} y={cur.y} press={cur.press} ripple={cur.ripple} scale={1.3} />
         <span style={{ position: "absolute", right: 64, top: WIN.y + WIN.h + 12, fontFamily: FONT.mono, fontSize: 16, color: C.muted3 }}>saisie accélérée ×2</span>
         <div style={{ position: "absolute", left: 60, right: 60, top: WIN.y + WIN.h + 56, display: "flex", alignItems: "flex-start", gap: 20, opacity: bulle * (1 - ramp(f, finBulle - 8, finBulle)) }}>
-          <Avatar initials={s.patient.initiales} size={60} />
+          <Avatar initials={s.pendantQui ?? s.patient.initiales} size={60} />
           <div style={{ background: C.paper, border: `1px solid ${C.line}`, borderRadius: "6px 22px 22px 22px", padding: "18px 26px", fontSize: 32, lineHeight: 1.3, color: C.ink2, transform: `translateY(${(1 - bulle) * 14}px)` }}>{s.pendant[i] ?? ""}</div>
         </div>
       </AbsoluteFill>

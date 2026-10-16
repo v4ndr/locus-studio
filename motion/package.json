@@ -8,7 +8,8 @@
     "studio": "remotion studio src/index.ts",
     "render": "remotion render src/index.ts Rencontre out/rencontre-4x5.mp4",
     "still": "remotion still src/index.ts Rencontre out/still.png --frame=700",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "render:tous": "for c in Rencontre Angine Frottis Cohorte Indicateurs; do remotion render src/index.ts $c out/$c.mp4; done"
   },
   "packageManager": "pnpm@10.28.2",
   "dependencies": {
