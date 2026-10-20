@@ -11,7 +11,7 @@ export async function generateMetadata({ params }: { params: Promise<{ lang: str
 
 /**
  * Compte connecté ? La saisie libre et le live lui sont réservés.
- * TODO(accès) : remplacer par `(await getStudioUser()) !== null` (src/lib/server/user.ts)
+ * TODO(accès) : remplacer par `(await getStudioUserId()) !== null` (src/lib/server/user.ts, PR #22)
  * quand la PR « Accès » l'ajoute. D'ici là, tout visiteur est « non connecté » :
  * l'écran tourne en scénarios rejoués. Sous `next dev`, `STUDIO_CHATBOT_DEV_CONNECTED=1`
  * simule un compte connecté pour essayer le live.

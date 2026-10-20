@@ -17,7 +17,7 @@ import { ouvrir, sceller } from "./scelle";
 const APP_VERSION = "0.1.0";
 const INDISPONIBLE = { fr: "Locus est momentanément indisponible. Réessayez.", en: "Locus is temporarily unavailable. Try again." };
 
-// TODO(accès) : `studio:<clerkUserId>` quand `getStudioUser()` existera (src/lib/server/user.ts, PR « Accès »).
+// TODO(accès) : `studio:${await getStudioUserId()}` quand src/lib/server/user.ts (PR #22) sera mergée.
 const userRef = () => "studio";
 
 interface Reprise {
