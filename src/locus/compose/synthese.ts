@@ -55,9 +55,9 @@ export function synthetiserRegles(transcript: string, motif?: string): string {
   return lignes.join("\n") || coupe(nettoie(transcript), 240);
 }
 
-export async function synthetiserNote(input: SyntheseInput): Promise<SyntheseOutput> {
+export async function synthetiserNote(input: SyntheseInput, opts: { replay?: boolean } = {}): Promise<SyntheseOutput> {
   const transcript = input.transcript.trim();
-  if (composeMode() === "simulation") return { note: synthetiserRegles(transcript, input.motif), via: "simulation" };
+  if (opts.replay || composeMode() === "simulation") return { note: synthetiserRegles(transcript, input.motif), via: "simulation" };
   const pt = resolvePatient({ texte: "", ecran: "note", patientId: input.patientId, patient: input.patient });
   const client = new Anthropic();
   const res = await client.messages.create({

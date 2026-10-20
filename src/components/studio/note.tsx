@@ -9,6 +9,7 @@ import { useCabinet, nid, patientPayload, type NoteLocal, type PatientLocal } fr
 import { materialize, isoParis, type Charge } from "@/locus/compose/materialize";
 import type { ComposeAction, ComposePlan, ComposeInput, ComposeKind } from "@/locus/compose/contract";
 import { cn } from "@/lib/cn";
+import { fetchLive } from "@/lib/live";
 
 /**
  * La consultation : un seul éditeur qui cumule trois sources — la dictée au
@@ -166,7 +167,7 @@ export function NoteEditor({ patientId, local, nom, retour, onSaved, script, mot
     synthCtrl.current?.abort(); const ac = new AbortController(); synthCtrl.current = ac;
     setSynth({ busy: true });
     try {
-      const r = await fetch("/api/note", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ transcript: t, motif: motif || undefined, patientId, patient: local ? patientPayload(local) : undefined }), signal: ac.signal });
+      const r = await fetchLive("/api/note", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ transcript: t, motif: motif || undefined, patientId, patient: local ? patientPayload(local) : undefined }), signal: ac.signal });
       const j = (await r.json().catch(() => null)) as { note?: string; via?: string; error?: string } | null;
       if (!r.ok || !j?.note) throw new Error(j?.error ?? "La synthèse n'a pas abouti.");
       setTexte(j.note); setSynth({ busy: false, via: j.via }); setTranscriptOuvert(false);
@@ -286,6 +287,7 @@ export function NoteEditor({ patientId, local, nom, retour, onSaved, script, mot
         <textarea ref={ref} autoComplete="off" value={texte} readOnly={!!signee} aria-label="Note de consultation" data-cmd-enter={plan && !modifiee && !signee ? "valider" : undefined} onChange={(e) => { if (e.target.value.trim()) demarre(); setTexte(e.target.value); }} placeholder={transcript.trim() ? "La note synthétique s'écrit ici. Corrigez-la, puis générez les actions." : `Dictez au micro (la note se synthétise toute seule), collez la sortie d'un scribe, ou écrivez.\n\n${MODELE}`} rows={transcript.trim() ? 7 : 12} className="w-full resize-y rounded-[14px] border border-line bg-paper px-5 py-4 text-[17px] leading-[1.75] text-ink placeholder:text-muted-3" />
         {texte.trim() && synth.via && !signee && <span className="d pointer-events-none absolute right-4 top-3 text-[10px]">note synthétisée · {synth.via === "claude" ? "Claude" : "règles"}</span>}
       </div>
+      {!signee && <p className="-mt-2 text-xs text-muted-2">Patients fictifs uniquement : n&apos;utilisez pas de données réelles (nom, numéro de sécurité sociale, date de naissance).</p>}
       <div className="flex flex-wrap items-center gap-2.5">
         {!signee && noteId && <><button type="button" onClick={enregistrer} className="flex min-h-11 items-center gap-2 rounded-[10px] bg-ink px-4 py-[9px] text-sm text-paper">{inchangee ? "Retour" : "Enregistrer"} {!inchangee && <Kbd dark>⌘⏎</Kbd>}</button><button type="button" onClick={nouvelle} className="min-h-11 rounded-[10px] px-3 py-[9px] text-sm text-muted-2 hover:bg-hover hover:text-ink">Annuler</button>{modifiee && <button type="button" onClick={() => generer()} disabled={composer.state.busy} className="min-h-11 rounded-[10px] border border-line bg-paper px-3 py-[9px] text-sm text-ink hover:bg-hover disabled:opacity-40">Régénérer les actions</button>}</>}
         {!signee && !noteId && <button type="button" onClick={() => generer()} disabled={!texte.trim() || composer.state.busy} className={cn("flex min-h-11 items-center gap-2 rounded-[10px] px-4 py-[9px] text-sm disabled:opacity-40", modifiee ? "border border-accent-line bg-accent-soft-2 text-ink" : plan ? "border border-line bg-paper text-ink" : "bg-ink text-paper")}>{modifiee ? "Régénérer les actions · la note a changé" : plan ? "Régénérer les actions" : "Générer les actions"} {(!plan || modifiee) && <Kbd dark={!plan}>⌘⏎</Kbd>}</button>}

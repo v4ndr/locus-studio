@@ -121,6 +121,26 @@ cp .env.example .env.local
 
 Scripts : `dev`, `build`, `start`, `typecheck`, `test`.
 
+### Routes live et scénarios rejoués
+
+Les routes qui peuvent dépenser un appel de modèle ou des crédits Locus
+(`/api/compose`, `/api/note`, `/api/locus/*`) passent par
+`src/lib/server/guard.ts` :
+
+- **En production** (`VERCEL_ENV=production`, ou `NODE_ENV=production` hors
+  Vercel), elles répondent **403** sauf avec l'en-tête `x-studio-live-token`
+  égal à `STUDIO_LIVE_TOKEN`. Les previews Vercel et `next dev` restent
+  ouverts ; `STUDIO_LIVE_LOCK=1|0` force le verrou.
+- **Scénario rejoué** : sur ce 403, le navigateur (`src/lib/live.ts`) renvoie
+  la requête avec `x-studio-replay: 1` ; la route répond avec les règles et
+  Locus simulé, sans aucun appel externe.
+- **Rate limit par IP** (hors `next dev`) : 20 requêtes live par heure, 200
+  rejouées. En mémoire de l'instance, ou Upstash Redis (REST) si
+  `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` sont posés.
+- `maxDuration` à 60 s ; `/api/locus/logic` n'accepte que des `mku_key` en
+  liste blanche ; `/api/locus/status` renvoie `{ ok }` seulement en
+  production ; `/api/note` refuse un NIR ou une date de naissance complète.
+
 ---
 
 L'agent du cabinet s'appelle **Locus**. Il signe « Locus, pour le Dr Vandepitterie ».

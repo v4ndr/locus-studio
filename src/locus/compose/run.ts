@@ -23,7 +23,9 @@ export function composeMode(): "claude" | "simulation" {
   return process.env.ANTHROPIC_API_KEY ? "claude" : "simulation";
 }
 
-export async function* compose(input: ComposeInput): AsyncGenerator<ComposeEvent> {
+/** `replay` : le scénario rejoué, règles et Locus simulé, aucun appel externe. */
+export async function* compose(input: ComposeInput, opts: { replay?: boolean } = {}): AsyncGenerator<ComposeEvent> {
+  if (opts.replay) { yield* simulateCompose(input, { mode: "simulation", url: "" }); return; }
   if (composeMode() === "simulation") { yield* simulateCompose(input); return; }
 
   const client = new Anthropic();

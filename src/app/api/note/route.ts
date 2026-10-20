@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { synthetiserNote } from "@/locus/compose/synthese";
+import { donneesReelles, guardLive } from "@/lib/server/guard";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -17,12 +18,17 @@ const Input = z.object({
 }).strict();
 
 export async function POST(req: Request) {
+  const g = await guardLive(req);
+  if (!g.ok) return g.response;
   let raw: unknown;
   try { raw = await req.json(); } catch { return Response.json({ error: "Corps illisible : JSON attendu." }, { status: 400 }); }
   const parsed = Input.safeParse(raw);
   if (!parsed.success) return Response.json({ error: "Transcript manquant ou trop long." }, { status: 400 });
+  // Sandbox : patients fictifs uniquement. Un NIR ou une date de naissance complète ne part nulle part.
+  const reel = donneesReelles(`${parsed.data.transcript}\n${parsed.data.motif ?? ""}`);
+  if (reel) return Response.json({ error: reel, code: "donnees_reelles" }, { status: 422 });
   try {
-    const out = await synthetiserNote(parsed.data);
+    const out = await synthetiserNote(parsed.data, { replay: g.replay });
     return Response.json(out, { headers: { "Cache-Control": "no-store" } });
   } catch (e) {
     console.error("[note]", e);

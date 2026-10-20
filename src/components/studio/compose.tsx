@@ -8,6 +8,7 @@ import { Kbd, I } from "./chrome";
 import { Md } from "../md";
 import { ActionPanel, dialogOuvert, type PatientRendu } from "./rendu";
 import { cn } from "@/lib/cn";
+import { fetchLive } from "@/lib/live";
 
 /**
  * Le composer côté navigateur : on envoie la demande, on reçoit les étapes,
@@ -27,7 +28,7 @@ export function useCompose() {
     const ac = new AbortController(); ctrl.current = ac;
     setS({ input, steps: [], actions: [], busy: true });
     try {
-      const r = await fetch("/api/compose", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(input), signal: ac.signal });
+      const r = await fetchLive("/api/compose", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(input), signal: ac.signal });
       if (!r.ok || !r.body) {
         const j = await r.json().catch(() => null) as { error?: string } | null;
         throw new Error(j?.error ? j.error : r.status === 413 ? "Demande trop longue." : r.status >= 500 ? "Le composer ne répond pas pour l'instant. Réessayez." : `Le composer a refusé la demande (${r.status}).`);
