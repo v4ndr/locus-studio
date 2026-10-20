@@ -1,0 +1,13 @@
+{
+  "id": "fournier",
+  "duree_s": 400,
+  "lignes": [
+    { "t": 0, "qui": "medecin", "texte": "Bonjour monsieur Fournier. On renouvelle le traitement de la tension ?" },
+    { "t": 8, "qui": "patient", "texte": "Oui. Et j'ai des fourmillements dans la main droite, surtout la nuit." },
+    { "t": 19, "qui": "medecin", "texte": "Depuis quand ?" },
+    { "t": 23, "qui": "patient", "texte": "Deux mois. Ça me réveille, je secoue la main et ça passe." },
+    { "t": 37, "qui": "medecin", "texte": "Quels doigts ?" },
+    { "t": 41, "qui": "patient", "texte": "Le pouce, l'index, le majeur." },
+    { "t": 212, "qui": "medecin", "texte": "Tension à 138 sur 84. Je tapote le poignet : ça reproduit les fourmillements." }
+  ]
+}

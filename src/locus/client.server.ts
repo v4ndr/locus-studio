@@ -22,7 +22,7 @@ export async function* retrieveStream(req: RetrieveRequest, cfg: CoreConfig = co
   const p = paths(cfg);
   const body = cfg.mode === "keyless"
     ? { query: req.query, patient_ehr: req.patient_ehr, history: req.history ?? [], mode: req.mode ?? "rapide", sources: req.sources, exclude_sources: req.exclude_sources, deliberate: req.deliberate ?? false }
-    : { ...req, history: req.history ?? [], app_version: STUDIO_VERSION, app_platform: "web", app_surface: "studio" };
+    : { ...req, history: req.history ?? [], app_version: STUDIO_VERSION, app_platform: "web", app_surface: req.app_surface ?? "studio" };
   let res: Response;
   try {
     res = await fetch(cfg.url + p.retrieve, {

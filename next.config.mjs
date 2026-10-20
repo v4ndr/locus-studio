@@ -21,7 +21,7 @@ const csp = [
   "style-src 'self' 'unsafe-inline'",
   `img-src 'self' data: blob:${clerk ? " https://img.clerk.com" : ""}`,
   "font-src 'self' data:",
-  `connect-src 'self'${clerk ? ` ${clerk}` : ""}`,
+  `connect-src 'self' wss://api.mistral.ai${clerk ? ` ${clerk}` : ""}`,
   ...(clerk ? ["frame-src https://challenges.cloudflare.com", "worker-src 'self' blob:"] : []),
   "frame-ancestors 'none'",
   "base-uri 'self'",
@@ -43,6 +43,7 @@ const nextConfig = {
         { key: "Permissions-Policy", value: "camera=(), geolocation=(), microphone=(self)" },
         { key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains" },
         // Scripts et styles inline : Next (thème avant le premier rendu, styles de composants). Seule ressource tierce : Clerk, quand ses clés sont posées.
+        // connect-src : la dictée du scribe ouvre un WebSocket vers le service de transcription en temps réel (jeton éphémère).
         { key: "Content-Security-Policy", value: csp },
       ],
     }];
