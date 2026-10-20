@@ -1,0 +1,17 @@
+{
+  "id": "roux",
+  "duree_s": 252,
+  "lignes": [
+    { "t": 0, "qui": "medecin", "texte": "Bonjour madame Roux, qu'est-ce qui vous amène ?" },
+    { "t": 6, "qui": "patiente", "texte": "J'ai très mal à la gorge depuis deux jours, j'ai du mal à avaler." },
+    { "t": 15, "qui": "medecin", "texte": "De la fièvre ?" },
+    { "t": 19, "qui": "patiente", "texte": "38,6 hier soir. Je ne tousse pas, je n'ai pas le nez qui coule." },
+    { "t": 34, "qui": "medecin", "texte": "Vous avez des allergies ?" },
+    { "t": 39, "qui": "patiente", "texte": "À la pénicilline. J'avais fait de l'urticaire avec l'amoxicilline, il y a une dizaine d'années." },
+    { "t": 58, "qui": "medecin", "texte": "Votre visage avait gonflé, vous aviez du mal à respirer ?" },
+    { "t": 66, "qui": "patiente", "texte": "Non, seulement des plaques sur les bras." },
+    { "t": 121, "qui": "medecin", "texte": "Je regarde la gorge. Amygdales rouges et gonflées, avec un dépôt blanc. Ganglions sous la mâchoire, sensibles." },
+    { "t": 197, "qui": "medecin", "texte": "Je vous fais un test rapide pour le streptocoque." },
+    { "t": 214, "qui": "patiente", "texte": "D'accord. Je travaille demain, je peux rester chez moi ?" }
+  ]
+}
