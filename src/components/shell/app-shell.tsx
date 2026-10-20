@@ -87,9 +87,9 @@ function Sidebar({ lang, pathname, drawer, onClose, onSearch }: { lang: Lang; pa
         <div className="px-2 pb-1 pt-4 text-xs font-medium text-muted-foreground">{t.nav.sandbox}</div>
         {TOOLS.map((k) => <NavLink key={k} href={route(lang, k)} icon={TOOL_ICONS[k]} label={t.tools[k]} active={actif(k)} onClick={fermer} />)}
         <div className="px-2 pb-1 pt-4 text-xs font-medium text-muted-foreground">{t.nav.resources}</div>
-        <span aria-disabled="true" className="flex h-8 items-center gap-2 rounded-md px-2 opacity-60"><Library size={16} aria-hidden="true" /><span className="flex-1 truncate">{t.nav.sources}</span><Badge variant="secondary">{t.nav.soon}</Badge></span>
-        <span aria-disabled="true" className="flex h-8 items-center gap-2 rounded-md px-2 opacity-60"><BookOpen size={16} aria-hidden="true" /><span className="flex-1 truncate">{t.nav.docs}</span><Badge variant="secondary">{t.nav.soon}</Badge></span>
-        <NavLink href={route(lang, "acces")} icon={KeyRound} label={t.nav.keys} active={false} onClick={fermer} extra={<Badge variant="secondary">{t.nav.invite}</Badge>} />
+        <NavLink href={route(lang, "sources")} icon={Library} label={t.nav.sources} active={actif("sources")} onClick={fermer} />
+        <NavLink href={route(lang, "documentation")} icon={BookOpen} label={t.nav.docs} active={actif("documentation")} onClick={fermer} />
+        <NavLink href={route(lang, "clesApi")} icon={KeyRound} label={t.nav.keys} active={actif("clesApi")} onClick={fermer} extra={<Badge variant="secondary">{t.nav.invite}</Badge>} />
       </nav>
       <div className="mx-3 mb-2.5 grid gap-1 rounded-lg border border-sidebar-border bg-background p-3 text-[12.5px] text-muted-foreground">
         <b className="flex items-center gap-1.5 font-medium text-foreground"><StatusDot />{t.notice.title}</b>
