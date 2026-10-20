@@ -38,7 +38,7 @@ export function Stepper({ t, step, unlocked, onPick }: { t: ScribeDict; step: nu
             aria-current={cur ? "step" : undefined}
             onClick={() => !locked && !cur && onPick(n)}
             className={cn(
-              "-mb-px flex h-11 min-w-[132px] flex-1 basis-0 items-center gap-2 whitespace-nowrap border-b-2 border-transparent px-1 text-left text-sm font-medium text-muted-foreground",
+              "relative -mb-px flex h-11 min-w-[132px] flex-1 basis-0 items-center gap-2 whitespace-nowrap border-b-2 border-transparent px-1 text-left text-sm font-medium text-muted-foreground",
               cur ? "cursor-default border-foreground text-foreground" : "hover:text-foreground",
               locked && "cursor-not-allowed opacity-45 hover:text-muted-foreground",
             )}
@@ -47,6 +47,7 @@ export function Stepper({ t, step, unlocked, onPick }: { t: ScribeDict; step: nu
               {done ? <Check size={12} strokeWidth={3} aria-hidden="true" /> : n}
             </span>
             <span>{label}</span>
+            <span className="sr-only">{` (${cur ? t.stepState.encours : done ? t.stepState.fait : t.stepState.avenir})`}</span>
           </button>
         );
       })}

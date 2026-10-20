@@ -79,10 +79,10 @@ const intEnv = (name: string, fallback: number) => {
 const WINDOW_S = 3600;
 const memoire = new Map<string, { n: number; reset: number }>();
 
-function incrMemoire(key: string, nowS: number): number {
+function incrMemoire(key: string, nowS: number, windowS = WINDOW_S): number {
   const cur = memoire.get(key);
   if (!cur || cur.reset <= nowS) {
-    memoire.set(key, { n: 1, reset: nowS + WINDOW_S });
+    memoire.set(key, { n: 1, reset: nowS + windowS });
     // Ménage paresseux : la carte ne grossit pas indéfiniment sur une instance chaude.
     if (memoire.size > 5_000) for (const [k, v] of memoire) if (v.reset <= nowS) memoire.delete(k);
     return 1;
@@ -91,7 +91,7 @@ function incrMemoire(key: string, nowS: number): number {
   return cur.n;
 }
 
-async function incrUpstash(key: string): Promise<number | null> {
+async function incrUpstash(key: string, windowS = WINDOW_S): Promise<number | null> {
   const url = process.env.UPSTASH_REDIS_REST_URL?.trim().replace(/\/$/, "");
   const token = process.env.UPSTASH_REDIS_REST_TOKEN?.trim();
   if (!url || !token) return null;
@@ -99,7 +99,7 @@ async function incrUpstash(key: string): Promise<number | null> {
     const res = await fetch(`${url}/pipeline`, {
       method: "POST",
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-      body: JSON.stringify([["INCR", key], ["EXPIRE", key, String(WINDOW_S), "NX"]]),
+      body: JSON.stringify([["INCR", key], ["EXPIRE", key, String(windowS), "NX"]]),
       signal: AbortSignal.timeout(1500),
       cache: "no-store",
     });
@@ -113,12 +113,12 @@ async function incrUpstash(key: string): Promise<number | null> {
 }
 
 /** Compte une requête ; renvoie le nombre de requêtes de la fenêtre courante. */
-export async function hit(bucket: string, id: string): Promise<{ n: number; resetS: number }> {
+export async function hit(bucket: string, id: string, windowS = WINDOW_S): Promise<{ n: number; resetS: number }> {
   const nowS = Math.floor(Date.now() / 1000);
-  const fenetre = Math.floor(nowS / WINDOW_S);
+  const fenetre = Math.floor(nowS / windowS);
   const key = `studio:rl:${bucket}:${id}:${fenetre}`;
-  const n = (await incrUpstash(key)) ?? incrMemoire(key, nowS);
-  return { n, resetS: (fenetre + 1) * WINDOW_S - nowS };
+  const n = (await incrUpstash(key, windowS)) ?? incrMemoire(key, nowS, windowS);
+  return { n, resetS: (fenetre + 1) * windowS - nowS };
 }
 
 const json = (body: unknown, status: number, headers: Record<string, string> = {}) =>

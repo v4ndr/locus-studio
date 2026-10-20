@@ -74,7 +74,8 @@ export function ScribePage({ lang }: { lang: Lang }) {
   const [liveCr, setLiveCr] = React.useState<RubriqueCr[] | null>(null);
   const [liveDec, setLiveDec] = React.useState<(DecisionReponse & { pour: string }) | null>(null);
   const [busy, setBusy] = React.useState<"note" | "decision" | null>(null);
-  const [liveErr, setLiveErr] = React.useState<string | null>(null);
+  /** La dernière erreur d'une route live, rattachée à son étape (2 : compte rendu, 3 : aide). */
+  const [liveErr, setLiveErr] = React.useState<{ etape: 2 | 3; texte: string } | null>(null);
   const dictee = useDictee(React.useCallback((delta: string) => setLiveTr((x) => x + delta), []));
 
   React.useEffect(() => {
@@ -123,6 +124,15 @@ export function ScribePage({ lang }: { lang: Lang }) {
     return out;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [c, plan, pos, lang]);
+  // La dernière réplique entièrement affichée (annoncée aux lecteurs d'écran).
+  const derniere = React.useMemo(() => {
+    if (!c || !plan) return null;
+    let k = -1;
+    c.transcript.lignes.forEach((_, i) => { if (pos >= plan.debuts[i]! + plan.durees[i]! * 0.75) k = i; });
+    const l = k >= 0 ? c.transcript.lignes[k]! : null;
+    return l ? { who: who(l.qui), texte: l.texte } : null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [c, plan, pos, lang]);
   const allLines: LigneVue[] = c ? c.transcript.lignes.map((l) => ({ who: who(l.qui), doc: l.qui === "medecin", texte: l.texte })) : [];
 
   // La transcription défile : la dernière réplique reste visible au-dessus de la barre.
@@ -164,7 +174,8 @@ export function ScribePage({ lang }: { lang: Lang }) {
   /* ---------- Direct : routes ---------- */
   const erreurDe = async (r: Response) => {
     const j = (await r.json().catch(() => null)) as { code?: string; error?: string } | null;
-    return j?.code === "donnees_reelles" && j.error ? j.error : t.liveMode.error;
+    if (j?.code === "donnees_reelles" && j.error) return j.error;
+    return r.status === 429 ? t.liveMode.limite : t.liveMode.error;
   };
   const noteTexte = (rows: RubriqueCr[], vals: string[]) => rows.map((r, i) => (r.titre ? r.label : (vals[i] ?? "").trim() ? `${r.label} : ${vals[i]!.trim()}` : "")).filter(Boolean).join("\n");
 
@@ -173,10 +184,10 @@ export function ScribePage({ lang }: { lang: Lang }) {
     setUnlocked(2);
     try {
       const r = await fetch("/api/scribe/note", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ transcript: liveTr, modele }) });
-      if (!r.ok) { setLiveErr(await erreurDe(r)); setLiveCr(null); return; }
+      if (!r.ok) { setLiveErr({ etape: 2, texte: await erreurDe(r) }); setLiveCr(null); return; }
       const j = (await r.json()) as NoteReponse;
       setLiveCr(j.cr); setCrVals(j.cr.map((x) => x.valeur));
-    } catch { setLiveErr(t.liveMode.error); } finally { setBusy(null); }
+    } catch { setLiveErr({ etape: 2, texte: t.liveMode.error }); } finally { setBusy(null); }
   };
   const genererDecision = async (force = false) => {
     const note = noteTexte(cr, crVals);
@@ -185,10 +196,10 @@ export function ScribePage({ lang }: { lang: Lang }) {
     setUnlocked(3);
     try {
       const r = await fetch("/api/scribe/decision", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ note }) });
-      if (!r.ok) { setLiveErr(await erreurDe(r)); setLiveDec(null); return; }
+      if (!r.ok) { setLiveErr({ etape: 3, texte: await erreurDe(r) }); setLiveDec(null); return; }
       const j = (await r.json()) as DecisionReponse;
       setLiveDec({ ...j, pour: note }); setTexts(j.actions.slice());
-    } catch { setLiveErr(t.liveMode.error); } finally { setBusy(null); }
+    } catch { setLiveErr({ etape: 3, texte: t.liveMode.error }); } finally { setBusy(null); }
   };
 
   /* ---------- Actions ---------- */
@@ -306,7 +317,9 @@ export function ScribePage({ lang }: { lang: Lang }) {
         {step === 1 && !isLive && (
           <div className="flex flex-col gap-4">
             <Player t={t} playing={playing} progress={total ? pos / total : 0} etat={etatLecture} onToggle={() => (playing ? setPlaying(false) : play())} />
-            <Box aria-label={t.transcript} aria-live="polite" className="flex flex-col px-5 pb-3.5 pt-1">
+            {/* Lecteurs d'écran : chaque réplique est annoncée une fois complète, pas mot à mot. */}
+            <div aria-live="polite" className="sr-only">{derniere ? `${derniere.who} : ${derniere.texte}` : ""}</div>
+            <Box aria-label={t.transcript} className="flex flex-col px-5 pb-3.5 pt-1">
               {shownLines.length === 0 && <p className="m-0 py-7 text-center text-muted-foreground">{t.trEmpty}</p>}
               <TranscriptLines lignes={shownLines} />
               <div ref={trEnd} />
@@ -333,7 +346,7 @@ export function ScribePage({ lang }: { lang: Lang }) {
               )}
               <span className="ml-auto text-[13px] text-muted-foreground">{t.liveMode.warning}</span>
             </Box>
-            {dictee.erreur && <p role="alert" className="m-0 rounded-md bg-destructive/10 px-3 py-2 text-[13px] text-destructive">{dictee.erreur === "micro" ? t.liveMode.noMic : t.liveMode.sttError}</p>}
+            {dictee.erreur && <p role="alert" className="m-0 rounded-md bg-destructive/10 px-3 py-2 text-[13px] text-destructive">{dictee.erreur === "micro" ? t.liveMode.noMic : dictee.erreur === "quota" ? t.liveMode.quota : t.liveMode.sttError}</p>}
             <Box className="p-0">
               <label htmlFor="scribe-live-tr" className="sr-only">{t.transcript}</label>
               <textarea id="scribe-live-tr" ref={liveArea} rows={12} value={liveTr} onChange={(e) => setLiveTr(e.target.value)} placeholder={t.liveMode.placeholder} className="block w-full resize-y rounded-xl bg-transparent px-5 py-4 leading-relaxed placeholder:text-muted-foreground focus:outline-none" />
@@ -345,7 +358,7 @@ export function ScribePage({ lang }: { lang: Lang }) {
         {step === 2 && (
           <div className="flex flex-col gap-3">
             {isLive && busy === "note" ? <Attente texte={t.liveMode.writing} />
-              : isLive && liveErr ? <Erreur texte={liveErr} />
+              : isLive && liveErr?.etape === 2 ? <Erreur texte={liveErr.texte} />
               : <NoteTable t={t} cr={cr} vals={crVals} onEdit={(i, v) => setCrVals((x) => { const y = x.slice(); y[i] = v; return y; })} />}
             {!isLive && (
               <>
@@ -362,7 +375,7 @@ export function ScribePage({ lang }: { lang: Lang }) {
         {step === 3 && (
           <div className="flex flex-col gap-3">
             {isLive && busy === "decision" ? <Attente texte={t.liveMode.thinking} />
-              : isLive && liveErr ? <Erreur texte={liveErr} />
+              : isLive && liveErr?.etape === 3 ? <Erreur texte={liveErr.texte} />
               : aide.length === 0 ? <Erreur texte={t.liveMode.emptyAide} neutre />
               : aide.map((a, i) => (
                 <AideCard key={i} t={t} a={a} retained={!!retained[i]} open={!!why[i]} onRetain={() => setRetained((r) => ({ ...r, [i]: !r[i] }))} onWhy={() => setWhy((w) => ({ ...w, [i]: !w[i] }))} />
