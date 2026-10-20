@@ -1,5 +1,6 @@
 import "server-only";
 import { coreConfig, type CoreConfig } from "@/locus/config";
+import { locusUserRef } from "@/lib/server/user";
 import { readNdjson } from "@/locus/ndjson";
 import { stripRuleIds } from "@/locus/contract";
 import { chatbot, type Lang } from "@/i18n";
@@ -15,8 +16,6 @@ import { ouvrir, scellable, sceller } from "./scelle";
  */
 
 
-// TODO(accès) : `studio:${await getStudioUserId()}` quand src/lib/server/user.ts (PR #22) sera mergée.
-const userRef = () => "studio";
 
 interface Reprise {
   query: string;
@@ -175,7 +174,7 @@ export async function* locusStream(input: LocusInput): AsyncGenerator<ChatEvent>
   try {
     res = await fetch(`${cfg.url}/v2/retrieve/stream`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Accept: "application/x-ndjson", Authorization: `Bearer ${cfg.key}`, "X-Locus-User-Ref": userRef() },
+      headers: { "Content-Type": "application/json", Accept: "application/x-ndjson", Authorization: `Bearer ${cfg.key}`, "X-Locus-User-Ref": await locusUserRef() },
       body: JSON.stringify(body),
       redirect: "manual",
       signal: AbortSignal.timeout(55_000),

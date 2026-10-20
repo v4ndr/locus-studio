@@ -1,4 +1,5 @@
-import { clientIp, guardLive, hit, LIVE_LOCKED } from "@/lib/server/guard";
+import { clientIp, guardLive, hit, LIVE_LOCKED, sameOrigin } from "@/lib/server/guard";
+import { getStudioUserId } from "@/lib/server/user";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 15;
@@ -32,13 +33,9 @@ const json = (body: unknown, status = 200, headers: Record<string, string> = {})
   Response.json(body, { status, headers: { "Cache-Control": "no-store", ...headers } });
 const indisponible = (status: number) => json({ error: "La dictée n'est pas disponible pour l'instant." }, status);
 
-/**
- * Le compte qui dicte. Tant que les comptes n'existent pas sur cette branche,
- * l'IP (comme le rate limit du garde). À la fusion de la PR « Accès » :
- * `(await getStudioUserId()) ?? clientIp(req)` (`@/lib/server/user`).
- */
+/** Le compte qui dicte : l'utilisateur Studio connecté, sinon l'IP (jeton live sans session). */
 async function compte(req: Request): Promise<string> {
-  return clientIp(req);
+  return (await getStudioUserId()) ?? clientIp(req);
 }
 
 function minutesParJour(): number {
@@ -48,8 +45,7 @@ function minutesParJour(): number {
 
 export async function POST(req: Request) {
   // Un jeton se demande depuis Studio, pas depuis une autre origine (qui consommerait le quota du compte).
-  const site = req.headers.get("sec-fetch-site");
-  if (site && site !== "same-origin") return json({ error: "Requête refusée." }, 403);
+  if (!sameOrigin(req)) return json({ error: "Requête refusée." }, 403);
 
   const g = await guardLive(req);
   if (!g.ok) return g.response;

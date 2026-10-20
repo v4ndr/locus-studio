@@ -1,6 +1,7 @@
 "use client";
 import * as React from "react";
 import Link from "next/link";
+import { useStudioAccount } from "@/sandbox/acces/auth";
 import { ArrowUp, Code, Lock, RotateCw } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { chatbot, route, type Lang } from "@/i18n";
@@ -42,7 +43,8 @@ interface LiveRun {
 const locusOf = (s: Settings): LocusSettings => ({ elic: s.elic, desamb: s.desamb, deep: s.deep, has: s.has, ansm: s.ansm });
 const same = (a: LocusSettings, b: LocusSettings) => (Object.keys(a) as (keyof LocusSettings)[]).every((k) => a[k] === b[k]);
 
-export function ChatbotPage({ lang, connected }: { lang: Lang; connected: boolean }) {
+export function ChatbotPage({ lang, devConnected = false }: { lang: Lang; devConnected?: boolean }) {
+  const connected = useStudioAccount().user !== null || devConnected;
   const t = chatbot[lang];
   const Icon = TOOL_ICONS.chatbot;
 
