@@ -14,7 +14,9 @@ import type { PatientLocalPayload } from "./contract";
  * mais le produit reste entier à sec.
  */
 
-export interface SyntheseInput { transcript: string; motif?: string; patientId?: string; patient?: PatientLocalPayload }
+export interface SyntheseInput { transcript: string; motif?: string; patientId?: string; patient?: PatientLocalPayload; /** Le modèle de note (scribe) : médecine générale par défaut. */ modele?: "mg" | "ped" | "gyn" }
+
+const MODELES: Record<string, string> = { ped: "Modèle de note : pédiatrie (poids, taille, température et développement s'ils sont dictés).\n", gyn: "Modèle de note : gynécologie (date des dernières règles, contraception et cycle s'ils sont dictés).\n" };
 export interface SyntheseOutput { note: string; via: "live" | "simulation" }
 
 const SYSTEM = `Tu es Locus, l'agent d'un cabinet de médecine générale. On te donne le TRANSCRIPT brut d'une consultation (dictée, parfois décousue, avec des hésitations et des paroles au patient). Tu en écris la NOTE DE CONSULTATION, très courte, en français, style télégraphique de dossier médical.
@@ -64,7 +66,7 @@ export async function synthetiserNote(input: SyntheseInput, opts: { replay?: boo
     model: MODEL,
     max_tokens: 400,
     system: [{ type: "text", text: SYSTEM, cache_control: { type: "ephemeral" } }],
-    messages: [{ role: "user", content: `${pt ? `Patient : ${pt.sexe === "F" ? "femme" : "homme"}, ${pt.age} ans.${pt.allergies.length ? ` Allergies connues : ${pt.allergies.join(", ")}.` : ""}\n` : ""}${input.motif ? `Motif de consultation (agenda) : ${input.motif}\n` : ""}\nTRANSCRIPT :\n${transcript}` }],
+    messages: [{ role: "user", content: `${MODELES[input.modele ?? ""] ?? ""}${pt ? `Patient : ${pt.sexe === "F" ? "femme" : "homme"}, ${pt.age} ans.${pt.allergies.length ? ` Allergies connues : ${pt.allergies.join(", ")}.` : ""}\n` : ""}${input.motif ? `Motif de consultation (agenda) : ${input.motif}\n` : ""}\nTRANSCRIPT :\n${transcript}` }],
   });
   const texte = res.content.filter((b): b is Anthropic.TextBlock => b.type === "text").map((b) => b.text).join("\n").trim();
   return { note: texte || synthetiserRegles(transcript, input.motif), via: "live" };
