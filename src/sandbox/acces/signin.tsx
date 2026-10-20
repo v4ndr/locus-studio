@@ -32,6 +32,7 @@ export function SigninBox(props: Props) {
       </div>
     );
   }
+  if (props.account.failed) return <p role="status" className="m-0 text-[13px] text-muted-foreground">{t.unavailable}</p>;
   if (!props.account.loaded) return <p className="m-0 h-[76px] text-[13px] text-muted-foreground" aria-busy="true" />;
   if (props.account.user) return <Connecte {...props} />;
   return <ClerkSignin {...props} />;
