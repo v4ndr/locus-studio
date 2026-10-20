@@ -65,5 +65,7 @@ export async function POST(req: Request) {
 export async function GET(req: Request) {
   const g = await guardLive(req);
   if (!g.ok) return g.response;
+  // Scénario rejoué : rien sur le mode réel du serveur (ni modèle, ni fournisseur).
+  if (g.replay) return Response.json({ mode: "simulation", modele: null });
   return Response.json({ mode: composeMode(), modele: composeMode() === "claude" ? MODEL : null });
 }
