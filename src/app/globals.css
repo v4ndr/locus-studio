@@ -76,6 +76,8 @@
   --shadow: var(--shadow-sm);
   --shadow-accent: var(--shadow-sm);
 }
+/* En clair, le mélange à 80 % tombe sous 4,5:1 sur blanc (#8f8f8f) : on garde le gris des textes secondaires. */
+:root[data-mode="light"] { --dim-3: var(--muted-foreground); }
 
 @theme inline {
   /* shadcn/ui */

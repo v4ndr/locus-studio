@@ -67,12 +67,15 @@ function Sidebar({ lang, pathname, drawer, onClose, onSearch }: { lang: Lang; pa
     router.push(autreLangue(pathname, to) + (typeof window !== "undefined" ? window.location.search : ""));
   };
   const fermer = drawer ? onClose : undefined;
+  // Tiroir : le focus entre dans le tiroir à l'ouverture.
+  const closeRef = React.useRef<HTMLButtonElement>(null);
+  React.useEffect(() => { if (drawer) closeRef.current?.focus(); }, [drawer]);
   return (
-    <aside aria-label={t.nav.label} className={cn("shell-side flex min-h-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground", drawer ? "fixed inset-0 z-[60] border-r-0" : "sticky top-0 hidden h-dvh min-[821px]:flex")}>
+    <aside aria-label={t.nav.label} role={drawer ? "dialog" : undefined} aria-modal={drawer ? true : undefined} className={cn("shell-side flex min-h-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground", drawer ? "fixed inset-0 z-[60] border-r-0" : "sticky top-0 hidden h-dvh min-[821px]:flex")}>
       <div className="grid gap-2 px-3 pb-2 pt-3.5">
         <div className="flex items-center">
           <Wordmark lang={lang} onClick={fermer} />
-          {drawer && <><span className="flex-1" /><button type="button" onClick={onClose} aria-label={t.menu.close} className={buttonClass({ size: "icon" })}><X size={16} aria-hidden="true" /></button></>}
+          {drawer && <><span className="flex-1" /><button ref={closeRef} type="button" onClick={onClose} aria-label={t.menu.close} className={buttonClass({ size: "icon" })}><X size={16} aria-hidden="true" /></button></>}
         </div>
         <button type="button" onClick={onSearch} className="flex h-9 items-center gap-2 rounded-md border border-input bg-background pl-2.5 pr-2 text-left text-muted-foreground shadow-xs">
           <Search size={16} aria-hidden="true" /><span className="flex-1">{t.nav.search}</span><Kbd>⌘K</Kbd>
@@ -112,15 +115,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() ?? `/${lang}`;
   const [drawer, setDrawer] = React.useState(false);
   const [palette, setPalette] = React.useState(false);
+  const menuRef = React.useRef<HTMLButtonElement>(null);
+  const fermerTiroir = React.useCallback(() => setDrawer(false), []);
+  // Tiroir refermé : le focus revient au bouton menu (après la levée d'`inert`).
+  const etaitOuvert = React.useRef(false);
+  React.useEffect(() => { if (!drawer && etaitOuvert.current) menuRef.current?.focus(); etaitOuvert.current = drawer; }, [drawer]);
 
   React.useEffect(() => { setDrawer(false); }, [pathname]);
   React.useEffect(() => {
     if (!drawer) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setDrawer(false); };
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") fermerTiroir(); };
     window.addEventListener("keydown", onKey);
     const prev = document.body.style.overflow; document.body.style.overflow = "hidden";
     return () => { window.removeEventListener("keydown", onKey); document.body.style.overflow = prev; };
-  }, [drawer]);
+  }, [drawer, fermerTiroir]);
   // ⌘K ouvre la palette, sauf dans le LGC natif IA qui a son propre ⌘K (le composer).
   const dansStudio = pathname.startsWith(route(lang, "lgcNatif"));
   React.useEffect(() => {
@@ -145,14 +153,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <GraphBackground />
       <div className="relative z-[1] grid min-h-dvh grid-cols-1 min-[821px]:grid-cols-[248px_minmax(0,1fr)]">
         <Sidebar lang={lang} pathname={pathname} drawer={false} onClose={() => setDrawer(false)} onSearch={() => setPalette(true)} />
-        {drawer && <Sidebar lang={lang} pathname={pathname} drawer onClose={() => setDrawer(false)} onSearch={() => { setDrawer(false); setPalette(true); }} />}
-        <div className="shell-main flex min-h-dvh flex-col">
+        {drawer && <Sidebar lang={lang} pathname={pathname} drawer onClose={fermerTiroir} onSearch={() => { setDrawer(false); setPalette(true); }} />}
+        {/* Tiroir ouvert : le reste de la page sort du parcours clavier. */}
+        <div className="shell-main flex min-h-dvh flex-col" inert={drawer}>
           <div className="shell-mtop sticky top-0 z-20 border-b border-border bg-sidebar min-[821px]:hidden">
             <div className="flex items-center gap-2 px-4 py-2.5">
               <Wordmark lang={lang} />
               <span className="flex-1" />
               <Link href={route(lang, "acces")} className={buttonClass({ size: "sm" })}>{t.account.signin}</Link>
-              <button type="button" onClick={() => setDrawer(true)} aria-label={t.menu.open} aria-expanded={drawer} className={buttonClass({ size: "icon" })}><Menu size={16} aria-hidden="true" /></button>
+              <button ref={menuRef} type="button" onClick={() => setDrawer(true)} aria-label={t.menu.open} aria-expanded={drawer} className={buttonClass({ size: "icon" })}><Menu size={16} aria-hidden="true" /></button>
             </div>
             <p className="m-0 flex items-center gap-1.5 border-t border-border px-4 py-1.5 text-xs text-muted-foreground"><StatusDot />{t.banner}</p>
           </div>

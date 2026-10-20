@@ -20,5 +20,7 @@ export async function POST(req: Request) {
   const checked = Array.isArray(body.checked) ? body.checked.filter((x): x is string => typeof x === "string").slice(0, 50) : [];
   const level = typeof body.level === "string" ? body.level : undefined;
   const req2: LogicComputeRequest = { mku_key: body.mku_key, answers, checked, level };
-  return Response.json(g.replay ? simulateLogic(req2) : await logicCompute(req2));
+  // L'identifiant interne de l'unité logique (PI Locus) ne sort pas : la clé publique suffit.
+  const { mku_id: _id, ...res } = g.replay ? simulateLogic(req2) : await logicCompute(req2);
+  return Response.json(res);
 }
