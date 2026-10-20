@@ -1,3 +1,6 @@
+// La dictée du scribe ouvre un WebSocket vers le service de transcription : son origine
+// n'entre dans la CSP que si la clé serveur est posée (sinon, aucun nom de service dans les en-têtes).
+const stt = process.env.MISTRAL_API_KEY?.trim() ? " wss://api.mistral.ai" : "";
 /**
  * Le domaine Frontend API de l'instance Clerk Studio, lu dans la clé
  * publique (`pk_live_<base64("clerk.exemple.fr$")>`). Sans clé : aucune
@@ -21,7 +24,7 @@ const csp = [
   "style-src 'self' 'unsafe-inline'",
   `img-src 'self' data: blob:${clerk ? " https://img.clerk.com" : ""}`,
   "font-src 'self' data:",
-  `connect-src 'self' wss://api.mistral.ai${clerk ? ` ${clerk}` : ""}`,
+  `connect-src 'self'${stt}${clerk ? ` ${clerk}` : ""}`,
   ...(clerk ? ["frame-src https://challenges.cloudflare.com", "worker-src 'self' blob:"] : []),
   "frame-ancestors 'none'",
   "base-uri 'self'",
@@ -45,7 +48,6 @@ const nextConfig = {
         { key: "Permissions-Policy", value: "camera=(), geolocation=(), microphone=(self)" },
         { key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains" },
         // Scripts et styles inline : Next (thème avant le premier rendu, styles de composants). Seule ressource tierce : Clerk, quand ses clés sont posées.
-        // connect-src : la dictée du scribe ouvre un WebSocket vers le service de transcription en temps réel (jeton éphémère).
         { key: "Content-Security-Policy", value: csp },
       ],
     }];
