@@ -27,6 +27,9 @@ import { AccountFooter, MobileSignin } from "@/sandbox/acces/account";
  */
 
 
+/** Les routes plein écran : pas de sidebar ni de fond, la page porte son propre chrome. */
+const IMMERSIVE: RouteKey[] = ["integration"];
+
 function Wordmark({ lang, onClick }: { lang: Lang; onClick?: () => void }) {
   const t = common[lang];
   return (
@@ -137,6 +140,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     ...TOOLS.map((k) => ({ href: route(lang, k), label: t.tools[k], icon: TOOL_ICONS[k] })),
     { href: route(lang, "acces"), label: t.account.request, icon: KeyRound },
   ];
+
+  if (IMMERSIVE.some((k) => pathname === route(lang, k) || pathname.startsWith(route(lang, k) + "/"))) {
+    return <>{children}{palette && <CommandPalette items={items} lang={lang} onClose={() => setPalette(false)} />}</>;
+  }
 
   return (
     <>
