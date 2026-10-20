@@ -1,4 +1,5 @@
 "use client";
+import { TriangleAlert } from "lucide-react";
 import * as React from "react";
 import Link from "./nav";
 import { useSearchParams } from "next/navigation";
@@ -115,7 +116,7 @@ function Inner({ v, doc, boite, boiteKind, praticien }: { v: PatientView; doc: D
               <div className="flex items-center gap-3 border-b border-line-4 px-5 py-3"><span className="k">{doc.lignesTitre}</span><span className="flex-1" />{abn > 0 && <span className="text-xs text-warn">{abn} hors norme</span>}</div>
               {doc.lignes.map((l, i) => (
                 <div key={i} className={cn("flex flex-col gap-1 px-5 py-3 text-sm sm:flex-row sm:items-baseline sm:gap-4", i > 0 && "border-t border-line-4")}>
-                  <span className={cn("flex-1", l.flag && l.flag !== "normal" && "font-medium")}>{l.k}{l.alerte && <span className="ml-2 text-xs text-warn">⚠ {l.alerte}</span>}</span>
+                  <span className={cn("flex-1", l.flag && l.flag !== "normal" && "font-medium")}>{l.k}{l.alerte && <span className="ml-2 text-xs text-warn"><TriangleAlert size={16} aria-hidden="true" className="mr-1 inline-block shrink-0 align-[-3px]" />{l.alerte}</span>}</span>
                   <span className="flex items-baseline gap-3 sm:justify-end">
                     {l.v && <span className={cn("d text-[13px]", l.flag === "critique" ? "text-rec-text" : l.flag === "haut" || l.flag === "bas" ? "text-warn" : "text-ink")}>{l.v}{l.flag === "haut" ? " ↑" : l.flag === "bas" ? " ↓" : l.flag === "critique" ? " ‼" : ""}</span>}
                     {l.ref && <span className="d min-w-[80px] text-[11px]">norme {l.ref}</span>}

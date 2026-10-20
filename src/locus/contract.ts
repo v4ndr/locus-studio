@@ -194,8 +194,9 @@ export type StudioStreamEvent =
 export function toPublic(r: RetrieveResponse, via: PublicRetrieve["via"]): PublicRetrieve {
   return {
     traceId: r.trace_id ?? "",
-    coreVersion: r.core_version ?? "",
-    reformulated: r.reformulated ?? "",
+    // Ni la version de core ni la reformulation (PI Locus) ne sortent du serveur.
+    coreVersion: "",
+    reformulated: "",
     ehrSummary: r.ehr_summary ?? "",
     ehrAdditions: r.ehr_additions ?? "",
     answer: stripRuleIds(r.answer ?? ""),

@@ -148,8 +148,8 @@ export async function* simulateRetrieve(req: RetrieveRequest): AsyncGenerator<St
     step: "done",
     payload: {
       traceId: "",
-      coreVersion: "simulation",
-      reformulated: req.query,
+      coreVersion: "",
+      reformulated: "",
       ehrSummary: ehr,
       ehrAdditions: /enceinte|grossesse/i.test(req.query) ? "Grossesse en cours (déclarée en consultation)." : "",
       answer: c.answer,
