@@ -1,7 +1,7 @@
 "use client";
 import * as React from "react";
 import Link from "./nav";
-import { Kbd, I } from "./chrome";
+import { Kbd, I, useT } from "./chrome";
 import { ComposeCard, useCompose } from "./compose";
 import { useRouter } from "./nav";
 import { ActionPanel, dialogOuvert, type PatientRendu } from "./rendu";
@@ -10,8 +10,6 @@ import { materialize, isoParis, type Charge } from "@/locus/compose/materialize"
 import type { ComposeAction, ComposePlan, ComposeInput, ComposeKind } from "@/locus/compose/contract";
 import { cn } from "@/lib/cn";
 import { fetchLive } from "@/lib/live";
-import { studio } from "@/i18n";
-import { useLang } from "@/i18n/lang";
 
 /**
  * La consultation : un seul éditeur qui cumule trois sources — la dictée au
@@ -85,7 +83,8 @@ export function actionVide(k: Ajout, patient: PatientRendu): ComposeAction {
 export function NoteEditor({ patientId, local, nom, retour, onSaved, script, motifInitial, consultHref, onRetour, onAnnuler, base, patient, ajout }: { patientId: string; local?: PatientLocal; nom: string; retour: string; onSaved?: (n: NoteLocal) => void; script?: string; motifInitial?: string; consultHref?: string; onRetour?: () => void; /** La modification d'une note signée est abandonnée. */ onAnnuler?: () => void; /** La note signée que l'on modifie en place : ses documents modifiés sont renvoyés. */ base?: NoteLocal; patient?: PatientRendu; /** Une action à ajouter à la main dès l'ouverture (depuis « + Consultation › Ordonnance »). */ ajout?: Ajout }) {
   const cab = useCabinet();
   const router = useRouter();
-  const lang = useLang();
+  const { t: d } = useT();
+  const t = d.note;
   const composer = useCompose();
   const [ouvrirId, setOuvrirId] = React.useState<string | null>(null);
   const [valideNonce, setValideNonce] = React.useState(0);
@@ -159,10 +158,10 @@ export function NoteEditor({ patientId, local, nom, retour, onSaved, script, mot
     try {
       const r = await fetchLive("/api/note", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ transcript: t, motif: motif || undefined, patientId, patient: local ? patientPayload(local) : undefined }), signal: ac.signal });
       const j = (await r.json().catch(() => null)) as { note?: string; via?: string; error?: string } | null;
-      if (!r.ok || !j?.note) throw new Error(j?.error ?? "La synthèse n'a pas abouti.");
+      if (!r.ok || !j?.note) throw new Error(j?.error ?? d.note.synthFailed);
       setTexte(j.note); setSynth({ busy: false, via: j.via }); setTranscriptOuvert(false);
     } catch (e) { if (ac.signal.aborted) return; setSynth({ busy: false, erreur: e instanceof Error ? e.message : String(e) }); }
-  }, [transcript, motif, patientId, local]);
+  }, [transcript, motif, patientId, local, d]);
   // Dès que la dictée s'arrête (micro ou simulée), la note se synthétise toute seule si elle est encore vide.
   const autoSynth = React.useRef(false);
   React.useEffect(() => { if (autoSynth.current && micro !== "ecoute" && simul !== "en-cours" && transcript.trim() && !texte.trim() && !synth.busy) { autoSynth.current = false; void synthetiser(); } /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [micro, simul]);
@@ -188,11 +187,11 @@ export function NoteEditor({ patientId, local, nom, retour, onSaved, script, mot
   const generer = React.useCallback((force = false) => {
     if (!texte.trim() || composer.state.busy) return;
     // Régénérer efface les modifications faites à la main sur le plan : on le dit avant.
-    if (plan && touche && !force && !confirm("Régénérer les actions remplace le plan actuel, y compris ce que vous avez modifié ou retiré à la main. Continuer ?")) return;
+    if (plan && touche && !force && !confirm(t.confirmRegen)) return;
     rec.current?.stop(); setSimul((s) => (s === "en-cours" ? "pause" : s));
     setEdits({}); setRetires([]); setTexteDuPlan(texte);
     composer.run({ texte: "", note: texte, motif: motif || undefined, ecran: "note", patientId, patient: local ? patientPayload(local) : undefined });
-  }, [texte, motif, composer, patientId, local, plan, touche]);
+  }, [texte, motif, composer, patientId, local, plan, touche, t]);
 
   React.useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -246,47 +245,47 @@ export function NoteEditor({ patientId, local, nom, retour, onSaved, script, mot
 
   return (
     <div className="flex flex-col gap-4">
-      {repris && !signee && <div className="flex items-center gap-2.5 rounded-[10px] bg-agent-soft-2 px-3.5 py-2.5 text-sm"><span className="h-2 w-2 shrink-0 rounded-full bg-brand" /><span className="flex-1">{noteId ? "Modification reprise là où vous l'aviez laissée" : "Consultation reprise là où vous l'aviez laissée"}{plan ? ` · ${aValider} action${aValider > 1 ? "s" : ""} à valider` : ""}.</span><button type="button" onClick={nouvelle} className="min-h-9 text-xs text-dim-2 hover:text-ink">{noteId ? "Abandonner" : "Repartir de zéro"}</button></div>}
-      {signee && <div className="flex items-center gap-2.5 rounded-[10px] bg-ok-soft px-3.5 py-2.5 text-sm text-ok"><I.check size={14} w={2.5} /><span className="flex-1">{signee.modifieLe ? "Note modifiée · les documents modifiés ont été renvoyés" : "Note signée · inscrite au dossier"}</span></div>}
-      {micro === "absent" && !signee && <p className="m-0 text-xs text-dim-2">La dictée au micro demande un navigateur avec reconnaissance vocale (Chrome, Edge, Safari récents) : ici, écrivez, collez la sortie d'un scribe{script ? ", ou lancez la dictée simulée" : ""}.</p>}
+      {repris && !signee && <div className="flex items-center gap-2.5 rounded-[10px] bg-agent-soft-2 px-3.5 py-2.5 text-sm"><span className="h-2 w-2 shrink-0 rounded-full bg-brand" /><span className="flex-1">{noteId ? t.resumedEdit : t.resumedConsult}{plan ? ` · ${d.toValidateN(aValider)}` : ""}.</span><button type="button" onClick={nouvelle} className="min-h-9 text-xs text-dim-2 hover:text-ink">{noteId ? t.abandon : t.restart}</button></div>}
+      {signee && <div className="flex items-center gap-2.5 rounded-[10px] bg-ok-soft px-3.5 py-2.5 text-sm text-ok"><I.check size={14} w={2.5} /><span className="flex-1">{signee.modifieLe ? t.signedEdited : t.signed}</span></div>}
+      {micro === "absent" && !signee && <p className="m-0 text-xs text-dim-2">{t.noMic(!!script)}</p>}
       <div className="flex flex-wrap items-center gap-2.5">
-        <button type="button" onClick={ecouter} disabled={micro === "absent" || !!signee} title={micro === "absent" ? "Reconnaissance vocale indisponible dans ce navigateur" : micro === "erreur" ? "Micro refusé : autorisez-le dans la barre d'adresse" : "Dicter au micro"} className={cn("flex min-h-10 items-center gap-2 rounded-full border px-3.5 py-[8px] text-sm", micro === "ecoute" ? "border-rec bg-paper text-rec-text" : "border-line bg-paper text-ink hover:bg-hover", (micro === "absent" || signee) && "opacity-40")}>
-          <span className={cn("h-2 w-2 rounded-full", micro === "ecoute" ? "bg-rec animate-pulse-soft" : "bg-gray-dot")} />{micro === "ecoute" ? "Écoute… arrêter" : micro === "erreur" ? "Micro refusé" : "Dicter"}
+        <button type="button" onClick={ecouter} disabled={micro === "absent" || !!signee} title={micro === "absent" ? t.micUnavailable : micro === "erreur" ? t.micDenied : t.dictateMic} className={cn("flex min-h-10 items-center gap-2 rounded-full border px-3.5 py-[8px] text-sm", micro === "ecoute" ? "border-rec bg-paper text-rec-text" : "border-line bg-paper text-ink hover:bg-hover", (micro === "absent" || signee) && "opacity-40")}>
+          <span className={cn("h-2 w-2 rounded-full", micro === "ecoute" ? "bg-rec animate-pulse-soft" : "bg-gray-dot")} />{micro === "ecoute" ? t.listening : micro === "erreur" ? t.micRefused : t.dictate}
         </button>
-        {script && !signee && <button type="button" onClick={simuler} className="flex min-h-10 items-center gap-2 rounded-full border border-line bg-paper px-3.5 py-[8px] text-sm text-ink hover:bg-hover"><span className={cn("h-2 w-2 rounded-full", simul === "en-cours" ? "bg-brand animate-pulse-soft" : "bg-gray-dot")} />{simul === "en-cours" ? "Pause" : simul === "pause" ? "Reprendre la dictée simulée" : simul === "fini" ? "Rejouer la dictée simulée" : "Simuler la dictée"} <Kbd>⌥ espace</Kbd></button>}
-        {!signee && <button type="button" onClick={() => { setTexte((t) => (t.trim() ? t : MODELE)); ref.current?.focus(); }} className="min-h-10 rounded-full border border-line bg-paper px-3.5 py-[8px] text-sm text-ink hover:bg-hover">Structure</button>}
+        {script && !signee && <button type="button" onClick={simuler} className="flex min-h-10 items-center gap-2 rounded-full border border-line bg-paper px-3.5 py-[8px] text-sm text-ink hover:bg-hover"><span className={cn("h-2 w-2 rounded-full", simul === "en-cours" ? "bg-brand animate-pulse-soft" : "bg-gray-dot")} />{simul === "en-cours" ? t.pause : simul === "pause" ? t.resumeSim : simul === "fini" ? t.replaySim : t.simulate} <Kbd>{t.altSpace}</Kbd></button>}
+        {!signee && <button type="button" onClick={() => { setTexte((t) => (t.trim() ? t : MODELE)); ref.current?.focus(); }} className="min-h-10 rounded-full border border-line bg-paper px-3.5 py-[8px] text-sm text-ink hover:bg-hover">{t.structure}</button>}
         <span className="flex-1" />
-        <input name="locus-motif" autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck={false} data-1p-ignore data-lpignore="true" value={motif} onChange={(e) => setMotif(e.target.value)} placeholder="Motif" aria-label="Motif de consultation" readOnly={!!signee} className="min-h-10 w-full min-w-0 rounded-[8px] border border-line bg-paper px-3 py-1.5 text-base text-ink placeholder:text-dim-3 sm:w-[220px] sm:text-sm" />
+        <input name="locus-motif" autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck={false} data-1p-ignore data-lpignore="true" value={motif} onChange={(e) => setMotif(e.target.value)} placeholder={t.motif} aria-label={t.motifAria} readOnly={!!signee} className="min-h-10 w-full min-w-0 rounded-[8px] border border-line bg-paper px-3 py-1.5 text-base text-ink placeholder:text-dim-3 sm:w-[220px] sm:text-sm" />
       </div>
       {(transcript.trim() || micro === "ecoute" || simul === "en-cours") && (
-        <section className={cn("flex flex-col rounded-[12px] border", micro === "ecoute" || simul === "en-cours" ? "border-rec/40 bg-paper" : "border-line-3 bg-bg")} aria-label="Transcript de la dictée">
+        <section className={cn("flex flex-col rounded-[12px] border", micro === "ecoute" || simul === "en-cours" ? "border-rec/40 bg-paper" : "border-line-3 bg-bg")} aria-label={t.transcriptAria}>
           <div className="flex flex-wrap items-center gap-2 px-3.5 py-2">
-            <button type="button" onClick={() => setTranscriptOuvert((o) => !o)} aria-expanded={transcriptOuvert || micro === "ecoute" || simul === "en-cours"} className="flex min-h-9 items-center gap-2 text-sm text-ink-2 hover:text-ink"><I.chevron open={transcriptOuvert || micro === "ecoute" || simul === "en-cours"} /> Transcript <span className="d">{transcript.trim().split(/\s+/).filter(Boolean).length} mots</span></button>
+            <button type="button" onClick={() => setTranscriptOuvert((o) => !o)} aria-expanded={transcriptOuvert || micro === "ecoute" || simul === "en-cours"} className="flex min-h-9 items-center gap-2 text-sm text-ink-2 hover:text-ink"><I.chevron open={transcriptOuvert || micro === "ecoute" || simul === "en-cours"} /> {t.transcript} <span className="d">{t.words(transcript.trim().split(/\s+/).filter(Boolean).length)}</span></button>
             <span className="flex-1" />
-            {synth.busy && <span className="flex items-center gap-2 text-xs text-dim-2"><span className="h-2 w-2 rounded-full bg-brand animate-pulse-soft" /> Synthèse en cours…</span>}
-            {!synth.busy && !signee && transcript.trim() && micro !== "ecoute" && simul !== "en-cours" && <button type="button" onClick={() => void synthetiser()} className="min-h-9 rounded-[8px] border border-line bg-paper px-3 py-1.5 text-xs text-ink hover:bg-hover">{texte.trim() ? "Régénérer la note" : "Synthétiser en note"}</button>}
+            {synth.busy && <span className="flex items-center gap-2 text-xs text-dim-2"><span className="h-2 w-2 rounded-full bg-brand animate-pulse-soft" /> {t.synthBusy}</span>}
+            {!synth.busy && !signee && transcript.trim() && micro !== "ecoute" && simul !== "en-cours" && <button type="button" onClick={() => void synthetiser()} className="min-h-9 rounded-[8px] border border-line bg-paper px-3 py-1.5 text-xs text-ink hover:bg-hover">{texte.trim() ? t.regenNote : t.synthNote}</button>}
           </div>
           {(transcriptOuvert || micro === "ecoute" || simul === "en-cours") && <div className="border-t border-line-4 px-3.5 py-3 text-[14px] leading-[1.6] text-ink-2"><span className="whitespace-pre-wrap">{transcript}</span>{interim && <span className="text-dim-3"> {interim}</span>}{(micro === "ecoute" || simul === "en-cours") && <span className="caret" />}</div>}
           {synth.erreur && <div className="border-t border-line-4 px-3.5 py-2 text-xs text-rec-text">{synth.erreur}</div>}
         </section>
       )}
       <div className="relative">
-        <textarea ref={ref} autoComplete="off" value={texte} readOnly={!!signee} aria-label="Note de consultation" data-cmd-enter={plan && !modifiee && !signee ? "valider" : undefined} onChange={(e) => { if (e.target.value.trim()) demarre(); setTexte(e.target.value); }} placeholder={transcript.trim() ? "La note synthétique s'écrit ici. Corrigez-la, puis générez les actions." : `Dictez au micro (la note se synthétise toute seule), collez la sortie d'un scribe, ou écrivez.\n\n${MODELE}`} rows={transcript.trim() ? 7 : 12} className="w-full resize-y rounded-[14px] border border-line bg-paper px-5 py-4 text-[17px] leading-[1.75] text-ink placeholder:text-dim-3" />
-        {texte.trim() && synth.via && !signee && <span className="d pointer-events-none absolute right-4 top-3 text-[10px]">note synthétisée{synth.via === "simulation" ? ` · ${studio[lang].replay}` : ""}</span>}
+        <textarea ref={ref} autoComplete="off" value={texte} readOnly={!!signee} aria-label={t.noteAria} data-cmd-enter={plan && !modifiee && !signee ? "valider" : undefined} onChange={(e) => { if (e.target.value.trim()) demarre(); setTexte(e.target.value); }} placeholder={transcript.trim() ? t.phAfter : `${t.phBefore}\n\n${MODELE}`} rows={transcript.trim() ? 7 : 12} className="w-full resize-y rounded-[14px] border border-line bg-paper px-5 py-4 text-[17px] leading-[1.75] text-ink placeholder:text-dim-3" />
+        {texte.trim() && synth.via && !signee && <span className="d pointer-events-none absolute right-4 top-3 text-[10px]">{t.synthesized}{synth.via === "simulation" ? ` · ${d.replay}` : ""}</span>}
       </div>
-      {!signee && <p className="-mt-2 text-xs text-dim-2">{studio[lang].noRealData}</p>}
+      {!signee && <p className="-mt-2 text-xs text-dim-2">{d.noRealData}</p>}
       <div className="flex flex-wrap items-center gap-2.5">
-        {!signee && noteId && <><button type="button" onClick={enregistrer} className="flex min-h-11 items-center gap-2 rounded-[10px] bg-ink px-4 py-[9px] text-sm text-paper">{inchangee ? "Retour" : "Enregistrer"} {!inchangee && <Kbd dark>⌘⏎</Kbd>}</button><button type="button" onClick={nouvelle} className="min-h-11 rounded-[10px] px-3 py-[9px] text-sm text-dim-2 hover:bg-hover hover:text-ink">Annuler</button>{modifiee && <button type="button" onClick={() => generer()} disabled={composer.state.busy} className="min-h-11 rounded-[10px] border border-line bg-paper px-3 py-[9px] text-sm text-ink hover:bg-hover disabled:opacity-40">Régénérer les actions</button>}</>}
-        {!signee && !noteId && <button type="button" onClick={() => generer()} disabled={!texte.trim() || composer.state.busy} className={cn("flex min-h-11 items-center gap-2 rounded-[10px] px-4 py-[9px] text-sm disabled:opacity-40", modifiee ? "border border-agent-line bg-agent-soft-2 text-ink" : plan ? "border border-line bg-paper text-ink" : "bg-ink text-paper")}>{modifiee ? "Régénérer les actions · la note a changé" : plan ? "Régénérer les actions" : "Générer les actions"} {(!plan || modifiee) && <Kbd dark={!plan}>⌘⏎</Kbd>}</button>}
-        {!signee && <div className="relative"><button type="button" onClick={() => setMenu((m) => !m)} aria-expanded={menu} aria-haspopup="menu" className="min-h-11 rounded-[10px] border border-line bg-paper px-3 py-[9px] text-sm text-ink hover:bg-hover">+ Ajouter</button>{menu && <div role="menu" className="absolute bottom-full left-0 z-20 mb-1 flex min-w-[200px] flex-col rounded-[12px] border border-line bg-paper p-1" style={{ boxShadow: "var(--shadow)" }}>{AJOUTS.map((a) => <button key={a.k} type="button" role="menuitem" onClick={() => ajouter(a.k)} className="min-h-10 rounded-[8px] px-3 py-2 text-left text-sm text-ink hover:bg-hover">{a.label}</button>)}</div>}</div>}
-        {signee && <button type="button" onClick={nouvelle} className="min-h-11 rounded-[10px] border border-line bg-paper px-4 py-[9px] text-sm text-ink hover:bg-hover">Nouvelle consultation</button>}
+        {!signee && noteId && <><button type="button" onClick={enregistrer} className="flex min-h-11 items-center gap-2 rounded-[10px] bg-ink px-4 py-[9px] text-sm text-paper">{inchangee ? t.back : d.save} {!inchangee && <Kbd dark>⌘⏎</Kbd>}</button><button type="button" onClick={nouvelle} className="min-h-11 rounded-[10px] px-3 py-[9px] text-sm text-dim-2 hover:bg-hover hover:text-ink">{d.cancel}</button>{modifiee && <button type="button" onClick={() => generer()} disabled={composer.state.busy} className="min-h-11 rounded-[10px] border border-line bg-paper px-3 py-[9px] text-sm text-ink hover:bg-hover disabled:opacity-40">{t.regen}</button>}</>}
+        {!signee && !noteId && <button type="button" onClick={() => generer()} disabled={!texte.trim() || composer.state.busy} className={cn("flex min-h-11 items-center gap-2 rounded-[10px] px-4 py-[9px] text-sm disabled:opacity-40", modifiee ? "border border-agent-line bg-agent-soft-2 text-ink" : plan ? "border border-line bg-paper text-ink" : "bg-ink text-paper")}>{modifiee ? t.regenChanged : plan ? t.regen : t.generate} {(!plan || modifiee) && <Kbd dark={!plan}>⌘⏎</Kbd>}</button>}
+        {!signee && <div className="relative"><button type="button" onClick={() => setMenu((m) => !m)} aria-expanded={menu} aria-haspopup="menu" className="min-h-11 rounded-[10px] border border-line bg-paper px-3 py-[9px] text-sm text-ink hover:bg-hover">{t.add}</button>{menu && <div role="menu" className="absolute bottom-full left-0 z-20 mb-1 flex min-w-[200px] flex-col rounded-[12px] border border-line bg-paper p-1" style={{ boxShadow: "var(--shadow)" }}>{AJOUTS.map((a) => <button key={a.k} type="button" role="menuitem" onClick={() => ajouter(a.k)} className="min-h-10 rounded-[8px] px-3 py-2 text-left text-sm text-ink hover:bg-hover">{t.ajouts[a.k] ?? a.label}</button>)}</div>}</div>}
+        {signee && <button type="button" onClick={nouvelle} className="min-h-11 rounded-[10px] border border-line bg-paper px-4 py-[9px] text-sm text-ink hover:bg-hover">{d.newConsult}</button>}
         <span className="text-xs text-dim-2">{nom}</span>
         <span className="flex-1" />
       </div>
       {composer.open && (
-        <ComposeCard key={composer.state.input ? `${texteDuPlan?.length ?? 0}-${plan ? "p" : "c"}` : "x"} state={composer.state} onClose={composer.reset} onRetry={() => generer(true)} suivreSeul={false} onValide={onValide} libelleValider="Signer" patient={pr} ouvrirId={ouvrirId} valideNonce={valideNonce} masquerValider={!!noteId}
+        <ComposeCard key={composer.state.input ? `${texteDuPlan?.length ?? 0}-${plan ? "p" : "c"}` : "x"} state={composer.state} onClose={composer.reset} onRetry={() => generer(true)} suivreSeul={false} onValide={onValide} libelleValider={t.sign} patient={pr} ouvrirId={ouvrirId} valideNonce={valideNonce} masquerValider={!!noteId}
           initialActions={{ edits, retires }} onChange={(e, r) => { setEdits(e); setRetires(r); }}
-          apres={<>{onRetour ? <button type="button" onClick={onRetour} className="min-h-11 rounded-[10px] bg-ink px-4 py-[9px] text-sm text-paper">Retour au dossier</button> : <Link href={retour} className="flex min-h-11 items-center rounded-[10px] bg-ink px-4 py-[9px] text-sm text-paper hover:text-paper">Retour au dossier</Link>}<button type="button" onClick={nouvelle} className="min-h-11 rounded-[10px] border border-line bg-paper px-4 py-[9px] text-sm text-ink hover:bg-hover">Nouvelle consultation</button></>} />
+          apres={<>{onRetour ? <button type="button" onClick={onRetour} className="min-h-11 rounded-[10px] bg-ink px-4 py-[9px] text-sm text-paper">{d.backToRecord}</button> : <Link href={retour} className="flex min-h-11 items-center rounded-[10px] bg-ink px-4 py-[9px] text-sm text-paper hover:text-paper">{d.backToRecord}</Link>}<button type="button" onClick={nouvelle} className="min-h-11 rounded-[10px] border border-line bg-paper px-4 py-[9px] text-sm text-ink hover:bg-hover">{d.newConsult}</button></>} />
       )}
     </div>
   );
@@ -296,24 +295,25 @@ export function NoteEditor({ patientId, local, nom, retour, onSaved, script, mot
 export function NoteRow({ n, onDelete, onModifier, modifierHref, patient }: { n: NoteLocal; onDelete?: () => void; onModifier?: () => void; modifierHref?: string; patient?: PatientRendu }) {
   const [open, setOpen] = React.useState(false);
   const [doc, setDoc] = React.useState<ComposeAction | null>(null);
+  const { t: tt, L } = useT();
   const d = new Date(n.date);
   return (
     <div className="card overflow-hidden">
       <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-hover">
         <span className="d w-[92px] shrink-0">{String(d.getDate()).padStart(2, "0")}/{String(d.getMonth() + 1).padStart(2, "0")} {String(d.getHours()).padStart(2, "0")}:{String(d.getMinutes()).padStart(2, "0")}</span>
-        <span className="flex min-w-0 flex-1 flex-col"><span className="truncate text-[15px]">{n.origine === "commande" ? `Hors consultation · ${n.motif || "commande"}` : n.motif || n.synthese?.slice(0, 80) || "Consultation"}{n.modifieLe && <span className="ml-2 text-[11px] text-dim-2">modifiée le {new Date(n.modifieLe).toLocaleDateString("fr-FR")}</span>}</span><span className="truncate text-[13px] text-dim-2">{n.actions.length} action{n.actions.length > 1 ? "s" : ""}</span></span>
+        <span className="flex min-w-0 flex-1 flex-col"><span className="truncate text-[15px]">{n.origine === "commande" ? tt.note.outside(n.motif) : n.motif || n.synthese?.slice(0, 80) || tt.note.consultation}{n.modifieLe && <span className="ml-2 text-[11px] text-dim-2">{tt.note.editedOn(new Date(n.modifieLe).toLocaleDateString(tt.dateLocale))}</span>}</span><span className="truncate text-[13px] text-dim-2">{tt.actionsN(n.actions.length)}</span></span>
         <I.chevron open={open} />
       </button>
       {open && (
         <div className="flex flex-col gap-3 border-t border-line-4 px-4 py-3">
-          {n.synthese && <p className="m-0 text-sm leading-relaxed">{n.synthese}</p>}
+          {n.synthese && <p className="m-0 text-sm leading-relaxed">{n.synthese}</p>}{n.synthese && tt.answerInFrench && <span className="d -mt-2 text-[11px]">{tt.answerInFrench}</span>}
           {n.texte && <pre className="m-0 whitespace-pre-wrap rounded-[10px] bg-bg px-3.5 py-3 font-sans text-sm leading-relaxed text-ink-2">{n.texte}</pre>}
-          {n.transcript && <details className="rounded-[10px] border border-line-4 px-3.5 py-2 text-sm"><summary className="cursor-pointer text-xs text-dim-2">Transcript de la dictée · {n.transcript.trim().split(/\s+/).length} mots</summary><p className="m-0 mt-2 whitespace-pre-wrap text-[13px] leading-relaxed text-ink-2">{n.transcript}</p></details>}
-          {n.actions.length > 0 && <div className="flex flex-col gap-0.5">{n.actions.map((a) => <button key={a.id} type="button" onClick={() => setDoc(a)} className="flex min-h-11 items-center gap-3 rounded-[8px] px-2 py-1.5 text-left text-sm hover:bg-hover" title="Voir le document envoyé"><span className="d flex h-6 min-w-6 shrink-0 items-center justify-center rounded-[6px] bg-soft px-1 text-[10px] text-ink-3">{a.code}</span><span className="min-w-0 flex-1 truncate">{a.titre}</span><span className="hidden text-[11px] text-dim-2 sm:inline">{a.destination}</span>{a.renvoye && <span className="text-[11px] text-ok">renvoyé</span>}<I.chevron /></button>)}</div>}
+          {n.transcript && <details className="rounded-[10px] border border-line-4 px-3.5 py-2 text-sm"><summary className="cursor-pointer text-xs text-dim-2">{tt.note.transcriptOf(n.transcript.trim().split(/\s+/).length)}</summary><p className="m-0 mt-2 whitespace-pre-wrap text-[13px] leading-relaxed text-ink-2">{n.transcript}</p></details>}
+          {n.actions.length > 0 && <div className="flex flex-col gap-0.5">{n.actions.map((a) => <button key={a.id} type="button" onClick={() => setDoc(a)} className="flex min-h-11 items-center gap-3 rounded-[8px] px-2 py-1.5 text-left text-sm hover:bg-hover" title={tt.note.seeSent}><span className="d flex h-6 min-w-6 shrink-0 items-center justify-center rounded-[6px] bg-soft px-1 text-[10px] text-ink-3">{a.code}</span><span className="min-w-0 flex-1 truncate">{a.titre}</span><span className="hidden text-[11px] text-dim-2 sm:inline">{L(a.destination)}</span>{a.renvoye && <span className="text-[11px] text-ok">{tt.sent}</span>}<I.chevron /></button>)}</div>}
           <div className="flex flex-wrap items-center gap-3">
-            {modifierHref && <Link href={modifierHref} className="flex min-h-9 items-center rounded-[8px] border border-line bg-paper px-3 py-1.5 text-xs text-ink hover:bg-hover hover:text-ink">Modifier</Link>}
-            {onModifier && !modifierHref && <button type="button" onClick={onModifier} className="min-h-9 rounded-[8px] border border-line bg-paper px-3 py-1.5 text-xs text-ink hover:bg-hover">Modifier</button>}
-            {onDelete && <button type="button" onClick={() => { if (confirm(`Supprimer cette note${n.actions.length ? ` et ses ${n.actions.length} action${n.actions.length > 1 ? "s" : ""}` : ""} ? Les documents déjà envoyés ne sont pas rappelés.`)) onDelete(); }} className="min-h-9 text-xs text-dim-2 hover:text-rec-text">Supprimer</button>}
+            {modifierHref && <Link href={modifierHref} className="flex min-h-9 items-center rounded-[8px] border border-line bg-paper px-3 py-1.5 text-xs text-ink hover:bg-hover hover:text-ink">{tt.edit}</Link>}
+            {onModifier && !modifierHref && <button type="button" onClick={onModifier} className="min-h-9 rounded-[8px] border border-line bg-paper px-3 py-1.5 text-xs text-ink hover:bg-hover">{tt.edit}</button>}
+            {onDelete && <button type="button" onClick={() => { if (confirm(tt.note.confirmDelete(n.actions.length))) onDelete(); }} className="min-h-9 text-xs text-dim-2 hover:text-rec-text">{tt.remove}</button>}
           </div>
         </div>
       )}
@@ -325,6 +325,7 @@ export function NoteRow({ n, onDelete, onModifier, modifierHref, patient }: { n:
 /** Les consultations et modifications en cours d'un patient : le rappel qui ramène à l'éditeur. */
 export function BrouillonBanner({ patientId, href, onOpen, version }: { patientId: string; /** Le lien vers l'éditeur ; `?modifie=` est ajouté pour une modification. */ href: string; /** À la place d'un lien : ouvrir en place (dossier local). */ onOpen?: (b: Brouillon) => void; /** Change pour relire. */ version?: number }) {
   const [list, setList] = React.useState<Brouillon[]>([]);
+  const { t: d } = useT();
   React.useEffect(() => { setList(listBrouillons(patientId)); }, [patientId, version]);
   if (!list.length) return null;
   return (
@@ -333,8 +334,8 @@ export function BrouillonBanner({ patientId, href, onOpen, version }: { patientI
         const n = nActions(b);
         const inner = (<>
           <span className="h-2 w-2 shrink-0 rounded-full bg-brand animate-pulse-soft" />
-          <span className="flex min-w-0 flex-1 flex-col"><span className="font-medium">{b.noteId ? `Modification de la note${b.noteDate ? ` du ${new Date(b.noteDate).toLocaleDateString("fr-FR")}` : ""} en cours` : b.plan ? `${n} action${n > 1 ? "s" : ""} à valider` : "Consultation en cours"}</span><span className="truncate text-[13px] text-dim-2">{b.motif ? `${b.motif} · ` : ""}{b.texte.replace(/\s+/g, " ").slice(0, 90) || "note vide"}</span></span>
-          <span className="shrink-0 text-[13px]">Reprendre →</span>
+          <span className="flex min-w-0 flex-1 flex-col"><span className="font-medium">{b.noteId ? d.note.editing(b.noteDate ? new Date(b.noteDate).toLocaleDateString(d.dateLocale) : undefined) : b.plan ? d.toValidateN(n) : d.note.ongoing}</span><span className="truncate text-[13px] text-dim-2">{b.motif ? `${b.motif} · ` : ""}{b.texte.replace(/\s+/g, " ").slice(0, 90) || d.note.emptyNote}</span></span>
+          <span className="shrink-0 text-[13px]">{d.note.resume}</span>
         </>);
         const cls = "flex min-h-12 w-full items-center gap-3 rounded-[12px] border border-agent-line bg-agent-soft-2 px-4 py-3 text-left text-sm text-ink hover:text-ink";
         return onOpen ? <button key={b.noteId ?? "nouvelle"} type="button" onClick={() => onOpen(b)} className={cls} style={{ boxShadow: "var(--shadow-accent)" }}>{inner}</button> : <Link key={b.noteId ?? "nouvelle"} href={b.noteId ? `${href}?modifie=${b.noteId}` : href} className={cls} style={{ boxShadow: "var(--shadow-accent)" }}>{inner}</Link>;
@@ -346,11 +347,12 @@ export function BrouillonBanner({ patientId, href, onOpen, version }: { patientI
 /** Les notes de la session pour un patient du jeu de données (localStorage), affichées dans son dossier. */
 export function NotesSession({ patientId, patient, version }: { patientId: string; patient?: PatientRendu; /** Change pour relire (après une signature sur le même écran). */ version?: number }) {
   const [notes, setNotes] = React.useState<NoteLocal[]>([]);
+  const { t: d } = useT();
   React.useEffect(() => { setNotes(readNotes(patientId)); }, [patientId, version]);
   if (!notes.length) return null;
   return (
     <section className="flex flex-col gap-2">
-      <span className="k px-1">Notes de la session · {notes.length}</span>
+      <span className="k px-1">{d.note.sessionNotes(notes.length)}</span>
       {notes.map((n) => <NoteRow key={n.id} n={n} patient={patient} modifierHref={`/p/${patientId}/rencontre?modifie=${n.id}`} onDelete={() => { const next = notes.filter((x) => x.id !== n.id); writeNotes(patientId, next); clearBrouillon(patientId, n.id); setNotes(next); }} />)}
     </section>
   );
@@ -359,6 +361,7 @@ export function NotesSession({ patientId, patient, version }: { patientId: strin
 /** Sur l'accueil : les consultations laissées en cours sur ce poste, avec leurs actions à valider. */
 export function BrouillonsAccueil() {
   const cab = useCabinet();
+  const { t: d } = useT();
   const [list, setList] = React.useState<Brouillon[]>([]);
   React.useEffect(() => { setList(listBrouillons()); }, []);
   // Un dossier local supprimé n'a plus de consultation à reprendre.
@@ -366,12 +369,12 @@ export function BrouillonsAccueil() {
   if (!rows.length) return null;
   return (
     <section className="flex flex-col gap-1">
-      <div className="k px-3.5 pb-2" style={{ color: "var(--agent)" }}>À valider · {rows.length}</div>
+      <div className="k px-3.5 pb-2" style={{ color: "var(--agent)" }}>{d.note.toValidate(rows.length)}</div>
       {rows.map((b) => { const n = nActions(b); return (
         <Link key={`${b.patientId}-${b.noteId ?? ""}`} href={b.noteId && !b.patientId.startsWith("loc_") ? `${b.href}?modifie=${b.noteId}` : b.href} className="flex min-h-12 items-center gap-3 rounded-[10px] px-3.5 py-3 text-ink hover:bg-hover hover:text-ink sm:gap-4">
           <span className="h-2 w-2 shrink-0 rounded-full bg-brand" />
           <span className="min-w-0 flex-1 truncate text-[15px]">{b.nom}</span>
-          <span className="truncate text-[13px] text-dim-2">{b.noteId ? "note en modification" : b.plan ? `${n} action${n > 1 ? "s" : ""} à valider` : "note en cours"}{b.motif ? ` · ${b.motif}` : ""}</span>
+          <span className="truncate text-[13px] text-dim-2">{b.noteId ? d.note.noteEditing : b.plan ? d.toValidateN(n) : d.note.noteOngoing}{b.motif ? ` · ${b.motif}` : ""}</span>
           <I.chevron />
         </Link>
       ); })}

@@ -5,6 +5,14 @@ import { useRouter } from "./nav";
 import { cn } from "@/lib/cn";
 import { useLang } from "@/i18n/lang";
 import { common, studio } from "@/i18n";
+import { lbl } from "@/i18n/studio";
+
+/** La langue de l'interface, son dictionnaire, et la traduction des libellés produits en français par le serveur. */
+export function useT() {
+  const lang = useLang();
+  return React.useMemo(() => ({ lang, t: studio[lang], L: <T extends string | undefined>(v: T) => lbl(lang, v as string) as T }), [lang]);
+}
+
 
 /* ---------------- icônes (trait, jamais d'emoji) ---------------- */
 export const I = {
@@ -64,7 +72,7 @@ export function Header({ praticien, patient, back }: { praticien: { initials: st
           <Link href={patient.href ?? `/p/${patient.id}`} className="flex min-w-0 items-center gap-2 rounded-full border border-line bg-paper py-1 pl-1 pr-3 text-ink hover:text-ink sm:gap-2.5 sm:py-1.5 sm:pl-1.5 sm:pr-3.5">
             <Avatar initials={patient.initials} accent size={26} className="hidden sm:flex" />
             <span className="truncate pl-1.5 text-sm font-medium sm:pl-0">{patient.nom}</span>
-            {patient.meta && <span className="hidden text-[13px] text-dim-2 sm:inline">{patient.meta}</span>}
+            {patient.meta && <span className="hidden text-[13px] text-dim-2 sm:inline">{lbl(lang, patient.meta)}</span>}
           </Link>
         )}
       </div>
@@ -85,6 +93,7 @@ type SRLite = { lang: string; continuous: boolean; interimResults: boolean; onre
 function srCtor(): (new () => SRLite) | null { if (typeof window === "undefined") return null; const w = window as unknown as { SpeechRecognition?: new () => SRLite; webkitSpeechRecognition?: new () => SRLite }; return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null; }
 
 export function Omni({ placeholder, onSubmit, cta, chips, children, maxWidth = 720, inputId = "omni", busy, suggestions }: { placeholder: string; onSubmit?: (text: string) => void; cta?: React.ReactNode; chips?: { id: string; label: string; onClick: () => void }[]; children?: React.ReactNode; maxWidth?: number; inputId?: string; busy?: boolean; suggestions?: { k: string; t: string }[] }) {
+  const { t } = useT();
   const [v, setV] = React.useState("");
   const [focus, setFocus] = React.useState(false);
   const [sel, setSel] = React.useState(-1);
@@ -115,8 +124,8 @@ export function Omni({ placeholder, onSubmit, cta, chips, children, maxWidth = 7
       <div ref={boite} className="mx-auto flex flex-col gap-2.5" style={{ maxWidth }} onBlur={(e) => { if (!boite.current?.contains(e.relatedTarget as Node | null)) { setFocus(false); setSel(-1); } }}>
         {children}
         {showHints && (
-          <div className="flex flex-col rounded-[14px] border border-line bg-paper p-1.5" style={{ boxShadow: "var(--shadow)" }} role="listbox" aria-label="Exemples de demandes">
-            <span className="k px-3 pb-1.5 pt-2">Par exemple</span>
+          <div className="flex flex-col rounded-[14px] border border-line bg-paper p-1.5" style={{ boxShadow: "var(--shadow)" }} role="listbox" aria-label={t.omni.examples}>
+            <span className="k px-3 pb-1.5 pt-2">{t.omni.forExample}</span>
             {suggestions!.map((s, i) => (
               <button key={s.t} type="button" role="option" aria-selected={sel === i} onMouseDown={(e) => e.preventDefault()} onMouseEnter={() => setSel(i)} onClick={() => { setV(s.t); ref.current?.focus(); }} className={cn("flex min-h-10 items-center gap-3 rounded-[10px] px-3 py-2 text-left text-sm text-ink", sel === i ? "bg-agent-soft-2" : "hover:bg-hover")}>
                 <span className="d w-[72px] shrink-0 text-[10px]">{s.k}</span><span className="min-w-0 flex-1 truncate">{s.t}</span>{sel === i && <Kbd>⏎</Kbd>}
@@ -130,13 +139,13 @@ export function Omni({ placeholder, onSubmit, cta, chips, children, maxWidth = 7
           </div>
         )}
         <form onSubmit={(e) => { e.preventDefault(); if (showHints && sel >= 0) { setV(suggestions![sel].t); setSel(-1); return; } envoyer(v); }} className="flex items-center gap-2 rounded-[14px] border border-line bg-paper py-2.5 pl-4 pr-2.5 focus-within:border-agent-line sm:gap-3 sm:py-3 sm:pl-[18px] sm:pr-3" style={{ boxShadow: "var(--shadow)" }}>
-          <label htmlFor={inputId} className="sr-only">Demander</label>
+          <label htmlFor={inputId} className="sr-only">{t.omni.ask}</label>
           <input id={inputId} name="locus-omni" ref={ref} autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck={false} data-1p-ignore data-lpignore="true" value={v} onChange={(e) => { setV(e.target.value); setSel(-1); }} onFocus={() => setFocus(true)} onKeyDown={(e) => {
             if (showHints && e.key === "ArrowDown") { e.preventDefault(); setSel((x) => Math.min(suggestions!.length - 1, x + 1)); }
             else if (showHints && e.key === "ArrowUp") { e.preventDefault(); setSel((x) => Math.max(-1, x - 1)); }
             else if (e.key === "Escape") { if (v) { e.preventDefault(); e.stopPropagation(); setV(""); setSel(-1); } }
-          }} placeholder={placeholder} disabled={busy} aria-expanded={showHints} aria-controls={showHints ? `${inputId}-hints` : undefined} className="min-h-10 min-w-0 flex-1 bg-transparent text-base text-ink outline-none placeholder:text-dim-3" />
-          {micro !== "absent" && <button type="button" onClick={dicter} aria-label={micro === "ecoute" ? "Arrêter la dictée" : "Dicter la demande"} aria-pressed={micro === "ecoute"} title={micro === "ecoute" ? "Arrêter" : "Dicter"} className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-full border bg-paper", micro === "ecoute" ? "border-rec" : "border-line")}>{micro === "ecoute" ? <span className="h-2.5 w-2.5 rounded-full bg-rec animate-pulse-soft" /> : <I.mic />}</button>}
+          }} placeholder={placeholder} disabled={busy} aria-expanded={showHints} aria-controls={showHints ? `${inputId}-hints` : undefined} className="min-h-10 min-w-0 flex-1 bg-transparent text-base text-ink outline-none placeholder:text-dim-3 focus-visible:shadow-none" />
+          {micro !== "absent" && <button type="button" onClick={dicter} aria-label={micro === "ecoute" ? t.omni.stopDictation : t.omni.dictateRequest} aria-pressed={micro === "ecoute"} title={micro === "ecoute" ? t.omni.stop : t.omni.dictate} className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-full border bg-paper", micro === "ecoute" ? "border-rec" : "border-line")}>{micro === "ecoute" ? <span className="h-2.5 w-2.5 rounded-full bg-rec animate-pulse-soft" /> : <I.mic />}</button>}
           {cta}
         </form>
       </div>
@@ -152,6 +161,7 @@ export function CtaLink({ href, children, blue, onClick }: { href?: string; chil
 
 /** La carte de résultat au-dessus de l'omni : ce que Locus a composé, prêt à valider. */
 export function ResultCard({ tool, title, body, cta, onCta, onClose, secondary, onSecondary, busy, children }: { tool: string; title: string; body?: React.ReactNode; cta: string; onCta: () => void; onClose: () => void; secondary?: string; onSecondary?: () => void; busy?: boolean; children?: React.ReactNode }) {
+  const { t } = useT();
   // esc ferme la carte avant que l'en-tête ne remonte d'un cran.
   React.useEffect(() => {
     const k = (e: KeyboardEvent) => { if (e.key === "Escape" && !document.querySelector("[role=dialog][aria-modal=true]") && !(e.target as HTMLElement | null)?.closest("input, textarea")) { e.preventDefault(); e.stopPropagation(); onClose(); } };
@@ -160,7 +170,7 @@ export function ResultCard({ tool, title, body, cta, onCta, onClose, secondary, 
   }, [onClose]);
   return (
     <div className="flex flex-col gap-3 rounded-[14px] border border-agent-line bg-paper px-[18px] py-4" style={{ boxShadow: "var(--shadow-accent)" }}>
-      <div className="flex items-center gap-2.5"><span className="k text-agent" style={{ color: "var(--agent)" }}>{tool}</span><span className="flex-1" /><button type="button" onClick={onClose} aria-label="Fermer" className="px-1 text-base text-dim-3">×</button></div>
+      <div className="flex items-center gap-2.5"><span className="k text-agent" style={{ color: "var(--agent)" }}>{tool}</span><span className="flex-1" /><button type="button" onClick={onClose} aria-label={t.close} className="px-1 text-base text-dim-3">×</button></div>
       {title && <span className="text-base font-medium">{title}</span>}
       {body && <div className="text-sm leading-relaxed text-ink-3">{body}</div>}
       {children}
