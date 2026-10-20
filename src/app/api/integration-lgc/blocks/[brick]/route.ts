@@ -1,7 +1,7 @@
 import { guardLive, donneesReelles } from "@/lib/server/guard";
 import { cleanSettings, questionFor, replayAnswer, replayOutput, toolByApi, type LocusOut, type ToolId } from "@/data/integration-lgc/blocks";
 import { askLocus, coreDisponible } from "../../_lib/locus";
-import { anchorOf, body, fieldsOf, json } from "../../_lib/request";
+import { BlockBody, fieldsOf, json, parse } from "../../_lib/request";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -32,11 +32,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ brick: 
   const { brick } = await params;
   const tool = toolByApi(brick);
   if (!tool) return json({ error: "Brique inconnue." }, 404);
-  const b = await body(req);
-  const anchor = anchorOf(b.anchor);
-  const fields = fieldsOf(b.fields, anchor);
+  const p = await parse(req, BlockBody);
+  if (!p.ok) return p.response;
+  const b = p.data;
+  const fields = fieldsOf(b.fields, b.anchor);
   const settings = cleanSettings(tool, b.settings);
-  const question = typeof b.question === "string" ? b.question.trim().slice(0, 300) : "";
+  const question = (b.question ?? "").trim();
   if (question) {
     const refus = donneesReelles(question);
     if (refus) return json({ error: refus }, 422);

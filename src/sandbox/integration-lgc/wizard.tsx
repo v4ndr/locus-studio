@@ -9,8 +9,9 @@ import { Switch } from "@/components/ui/switch";
 import { ANCHOR_IDS, FIELDS, defaultFields, fieldsFor, type AnchorId } from "@/data/integration-lgc/fournier";
 import { DISPLAY_IDS, HOOKS, TOOLS, TOOL_IDS, defaultSettings } from "@/data/integration-lgc/blocks";
 import { INSERTABLE, WF_EXAMPLE, type RunResult } from "@/data/integration-lgc/workflow";
-import { runWorkflow, structureWorkflow } from "./api";
+import { errorText, runWorkflow, structureWorkflow } from "./api";
 import type { Draft } from "./model";
+import { useDialogFocus } from "./use-dialog";
 
 /**
  * L'assistant de brique, à la Zapier : 4 étapes, chacune repliée en une
@@ -63,11 +64,14 @@ export function Wizard({ draft, setDraft, step, setStep, editing, onClose, onSub
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
+  // Le focus entre dans l'assistant et revient au bouton d'origine à la fermeture ; Tab peut sortir vers « Injecter ici ».
+  const ref = useDialogFocus<HTMLElement>(false);
+
   return (
-    <section role="dialog" aria-label={editing ? w.editBrick : w.newBrick} className="absolute inset-y-0 right-0 z-30 flex w-[min(460px,100%)] flex-col border-l border-border bg-background font-sans text-sm text-foreground shadow-[0_16px_40px_rgba(0,0,0,.45)]">
+    <section ref={ref} role="dialog" aria-labelledby="lgc-wiz-title" className="absolute inset-y-0 right-0 z-30 flex w-[min(460px,100%)] flex-col border-l border-border bg-background font-sans text-sm text-foreground shadow-[0_16px_40px_rgba(0,0,0,.45)]">
       <div className="flex items-center gap-2.5 border-b border-border py-3.5 pl-5 pr-4">
         <span className="grid flex-1 gap-0.5">
-          <span className="text-base font-semibold tracking-[-.01em]">{editing ? w.editBrick : w.newBrick}</span>
+          <span id="lgc-wiz-title" data-autofocus tabIndex={-1} className="text-base font-semibold tracking-[-.01em] outline-none">{editing ? w.editBrick : w.newBrick}</span>
           <span className="font-mono text-xs text-muted-foreground">{w.step} {step} {w.of} 4</span>
         </span>
         <button type="button" onClick={onClose} aria-label={w.close} className={buttonClass({ variant: "ghost", size: "icon" })}><X aria-hidden="true" /></button>
@@ -211,12 +215,12 @@ function WorkflowEditor({ draft, setDraft }: { draft: Draft; setDraft: (p: Parti
       const r = await structureWorkflow(draft.instruction ?? "", lang);
       setSteps(r.steps, r.preview);
     } catch (e) {
-      setError(e instanceof Error && e.message.length > 6 ? e.message : wf.error);
+      setError(errorText(e, { realData: t.out.realData, error: wf.error }));
     } finally { setBusy(false); }
   };
 
   const run = async () => {
-    stop();
+    stop(); setError("");
     try {
       const result = await runWorkflow(steps, { anchor: draft.anchor ?? "pv", fields: draft.fields }, nonDiab ? "non-diabetique" : "fournier");
       const last = result.halted ? result.steps.findIndex((s) => s.status === "stopped") : steps.length;
@@ -232,8 +236,8 @@ function WorkflowEditor({ draft, setDraft }: { draft: Draft; setDraft: (p: Parti
         }
         setTest({ result, idx: i, running: true, nonDiab });
       }, 600);
-    } catch {
-      setError(t.out.error);
+    } catch (e) {
+      setError(errorText(e, t.out));
     }
   };
 

@@ -31,6 +31,8 @@ export interface MedicabProps {
   flagged: boolean;
   blocked: boolean;
   validated: boolean;
+  /** Le motif d'une alerte bloquante passée outre, s'il y en a une. */
+  overrideMotif?: string;
   onValidate: () => void;
   hba1cAdded: boolean;
   activeCount: number;
@@ -149,7 +151,7 @@ export function Medicab(p: MedicabProps) {
               <Outs items={p.inline.sign} />
               <div className={s.signBar}>
                 {p.zones.sign.slot}
-                <span className={s.signStatus}>{p.blocked ? "Validation bloquée par Locus" : p.validated ? "Ordonnance validée" : ""}</span>
+                <span className={s.signStatus}>{p.blocked ? "Validation bloquée par Locus" : p.validated ? (p.overrideMotif ? `Ordonnance validée · alerte Locus passée outre, motif : ${p.overrideMotif}` : "Ordonnance validée") : p.overrideMotif ? `Alerte Locus passée outre, motif : ${p.overrideMotif}` : ""}</span>
                 <button type="button" className={s.legacyBtn}>Imprimer</button>
                 <button type="button" className={s.legacyBtn}>Annuler</button>
                 <button type="button" className={s.validate} onClick={p.onValidate} disabled={p.blocked} title={p.blocked ? "Alerte Locus à traiter avant validation" : undefined}>Valider l&apos;ordonnance</button>

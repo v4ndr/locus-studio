@@ -16,6 +16,7 @@ import { WF_EXAMPLE } from "@/data/integration-lgc/workflow";
 import { Medicab, type ZoneProps } from "./medicab";
 import { AskBox, LocusBody, LocusCard, LocusLoading, LocusTag, type CardAction } from "./locus-card";
 import { Wizard } from "./wizard";
+import { useDialogFocus } from "./use-dialog";
 import { MyBricks } from "./my-bricks";
 import { blockOutput, runWorkflow, type Via } from "./api";
 import { EXAMPLES, emptyDraft, nextId, useBricks, workflowDraft, type Brick, type Draft } from "./model";
@@ -57,12 +58,20 @@ export function IntegrationLgc() {
   const [validated, setValidated] = React.useState(false);
   const [dismissed, setDismissed] = React.useState<Set<string>>(new Set());
   const [wfDone, setWfDone] = React.useState<Set<string>>(new Set());
-  const [modal, setModal] = React.useState(false);
-  /** La fenêtre bloquante a été ouverte par « Valider l'ordonnance » : la fermer valide. */
-  const [modalValidate, setModalValidate] = React.useState(false);
+  /**
+   * La fenêtre Locus : `show` (une brique « Fenêtre bloquante » vient d'être
+   * activée), `validate` (ouverte par « Valider l'ordonnance »), `override`
+   * (« Ignorer » sur une alerte bloquante). Fermer revient toujours à
+   * l'ordonnance : seule une décision explicite valide, et passer outre une
+   * alerte demande un motif.
+   */
+  const [modal, setModal] = React.useState<{ mode: "show" | "validate" | "override"; ids?: string[] } | null>(null);
+  /** Les alertes passées outre, avec leur motif (affiché dans la barre de signature). */
+  const [overrides, setOverrides] = React.useState<Record<string, string>>({});
   const [widgetMin, setWidgetMin] = React.useState(false);
   const [tbOpen, setTbOpen] = React.useState(false);
   const [letter, setLetter] = React.useState<string[] | null>(null);
+  const [narrowSeen, setNarrowSeen] = React.useState(false);
 
   // Sorties des briques actives
   const [outs, setOuts] = React.useState<Record<string, OutState>>({});
@@ -98,7 +107,7 @@ export function IntegrationLgc() {
   React.useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
-      setChooser(false); setList(false); setModal(false); setLetter(null);
+      setChooser(false); setList(false); setModal(null); setLetter(null);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -128,14 +137,27 @@ export function IntegrationLgc() {
     return o.out;
   };
 
+  /** Une alerte bloquante : le contrôle d'ordonnance réglé sur « Bloquant » qui signale une ligne. */
+  const isBlocking = (b: Brick, out: LocusOut | "loading" | null) => b.kind === "tool" && b.tool === "controle" && b.settings.niveau === "bloquant" && !!out && out !== "loading" && !!out.actions?.includes("replace");
+
+  const dismiss = (ids: string[], motif?: string) => {
+    setDismissed((s) => { const n = new Set(s); for (const id of ids) n.add(id); return n; });
+    if (motif) setOverrides((o) => { const n = { ...o }; for (const id of ids) n[id] = motif; return n; });
+  };
+
   const act = (b: Brick, out: LocusOut, a: CardAction) => {
-    if (a === "ignore") { setDismissed((s) => new Set(s).add(b.id)); setModal(false); }
-    if (a === "replace") { setReplaced(true); setModal(false); }
+    if (a === "ignore") {
+      // Une alerte bloquante ne s'écarte pas d'un clic : on demande le motif.
+      if (isBlocking(b, out)) { setModal({ mode: "override", ids: [b.id] }); return; }
+      dismiss([b.id]);
+      setModal((m) => (m?.mode === "show" ? null : m));
+    }
+    if (a === "replace") { setReplaced(true); setModal(null); }
     if (a === "openLetter") setLetter(out.letter ?? out.lines);
     if (a === "wfAction") setWfDone((s) => new Set(s).add(b.id));
     if (a === "cancel") {
       if (b.kind === "workflow") setWfDone((s) => { const n = new Set(s); n.delete(b.id); return n; });
-      else { setReplaced(false); setValidated(false); }
+      else { setReplaced(false); setValidated(false); setOverrides({}); }
     }
   };
 
@@ -145,6 +167,7 @@ export function IntegrationLgc() {
   const widgets: { b: Brick; s: Shown }[] = [];
   const modals: { b: Brick; out: LocusOut }[] = [];
   let blocked = false;
+  let modalAlert = false;
   let flagged = false;
   let hba1cAdded = false;
   const active = bricks.filter((b) => b.on);
@@ -153,11 +176,14 @@ export function IntegrationLgc() {
     const s = shown(b);
     if (!s) continue;
     if (b.kind === "workflow" && wfDone.has(b.id) && /hba1c/i.test(outs[b.id]?.out?.actionLabel ?? "")) hba1cAdded = true;
+    const hidden = b.anchor === "tb" && !tbOpen;
     if (s !== "loading" && b.tool === "controle" && s.actions?.includes("replace")) {
       flagged = true;
-      if (b.settings.allergies && b.settings.niveau === "bloquant") blocked = true;
+      // En « Fenêtre bloquante », c'est la fenêtre qui bloque : « Valider » l'ouvre. Ailleurs, le bouton se grise.
+      if (isBlocking(b, s) && b.display !== "modal" && !hidden) blocked = true;
+      if (b.display === "modal") modalAlert = true;
     }
-    if (b.anchor === "tb" && !tbOpen) continue;
+    if (hidden) continue;
     const key = b.id;
     if (b.display === "inline" && b.anchor !== "tb") {
       inline[b.anchor].push(s === "loading" ? <LocusLoading key={key} /> : <LocusCard key={key} brick={b} out={s} onAction={(a) => act(b, s, a)} />);
@@ -211,7 +237,8 @@ export function IntegrationLgc() {
     setWiz(null);
     setList(true);
     setWidgetMin(false);
-    if (nb.display === "modal") setModal(true);
+    setOverrides((o) => { const n = { ...o }; delete n[id]; return n; });
+    if (nb.display === "modal") setModal({ mode: "show" });
     if (nb.anchor === "tb") setTbOpen(true);
   };
 
@@ -226,11 +253,12 @@ export function IntegrationLgc() {
 
   const validate = () => {
     if (blocked) return;
-    if (modals.length) { setModal(true); setModalValidate(true); }
+    if (modals.length) setModal({ mode: "validate" });
     else setValidated(true);
   };
 
-  const modalOpen = modal && modals.length > 0;
+  const modalOpen = !!modal && (modal.mode === "override" || modals.length > 0);
+  const overrideMotif = Object.entries(overrides).find(([id]) => dismissed.has(id))?.[1];
   const tbBricks = active.filter((b) => b.anchor === "tb");
 
   return (
@@ -240,16 +268,25 @@ export function IntegrationLgc() {
         inline={inline}
         banners={banners}
         panel={panel}
-        toolbarLocus={{ show: tbBricks.length > 0, open: tbOpen, hint: t.out.toolbarHint, onClick: () => { setTbOpen((o) => !o); if (!tbOpen && tbBricks.some((b) => b.display === "modal")) setModal(true); } }}
+        toolbarLocus={{ show: tbBricks.length > 0, open: tbOpen, hint: t.out.toolbarHint, onClick: () => { setTbOpen((o) => !o); if (!tbOpen && tbBricks.some((b) => b.display === "modal")) setModal({ mode: "show" }); } }}
         replaced={replaced}
         flagged={flagged && !replaced}
         blocked={blocked}
         validated={validated}
+        overrideMotif={overrideMotif}
         onValidate={validate}
         hba1cAdded={hba1cAdded}
         activeCount={active.length}
         banner={c.banner}
       />
+
+      {/* Écran étroit : MédiCab reste lisible (colonnes empilées), mais on dit qu'il est pensé pour un ordinateur. */}
+      {!narrowSeen && (
+        <div role="status" className="absolute inset-x-2 top-2 z-[16] hidden items-start gap-2 rounded-lg border border-border bg-popover py-2 pl-3 pr-1.5 font-sans text-[13px] leading-[1.4] text-popover-foreground shadow-sm max-[640px]:flex">
+          <span className="flex-1 pt-1">{t.out.narrow}</span>
+          <button type="button" onClick={() => setNarrowSeen(true)} aria-label={t.out.close} className={buttonClass({ variant: "ghost", size: "icon", className: "size-8 shrink-0" })}><X aria-hidden="true" /></button>
+        </div>
+      )}
 
       {/* Widget Locus ancré */}
       {widgets.length > 0 && (
@@ -303,7 +340,7 @@ export function IntegrationLgc() {
           onToggle={(id) => { setBricks((bs) => bs.map((b) => (b.id === id ? { ...b, on: !b.on } : b))); setWidgetMin(false); }}
           onEdit={(b) => openWizard({ ...b }, b.id)}
           onRemove={(id) => setBricks((bs) => bs.filter((b) => b.id !== id))}
-          onReset={() => { setBricks(EXAMPLES); setDismissed(new Set()); setWfDone(new Set()); setReplaced(false); setValidated(false); }}
+          onReset={() => { setBricks(EXAMPLES); setDismissed(new Set()); setWfDone(new Set()); setReplaced(false); setValidated(false); setOverrides({}); }}
         />
       )}
 
@@ -320,22 +357,81 @@ export function IntegrationLgc() {
         />
       )}
 
-      {modalOpen && (
-        <div className="absolute inset-0 z-40 grid place-items-center bg-black/50 p-4">
-          <section role="dialog" aria-modal="true" aria-label={`Locus · ${t.out.before}`} className={cn(POP, "flex max-h-[90dvh] w-[min(480px,100%)] flex-col gap-3 overflow-auto p-5 text-sm")}>
-            <div className="flex items-center gap-2"><LocusTag /><span className="text-[13px] text-muted-foreground">{t.out.before}</span></div>
-            {modals.map(({ b, out }) => (
-              <div key={b.id} className="flex flex-col gap-2">
-                <span className="text-base font-semibold tracking-[-.01em]">{out.title}</span>
-                <LocusBody brick={b} out={out} variant="modal" onAction={(a) => act(b, out, a)} />
-              </div>
-            ))}
-            <Button onClick={() => { setModal(false); if (modalValidate) setValidated(true); setModalValidate(false); }} className="self-end">{t.out.close}</Button>
-          </section>
-        </div>
+      {modalOpen && modal && (
+        <LocusDialog
+          mode={modal.mode}
+          items={modal.mode === "override" ? active.filter((b) => modal.ids?.includes(b.id)).flatMap((b) => { const o = outs[b.id]?.out; return o ? [{ b, out: o }] : []; }) : modals}
+          alert={modalAlert}
+          onAction={act}
+          onClose={() => setModal(null)}
+          onValidate={() => { setModal(null); setValidated(true); }}
+          onOverride={(motif) => {
+            const ids = modal.mode === "override" ? modal.ids ?? [] : modals.filter(({ b, out }) => b.tool === "controle" && out.actions?.includes("replace")).map(({ b }) => b.id);
+            dismiss(ids, motif);
+            setModal(null);
+            if (modal.mode === "validate") setValidated(true);
+          }}
+        />
       )}
 
       {letter && <LetterDialog lines={letter} onClose={() => setLetter(null)} />}
+    </div>
+  );
+}
+
+/**
+ * La fenêtre Locus avant validation. Fermer (croix, Échap, « Modifier
+ * l'ordonnance ») ne valide jamais : il faut « Valider l'ordonnance » quand
+ * rien n'est signalé, ou « Passer outre, avec motif » quand une alerte l'est.
+ */
+function LocusDialog({ mode, items, alert, onAction, onClose, onValidate, onOverride }: {
+  mode: "show" | "validate" | "override";
+  items: { b: Brick; out: LocusOut }[];
+  alert: boolean;
+  onAction: (b: Brick, out: LocusOut, a: CardAction) => void;
+  onClose: () => void;
+  onValidate: () => void;
+  onOverride: (motif: string) => void;
+}) {
+  const lang = useLang();
+  const t = lgc[lang].out;
+  const [motif, setMotif] = React.useState<string | null>(mode === "override" ? "" : null);
+  const ref = useDialogFocus<HTMLElement>();
+  const asking = motif !== null;
+  const ok = (motif ?? "").trim().length >= 3;
+  const label = mode === "override" ? t.overrideTitle : `Locus · ${t.before}`;
+  return (
+    <div className="absolute inset-0 z-40 grid place-items-center bg-black/50 p-4">
+      <section ref={ref} role="dialog" aria-modal="true" aria-label={label} className={cn(POP, "flex max-h-[90dvh] w-[min(480px,100%)] flex-col gap-3 overflow-auto p-5 text-sm")}>
+        <div className="flex items-center gap-2">
+          <LocusTag /><span className="flex-1 text-[13px] text-muted-foreground">{mode === "override" ? t.overrideTitle : t.before}</span>
+          <button type="button" onClick={onClose} aria-label={mode === "show" ? t.close : t.editOrder} className={buttonClass({ variant: "ghost", size: "icon", className: "size-8" })}><X aria-hidden="true" /></button>
+        </div>
+        {items.map(({ b, out }) => (
+          <div key={b.id} className="flex flex-col gap-2">
+            <span className="text-base font-semibold tracking-[-.01em]">{out.title}</span>
+            {/* Avant validation, « Ignorer » cède la place à « Passer outre, avec motif ». */}
+            <LocusBody brick={b} out={mode === "show" ? out : { ...out, actions: asking ? [] : out.actions?.filter((a) => a !== "ignore") }} variant="modal" onAction={(a) => onAction(b, out, a)} />
+          </div>
+        ))}
+        {asking ? (
+          <form className="grid gap-2 border-t border-border pt-3" onSubmit={(e) => { e.preventDefault(); if (ok) onOverride((motif ?? "").trim()); }}>
+            <label htmlFor="lgc-motif" className="text-[13px] font-medium">{t.motif}</label>
+            <textarea id="lgc-motif" data-autofocus autoFocus rows={2} maxLength={200} required value={motif ?? ""} onChange={(e) => setMotif(e.target.value)} placeholder={t.motifPh} className="resize-y rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-xs placeholder:text-muted-foreground" />
+            <div className="flex flex-wrap justify-end gap-2">
+              <Button onClick={mode === "override" ? onClose : () => setMotif(null)}>{mode === "override" ? t.close : lgc[lang].wizard.back}</Button>
+              <Button type="submit" variant="primary" disabled={!ok}>{mode === "validate" ? t.confirmOverride : t.confirmIgnore}</Button>
+            </div>
+          </form>
+        ) : mode === "validate" ? (
+          <div className="flex flex-wrap justify-end gap-2">
+            <Button onClick={onClose} data-autofocus>{t.editOrder}</Button>
+            {alert ? <Button onClick={() => setMotif("")}>{t.override}</Button> : <Button variant="primary" onClick={onValidate}>{t.validateOrder}</Button>}
+          </div>
+        ) : (
+          <Button onClick={onClose} className="self-end">{t.close}</Button>
+        )}
+      </section>
     </div>
   );
 }
@@ -344,9 +440,10 @@ function LetterDialog({ lines, onClose }: { lines: string[]; onClose: () => void
   const lang = useLang();
   const t = lgc[lang].out;
   const [copied, setCopied] = React.useState(false);
+  const ref = useDialogFocus<HTMLElement>();
   return (
     <div className="absolute inset-0 z-40 grid place-items-center bg-black/50 p-4">
-      <section role="dialog" aria-modal="true" aria-label={t.letter} className={cn(POP, "flex max-h-[90dvh] w-[min(560px,100%)] flex-col gap-3 overflow-auto p-5 text-sm")}>
+      <section ref={ref} role="dialog" aria-modal="true" aria-label={t.letter} className={cn(POP, "flex max-h-[90dvh] w-[min(560px,100%)] flex-col gap-3 overflow-auto p-5 text-sm")}>
         <div className="flex items-center gap-2"><LocusTag /><span className="flex-1 font-semibold">{t.letter}</span>
           <button type="button" onClick={onClose} aria-label={t.close} className={buttonClass({ variant: "ghost", size: "icon", className: "size-8" })}><X aria-hidden="true" /></button>
         </div>

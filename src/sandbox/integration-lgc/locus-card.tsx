@@ -7,7 +7,7 @@ import { lgc, route } from "@/i18n";
 import { useLang } from "@/i18n/lang";
 import { buttonClass } from "@/components/ui/button";
 import type { LocusOut, OutAction } from "@/data/integration-lgc/blocks";
-import { blockOutput } from "./api";
+import { blockOutput, errorText } from "./api";
 import type { Brick } from "./model";
 
 /**
@@ -47,7 +47,7 @@ export function AskBox({ brick, sugg = [], court = true }: { brick: Brick; sugg?
       setState({ q: text, out: r.output });
       setQ("");
     } catch (e) {
-      setState({ q: text, error: e instanceof Error && e.message.length > 6 ? e.message : t.error });
+      setState({ q: text, error: errorText(e, t) });
     }
   };
   return (

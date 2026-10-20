@@ -12,12 +12,20 @@ import type { Brick } from "./model";
 
 export type Via = "live" | "replay";
 
+/** Une erreur de route : le statut suffit au navigateur pour afficher un message dans la langue de l'UI. */
+export class ApiError extends Error {
+  constructor(readonly status: number) { super(`HTTP ${status}`); }
+}
+
 async function post<T>(url: string, body: unknown, signal?: AbortSignal): Promise<T> {
   const r = await fetchLive(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body), signal });
-  const j = (await r.json().catch(() => null)) as (T & { error?: string }) | null;
-  if (!r.ok || !j) throw new Error(j?.error || String(r.status));
+  const j = (await r.json().catch(() => null)) as T | null;
+  if (!r.ok || !j) throw new ApiError(r.status);
   return j;
 }
+
+/** Le message à afficher pour une erreur de route : données réelles refusées (422), ou indisponibilité. */
+export const errorText = (e: unknown, t: { realData: string; error: string }) => (e instanceof ApiError && e.status === 422 ? t.realData : t.error);
 
 export function blockOutput(b: Brick, question?: string, signal?: AbortSignal) {
   const api = TOOLS[question ? "question" : b.tool ?? "controle"].api;

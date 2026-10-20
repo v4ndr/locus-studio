@@ -8,7 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { Segmented } from "@/components/ui/segmented";
 import { FIELDS } from "@/data/integration-lgc/fournier";
 import { HOOKS, TOOLS } from "@/data/integration-lgc/blocks";
-import { apiCall, type Brick } from "./model";
+import { apiCall, coreCall, type Brick } from "./model";
 
 /** « Mes briques » : déclencheur, outil, affichage, interrupteur, Modifier, flux et appel API. */
 export function MyBricks({ bricks, onToggle, onEdit, onRemove, onReset, onClose }: {
@@ -57,7 +57,8 @@ function Details({ b }: { b: Brick }) {
   const t = lgc[lang];
   const [tab, setTab] = React.useState<"flow" | "api">("api");
   const [copied, setCopied] = React.useState(false);
-  const code = apiCall(b);
+  const code = apiCall(b, t.list.apiComment);
+  const core = coreCall(b, t.list.coreQuestion);
   const copy = async () => {
     try { await navigator.clipboard.writeText(code); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch {}
   };
@@ -79,6 +80,11 @@ function Details({ b }: { b: Brick }) {
           <span className="text-xs font-medium">{t.list.apiPreview}</span>
           <span className="text-xs text-muted-foreground">{t.list.apiNote}</span>
           <pre className="m-0 max-h-72 overflow-auto whitespace-pre-wrap break-words font-mono text-xs leading-[1.55] text-foreground">{code}</pre>
+          <div className="mt-1 grid gap-1 border-t border-border pt-2.5">
+            <span className="text-xs font-medium">{t.list.coreTitle}</span>
+            <span className="text-xs text-muted-foreground">{b.kind === "workflow" ? (core ? t.list.coreWorkflow : t.list.coreNone) : t.list.coreNote}</span>
+          </div>
+          {core && <pre className="m-0 max-h-72 overflow-auto whitespace-pre-wrap break-words font-mono text-xs leading-[1.55] text-foreground">{core}</pre>}
         </>
       ) : (
         <div className="grid gap-2.5 py-1">
