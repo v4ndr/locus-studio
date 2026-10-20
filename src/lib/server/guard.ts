@@ -63,10 +63,20 @@ function hasLiveToken(req: Request): boolean {
   return timingSafeEqual(a, b);
 }
 
+/**
+ * L'adresse du client, pour le rate limit. Le premier élément de
+ * `x-forwarded-for` est écrit par le client : il ne sert que là où la
+ * plateforme réécrit l'en-tête. Sur Vercel, `x-real-ip` et
+ * `x-forwarded-for` sont posés par la plateforme (les valeurs du client
+ * sont écrasées). Ailleurs (derrière un reverse proxy), on prend le
+ * dernier maillon, celui qu'ajoute le proxy le plus proche.
+ */
 export function clientIp(req: Request): string {
-  const xff = req.headers.get("x-forwarded-for");
-  if (xff) return xff.split(",")[0]!.trim() || "inconnue";
-  return req.headers.get("x-real-ip")?.trim() || "inconnue";
+  const xff = (req.headers.get("x-forwarded-for") ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+  if (process.env.VERCEL || process.env.VERCEL_ENV) {
+    return req.headers.get("x-real-ip")?.trim() || xff[0] || "inconnue";
+  }
+  return xff.at(-1) || req.headers.get("x-real-ip")?.trim() || "inconnue";
 }
 
 const intEnv = (name: string, fallback: number) => {

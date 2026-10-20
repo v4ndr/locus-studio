@@ -137,6 +137,9 @@ Les routes qui peuvent dépenser un appel de modèle ou des crédits Locus
 - **Rate limit par IP** (hors `next dev`) : 20 requêtes live par heure, 200
   rejouées. En mémoire de l'instance, ou Upstash Redis (REST) si
   `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` sont posés.
+  L'adresse vient de `x-real-ip` sur Vercel (posé par la plateforme), et du
+  dernier maillon de `x-forwarded-for` ailleurs : un `next start` exposé
+  sans reverse proxy laisse le client choisir son adresse.
 - `maxDuration` à 60 s ; `/api/locus/logic` n'accepte que des `mku_key` en
   liste blanche ; `/api/locus/status` renvoie `{ ok }` seulement en
   production ; `/api/note` refuse un NIR ou une date de naissance complète.
