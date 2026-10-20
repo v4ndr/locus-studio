@@ -12,7 +12,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "chatbot:index": "node --experimental-strip-types scripts/chatbot-index.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.133.0",

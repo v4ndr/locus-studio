@@ -65,7 +65,8 @@ function parse(src: string): Block[] {
       out.push({ type: "ol", items });
       continue;
     }
-    const para: string[] = [];
+    // Une ligne qu'aucun bloc ne reconnaît (« # » seul, texte en cours de révélation) reste un paragraphe : la boucle avance toujours.
+    const para: string[] = [lines[i++]];
     while (i < lines.length && lines[i].trim() && !/^(#|>|\||\s*[-*•]\s|\s*\d+[.)]\s)/.test(lines[i])) { para.push(lines[i]); i++; }
     out.push({ type: "p", text: para.join(" ") });
   }

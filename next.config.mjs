@@ -33,6 +33,8 @@ const nextConfig = {
   reactStrictMode: true,
   typedRoutes: false,
   poweredByHeader: false,
+  // L'index du RAG simple du chatbot, lu depuis le disque par la route (s'il est dans le dépôt).
+  outputFileTracingIncludes: { "/api/chatbot/rag": ["./src/data/chatbot/*.json"] },
   async headers() {
     return [{
       source: "/(.*)",
