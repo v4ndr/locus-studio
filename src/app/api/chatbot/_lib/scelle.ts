@@ -7,17 +7,31 @@ import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:
  * et les clés des questions, qui ne doivent pas franchir le navigateur.
  * Sans état côté serveur : n'importe quelle instance peut rouvrir le jeton.
  *
- * Clé : `STUDIO_STATE_SECRET`, sinon dérivée de `LOCUS_API_KEY` (déjà un
- * secret serveur, et sans clé il n'y a pas de live).
+ * Clé : `STUDIO_STATE_SECRET` (32 caractères au moins). En production, sans
+ * lui, rien n'est scellé ni rouvert : le formulaire d'élicitation répond par
+ * une erreur propre plutôt que de retomber sur une clé devinable. Sous
+ * `next dev` seulement, la clé est dérivée de `LOCUS_API_KEY` pour essayer le
+ * live sans configuration de plus.
  */
 
 const TTL_MS = 30 * 60 * 1000;
 
+const MIN_SECRET = 32;
+let avertie = false;
+
 function cle(): Buffer | null {
-  const secret = process.env.STUDIO_STATE_SECRET?.trim() || process.env.LOCUS_API_KEY?.trim();
-  if (!secret) return null;
+  const propre = process.env.STUDIO_STATE_SECRET?.trim();
+  const dev = process.env.NODE_ENV === "development";
+  const secret = propre && propre.length >= MIN_SECRET ? propre : dev ? process.env.LOCUS_API_KEY?.trim() : undefined;
+  if (!secret) {
+    if (!avertie) { avertie = true; console.error(`[chatbot] STUDIO_STATE_SECRET absent ou trop court (${MIN_SECRET} caractères au moins) : reprise d'élicitation désactivée`); }
+    return null;
+  }
   return createHash("sha256").update(`studio-chatbot-reprise:${secret}`).digest();
 }
+
+/** Vrai si un jeton peut être scellé ici (sinon, pas de formulaire d'élicitation). */
+export const scellable = () => cle() !== null;
 
 export function sceller(data: unknown): string | null {
   const k = cle();
@@ -33,6 +47,7 @@ export function ouvrir<T>(token: unknown): T | null {
   if (!k || typeof token !== "string" || token.length > 200_000) return null;
   try {
     const raw = Buffer.from(token, "base64url");
+    if (raw.length < 29) return null;
     const d = createDecipheriv("aes-256-gcm", k, raw.subarray(0, 12));
     d.setAuthTag(raw.subarray(12, 28));
     const txt = Buffer.concat([d.update(raw.subarray(28)), d.final()]).toString("utf8");

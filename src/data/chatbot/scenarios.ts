@@ -64,7 +64,7 @@ const labelOf = (c: Clarification | undefined, key: string | undefined) => c?.op
 const KETO_T = {
   fr: {
     noansm: ["Prudence, l'interaction n'a pas pu être vérifiée.", "La source des RCP est désactivée : Locus ne peut pas confirmer les interactions avec le ramipril et le furosémide.", ["Réactivez la source ANSM pour une réponse complète."]],
-    gel: ["Le gel est une option, avec précautions.", "Le passage systémique du kétoprofène en gel est faible, mais les AINS topiques exposent à une photosensibilisation.", ["Pas d'exposition au soleil pendant le traitement et 2 semaines après.", "Durée courte, sur peau saine."]],
+    gel: ["Le gel est une option, avec précautions.", "Le passage systémique du kétoprofène en gel est faible, mais les AINS topiques exposent à une photosensibilisation.", ["Pas d'exposition au soleil ni aux UV pendant le traitement et 2 semaines après.", "Durée courte, sur peau saine.", "Vérifier que la lombalgie figure dans les indications du RCP du gel."]],
     lt30: ["Non, contre-indiqué.", "Les AINS sont contre-indiqués en cas d'insuffisance rénale sévère.", ["Pas d'AINS par voie générale.", "Maintien de l'activité, réévaluation à 2 semaines."]],
     inconnu: ["Pas avant de connaître sa fonction rénale.", "Sous IEC et diurétique, un AINS expose à une insuffisance rénale aiguë.", ["Doser la créatinine avant toute prescription d'AINS.", "En attendant, maintien de l'activité."]],
     why: "Un AINS associé à un IEC et à un diurétique expose à une insuffisance rénale aiguë, surtout chez le sujet âgé.",
@@ -77,7 +77,7 @@ const KETO_T = {
   },
   en: {
     noansm: ["Caution, the interaction could not be checked.", "The SmPC source is turned off: Locus cannot confirm interactions with ramipril and furosemide.", ["Turn the ANSM source back on for a complete answer."]],
-    gel: ["The gel is an option, with precautions.", "Systemic absorption of ketoprofen gel is low, but topical NSAIDs carry a photosensitivity risk.", ["No sun exposure during treatment and for 2 weeks after.", "Short course, on intact skin."]],
+    gel: ["The gel is an option, with precautions.", "Systemic absorption of ketoprofen gel is low, but topical NSAIDs carry a photosensitivity risk.", ["No sun or UV exposure during treatment and for 2 weeks after.", "Short course, on intact skin.", "Check that low back pain is listed in the gel's SmPC indications."]],
     lt30: ["No, contraindicated.", "NSAIDs are contraindicated in severe renal impairment.", ["No systemic NSAIDs.", "Stay active, reassess at 2 weeks."]],
     inconnu: ["Not before knowing the renal function.", "With an ACE inhibitor and a diuretic, an NSAID carries a risk of acute kidney injury.", ["Check creatinine before any NSAID prescription.", "Meanwhile, stay active."]],
     why: "An NSAID combined with an ACE inhibitor and a diuretic carries a risk of acute kidney injury, especially in older patients.",
@@ -117,7 +117,7 @@ const keto: Scenario = {
     const t = KETO_T[lang];
     const pts = (arr: string[], cites: SourceKey[][]): Point[] => arr.map((text, i) => ({ text, cite: cites[i] ?? [] }));
     if (!s.ansm) { const [v, w, l] = t.noansm as [string, string, string[]]; return { alert: "nv", verdict: v, why: w, points: pts(l, []) }; }
-    if (s.desamb && p.desamb === "gel") { const [v, w, l] = t.gel as [string, string, string[]]; return { alert: null, verdict: v, why: w, points: pts(l, [["ansm"], ["ansm"]]) }; }
+    if (s.desamb && p.desamb === "gel") { const [v, w, l] = t.gel as [string, string, string[]]; return { alert: null, verdict: v, why: w, points: pts(l, [["ansm"], ["ansm"], ["ansm"]]) }; }
     if (s.elic && p.elic === "lt30") { const [v, w, l] = t.lt30 as [string, string, string[]]; return { alert: "ci", verdict: v, why: w, points: pts(l, [["ansm"], ["has"]]), also: s.deep ? { text: t.also, cite: ["ansm"] } : undefined }; }
     if (s.elic && p.elic === "inconnu") { const [v, w, l] = t.inconnu as [string, string, string[]]; return { alert: "risk", verdict: v, why: w, points: pts(l, [["ansm"], ["has"]]), also: s.deep ? { text: t.also, cite: ["ansm"] } : undefined }; }
     const list = s.court ? t.short : t.long;

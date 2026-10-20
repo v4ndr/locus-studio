@@ -61,6 +61,11 @@ const fr = {
     ragOff: "RAG simple non configuré sur ce déploiement.",
     replayOnly: "Le mode live n'est pas ouvert sur ce déploiement : seules les questions suggérées sont rejouées.",
     tooLong: "Question trop longue.",
+    empty: "Question vide.",
+    unavailable: "Locus est momentanément indisponible. Réessayez.",
+    timeout: "Locus a mis trop de temps à répondre. Réessayez, ou désactivez le mode approfondi.",
+    credits: "Le compte sandbox n'a plus de crédit pour le moment. Les questions suggérées restent disponibles en scénario rejoué.",
+    elicOff: "L'élicitation n'est pas configurée sur ce déploiement. Désactivez-la pour obtenir une réponse.",
     /** Affiché au-dessus d'une réponse live de Locus quand l'interface n'est pas en français (core répond en français). */
     frenchNote: "",
   },
@@ -123,6 +128,11 @@ const en: typeof fr = {
     ragOff: "Basic RAG is not configured on this deployment.",
     replayOnly: "Live mode is not open on this deployment: only suggested questions are replayed.",
     tooLong: "Question too long.",
+    empty: "Empty question.",
+    unavailable: "Locus is temporarily unavailable. Try again.",
+    timeout: "Locus took too long to answer. Try again, or turn off in-depth mode.",
+    credits: "The sandbox account is out of credit for now. Suggested questions are still available as replayed scenarios.",
+    elicOff: "Elicitation is not configured on this deployment. Turn it off to get an answer.",
     frenchNote: "Answer in French (French guidelines)",
   },
 };

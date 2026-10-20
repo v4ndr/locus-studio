@@ -10,7 +10,7 @@ import { Button, ButtonLink } from "@/components/ui/button";
 import { Md } from "@/components/md";
 import { citedSources, DEFAULT_SETTINGS, pendingClarifications, SCENARIOS, type Picks, type Scenario, type Settings, type SourceKey } from "@/data/chatbot/scenarios";
 import type { ChatEvent, ChatSource, FormQuestion } from "./events";
-import { APP_SURFACE, coreParams, type LocusSettings } from "./request";
+import { APP_SURFACE, APP_VERSION, coreParams, type LocusSettings } from "./request";
 import { chatStream, formatCourt, sansRenvois } from "./stream";
 import { reveal, useProgress } from "./use-progress";
 import { AlertBadge, AskChips, ColumnHead, Panel, SettingsPanel, SourceList, Steps, Sup } from "./parts";
@@ -101,14 +101,17 @@ export function ChatbotPage({ lang, connected }: { lang: Lang; connected: boolea
         setLive((l) => l && { ...l, rag: applyRag(l.rag, ev) });
       }
     })();
-    const locusP = consommer(chatStream("/api/chatbot/locus", { lang, query: question, settings: ls }, ctrl.signal, t.live.error), ctrl, versRejoue);
+    // Plus de crédit : une question suggérée retombe sur son scénario rejoué, avec la raison affichée.
+    const sansCredit = () => { if (!sc) return false; versRejoue(); setNotice(t.live.credits); return true; };
+    const locusP = consommer(chatStream("/api/chatbot/locus", { lang, query: question, settings: ls }, ctrl.signal, t.live.error), ctrl, versRejoue, sansCredit);
     await Promise.all([ragP, locusP]);
   };
 
-  async function consommer(gen: AsyncGenerator<ChatEvent>, ctrl: AbortController, versRejoue: () => void) {
+  async function consommer(gen: AsyncGenerator<ChatEvent>, ctrl: AbortController, versRejoue: () => void, sansCredit?: () => boolean) {
     for await (const ev of gen) {
       if (ctrl.signal.aborted) return;
       if (ev.t === "replay") return versRejoue();
+      if (ev.t === "error" && ev.code === "credits" && sansCredit?.()) return;
       setLive((l) => {
         if (!l) return l;
         const loc = l.locus;
@@ -145,6 +148,7 @@ export function ChatbotPage({ lang, connected }: { lang: Lang; connected: boolea
     if (!q) return;
     if (!connected) { setGate(true); return; }
     setGate(false);
+    setDraft("");
     const sc = SCENARIOS.find((x) => x.question[lang] === q || x.suggestion[lang] === q);
     void lancer(q, settings, sc);
   };
@@ -200,7 +204,7 @@ export function ChatbotPage({ lang, connected }: { lang: Lang; connected: boolea
                 value={draft}
                 maxLength={1000}
                 onChange={(e) => setDraft(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); e.currentTarget.form?.requestSubmit(); } }}
+                onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); e.currentTarget.form?.requestSubmit(); } }}
                 placeholder={t.dock.placeholder}
                 className="min-w-0 flex-1 resize-none bg-transparent text-sm leading-normal text-foreground outline-none placeholder:text-muted-foreground"
               />
@@ -242,7 +246,7 @@ function ReplayRag({ lang, sc, p }: { lang: Lang; sc: Scenario; p: number }) {
   const shown = reveal(full, Math.min(1, p / 0.7));
   return (
     <RagCard lang={lang}>
-      <div className="flex flex-col gap-2.5 text-sm leading-relaxed">{shown.split("\n").map((x, i) => <p key={i} className="m-0">{x}</p>)}</div>
+      <div aria-live="polite" aria-busy={p < 1} className="flex flex-col gap-2.5 text-sm leading-relaxed">{shown.split("\n").map((x, i) => <p key={i} className="m-0">{x}</p>)}</div>
       {p >= 0.7 && <SourceList sources={[{ n: 1, label: r.cite }]} numbered={false} />}
     </RagCard>
   );
@@ -255,9 +259,11 @@ function Attente() {
 function LiveRag({ lang, st, inline }: { lang: Lang; st: ColState; inline: boolean }) {
   return (
     <RagCard lang={lang}>
-      {st.status === "error" ? <p className="m-0 text-sm text-muted-foreground">{st.error}</p>
-        : st.text ? <Md text={inline ? st.text : sansRenvois(st.text)} className="!text-sm" />
-        : <Attente />}
+      <div aria-live="polite" aria-busy={st.status === "loading"}>
+        {st.status === "error" ? <p className="m-0 text-sm text-muted-foreground">{st.error}</p>
+          : st.text ? <Md text={inline ? st.text : sansRenvois(st.text)} className="!text-sm" />
+          : <Attente />}
+      </div>
       {st.status === "done" && <SourceList sources={st.sources} numbered={inline} />}
     </RagCard>
   );
@@ -300,7 +306,7 @@ function ReplayLocus({ lang, sc, s, picks, p, meta, onPick }: { lang: Lang; sc: 
         </Panel>
       )}
       {s.reason && pend.done && <Steps title={t.locus.reasoning} steps={steps.slice(0, nSteps)} />}
-      <div className="flex flex-col gap-2.5 text-sm leading-relaxed">
+      <div aria-live="polite" aria-busy={pend.done && p < 1} className="flex flex-col gap-2.5 text-sm leading-relaxed">
         {!pend.done ? (
           <>
             <p className="m-0 font-semibold">{t.locus.waitVerdict}</p>
@@ -378,7 +384,7 @@ function LiveLocus({ lang, run, settings, meta, onAnswer, onSubmit, onRerun }: {
       )}
       {settings.reason && st.steps.length > 0 && <Steps title={t.locus.reasoning} steps={st.steps} />}
       {st.text && t.live.frenchNote && <span className="self-start rounded-md border border-border bg-background px-2 py-0.5 text-xs font-medium text-muted-foreground">{t.live.frenchNote}</span>}
-      <div className="text-sm leading-relaxed">
+      <div aria-live="polite" aria-busy={st.status === "loading" || (!!st.text && p < 1)} className="text-sm leading-relaxed">
         {st.status === "error" ? <p className="m-0 text-muted-foreground">{st.error}</p>
           : st.form && !st.text ? (
             <div className="flex flex-col gap-2.5">
@@ -412,6 +418,7 @@ function ApiPanel({ lang, question, settings, picks, sc, live }: { lang: Lang; q
     ...(slots.length ? { slot_answers: slots, elicitation_round: 1, contexte: t.api.contexte } : {}),
     app_surface: APP_SURFACE,
     app_platform: "web",
+    app_version: APP_VERSION,
   };
   const text = `POST /v2/retrieve/stream\nAuthorization: Bearer lsk_…\nX-Locus-User-Ref: <${t.api.account}>\nContent-Type: application/json\n\n${JSON.stringify(body, null, 2)}`;
   const copy = async () => {

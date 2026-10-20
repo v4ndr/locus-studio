@@ -3,9 +3,9 @@ import { coreConfig, type CoreConfig } from "@/locus/config";
 import { readNdjson } from "@/locus/ndjson";
 import { stripRuleIds } from "@/locus/contract";
 import { chatbot, type Lang } from "@/i18n";
-import { APP_SURFACE, coreParams, HAS_SOURCES, type LocusSettings } from "@/sandbox/chatbot/request";
+import { ANSM_SOURCES, APP_SURFACE, APP_VERSION, coreParams, HAS_SOURCES, type LocusSettings } from "@/sandbox/chatbot/request";
 import type { ChatEvent, ChatSource, FormAnswer, FormQuestion } from "@/sandbox/chatbot/events";
-import { ouvrir, sceller } from "./scelle";
+import { ouvrir, scellable, sceller } from "./scelle";
 
 /**
  * La colonne Locus du chatbot : `POST {LOCUS_CORE_URL}/v2/retrieve/stream`,
@@ -14,8 +14,6 @@ import { ouvrir, sceller } from "./scelle";
  * identifiants de règles, les sondes de délibération, le contexte de reprise.
  */
 
-const APP_VERSION = "0.1.0";
-const INDISPONIBLE = { fr: "Locus est momentanément indisponible. Réessayez.", en: "Locus is temporarily unavailable. Try again." };
 
 // TODO(accès) : `studio:${await getStudioUserId()}` quand src/lib/server/user.ts (PR #22) sera mergée.
 const userRef = () => "studio";
@@ -33,18 +31,21 @@ interface Reprise {
 
 /* ---------- Sources HAS connues de core (cache d'une heure) ---------- */
 
-let sourcesCache: { at: number; ids: string[] } | null = null;
-async function hasSources(cfg: CoreConfig): Promise<string[]> {
-  if (sourcesCache && Date.now() - sourcesCache.at < 3_600_000) return sourcesCache.ids;
+type Known = { has: string[]; ansm: string[] };
+let sourcesCache: { at: number; known: Known } | null = null;
+/** Les éditeurs HAS et ANSM que core connaît vraiment (une liste `sources` inconnue de core ne retrouverait rien). */
+async function knownSources(cfg: CoreConfig): Promise<Known> {
+  if (sourcesCache && Date.now() - sourcesCache.at < 3_600_000) return sourcesCache.known;
   try {
     const r = await fetch(`${cfg.url}/v2/sources`, { headers: { Authorization: `Bearer ${cfg.key}` }, signal: AbortSignal.timeout(5000), cache: "no-store" });
     if (r.ok) {
       const all = ((await r.json()) as { id: string }[]).map((s) => s.id);
-      const ids = HAS_SOURCES.filter((id) => all.some((a) => a.toLowerCase() === id.toLowerCase()));
-      if (ids.length) { sourcesCache = { at: Date.now(), ids }; return ids; }
+      const garder = (ids: string[]) => ids.filter((id) => all.includes(id));
+      const known = { has: garder(HAS_SOURCES), ansm: garder(ANSM_SOURCES) };
+      if (known.has.length && known.ansm.length) { sourcesCache = { at: Date.now(), known }; return known; }
     }
   } catch { /* core lent : on garde la liste par défaut */ }
-  return ["HAS"];
+  return { has: ["HAS"], ansm: ["ANSM"] };
 }
 
 /* ---------- Citations : identifiants de core → renvois numérotés ---------- */
@@ -156,11 +157,13 @@ export async function* locusStream(input: LocusInput): AsyncGenerator<ChatEvent>
   } else {
     query = input.query ?? "";
     settings = input.settings!;
+    // Sans clé de scellement, un formulaire ne pourrait pas être repris : refus avant toute dépense chez core.
+    if (settings.elic && !scellable()) { yield { t: "error", detail: t.live.elicOff, code: "elic_off" }; return; }
   }
 
   const body = {
     query,
-    ...coreParams(settings, settings.has ? await hasSources(cfg) : undefined),
+    ...coreParams(settings, await knownSources(cfg)),
     ...extra,
     app_surface: APP_SURFACE,
     app_platform: "web",
@@ -179,12 +182,15 @@ export async function* locusStream(input: LocusInput): AsyncGenerator<ChatEvent>
     });
   } catch (e) {
     console.error("[chatbot/locus] injoignable", e);
-    yield { t: "error", detail: INDISPONIBLE[lang] };
+    yield { t: "error", detail: estTimeout(e) ? t.live.timeout : t.live.unavailable, code: estTimeout(e) ? "timeout" : undefined };
     return;
   }
   if (!res.ok || !res.body) {
-    console.error("[chatbot/locus]", res.status, (await res.text().catch(() => "")).slice(0, 300));
-    yield { t: "error", detail: INDISPONIBLE[lang] };
+    const txt = (await res.text().catch(() => "")).slice(0, 300);
+    console.error("[chatbot/locus]", res.status, txt);
+    // 402 CREDITS_EXHAUSTED : le compte de la clé n'a plus de crédit. Le détail de core ne sort pas.
+    if (res.status === 402 || txt.includes("CREDITS_EXHAUSTED")) { yield { t: "error", detail: t.live.credits, code: "credits" }; return; }
+    yield { t: "error", detail: t.live.unavailable };
     return;
   }
 
@@ -210,7 +216,7 @@ export async function* locusStream(input: LocusInput): AsyncGenerator<ChatEvent>
           break;
         case "error":
           console.error("[chatbot/locus] erreur de flux", ev.detail);
-          yield { t: "error", detail: INDISPONIBLE[lang] };
+          yield { t: "error", detail: t.live.unavailable };
           return;
         case "done": {
           const p = (ev.payload ?? {}) as Payload;
@@ -220,7 +226,7 @@ export async function* locusStream(input: LocusInput): AsyncGenerator<ChatEvent>
             const values = o.form.map((q) => (q.options ?? []).map((x) => x.value));
             const reprise: Reprise = { query, settings, round: o.round ?? 0, keys, values, skip: o.form.map((q) => q.skip?.value ?? "__passer__"), contexte: o.contexte ?? null, deduites: o.deduites ?? [] };
             const token = sceller(reprise);
-            if (!token) { yield { t: "error", detail: INDISPONIBLE[lang] }; return; }
+            if (!token) { yield { t: "error", detail: t.live.unavailable }; return; }
             const questions: FormQuestion[] = o.form.map((q, i) => {
               const dep = q.depends_on ? keys.indexOf(q.depends_on.key) : -1;
               return {
@@ -245,6 +251,10 @@ export async function* locusStream(input: LocusInput): AsyncGenerator<ChatEvent>
     }
   } catch (e) {
     console.error("[chatbot/locus] flux interrompu", e);
+    if (estTimeout(e)) { yield { t: "error", detail: t.live.timeout, code: "timeout" }; return; }
   }
-  yield { t: "error", detail: INDISPONIBLE[lang] };
+  // Flux coupé avant la ligne `done` (NDJSON tronqué, connexion perdue).
+  yield { t: "error", detail: t.live.unavailable };
 }
+
+const estTimeout = (e: unknown) => e instanceof Error && (e.name === "TimeoutError" || (e.cause instanceof Error && e.cause.name === "TimeoutError"));
