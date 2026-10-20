@@ -3,7 +3,7 @@ import * as React from "react";
 import Link from "./nav";
 import { useRouter } from "./nav";
 import type { PatientView } from "@/studio/types";
-import { Header, Omni, CtaLink, Kbd, I, useShortcuts } from "./chrome";
+import { Header, Omni, CtaLink, Kbd, I, useShortcuts, useT } from "./chrome";
 import { ComposeCard, useCompose } from "./compose";
 import { useRencontre } from "@/store/rencontre";
 import { cn } from "@/lib/cn";
@@ -11,6 +11,7 @@ import { cn } from "@/lib/cn";
 /** Les actions générées : une liste de documents, une question, un bouton. */
 export function ActionsView({ v, praticien }: { v: PatientView; praticien: { initials: string } }) {
   const router = useRouter();
+  const { t: tx } = useT();
   const r = v.rencontre;
   const { me, dispatch } = useRencontre(v.ref.id);
   const [open, setOpen] = React.useState<string | null>(null);
@@ -27,14 +28,14 @@ export function ActionsView({ v, praticien }: { v: PatientView; praticien: { ini
     return a;
   });
   const todo = docs.filter((d) => d.statut === "relire" || d.statut === "question").length;
-  const statutLabel = (s: string) => ({ pret: "prêt", relire: "à relire", question: "1 question", attente: "en attente" }[s] ?? s);
+  const statutLabel = (s: string) => tx.actions.statut[s] ?? s;
   const color = (s: string) => (s === "pret" ? "var(--ok)" : s === "attente" ? "var(--dim-2)" : "var(--warn)");
 
   return (
     <div className="flex min-h-dvh flex-col">
       <Header praticien={praticien} patient={{ id: v.ref.id, nom: v.ref.nom, initials: v.ref.initials, meta: v.rdv?.heure ?? v.meta }} back={`/p/${v.ref.id}/rencontre`} />
       <main className="mx-auto flex w-full max-w-[720px] flex-1 flex-col gap-6 px-4 pb-8 pt-8 sm:px-6 sm:pt-14">
-        <h1 className="m-0 text-[22px] font-medium sm:text-[26px] tracking-[-.02em]">{docs.length} document{docs.length > 1 ? "s" : ""} prêt{docs.length > 1 ? "s" : ""}{todo ? ` · ${todo} à regarder` : ""}</h1>
+        <h1 className="m-0 text-[22px] font-medium sm:text-[26px] tracking-[-.02em]">{tx.actions.title(docs.length, todo)}</h1>
         {r.question && !answer && (
           <div className="flex flex-col gap-3 rounded-[14px] bg-agent-soft-2 px-5 py-[18px]">
             <span className="text-[15px]">{r.question.texte}</span>
@@ -42,7 +43,7 @@ export function ActionsView({ v, praticien }: { v: PatientView; praticien: { ini
           </div>
         )}
         <section className="flex flex-col gap-0.5 rounded-2xl border border-line-3 bg-paper p-1.5">
-          {docs.length === 0 && <div className="px-4 py-3 text-sm text-dim-2">Aucune action détectée.</div>}
+          {docs.length === 0 && <div className="px-4 py-3 text-sm text-dim-2">{tx.actions.none}</div>}
           {docs.map((d) => {
             const isOpen = open === d.id;
             return (
@@ -56,7 +57,7 @@ export function ActionsView({ v, praticien }: { v: PatientView; praticien: { ini
                 {isOpen && (
                   <div className="flex flex-col px-4 pb-4 pt-1 md:pl-[58px]">
                     {d.fields.map((f, i) => <div key={i} className="flex gap-4 border-t border-soft py-2.5 text-sm leading-[1.45]"><span className="w-[110px] shrink-0 text-dim-2">{f.k}</span><span className="flex-1">{f.v}</span></div>)}
-                    <span className="flex flex-wrap gap-4 pt-2.5 text-xs"><Link href={`/p/${v.ref.id}/rencontre`} className="hover:underline" style={{ color: "var(--agent)" }}>Voir la phrase dictée →</Link><Link href={`/p/${v.ref.id}/signature?doc=${encodeURIComponent(d.id)}`} className="hover:underline" style={{ color: "var(--agent)" }}>Voir le document tel qu'il sera signé →</Link></span>
+                    <span className="flex flex-wrap gap-4 pt-2.5 text-xs"><Link href={`/p/${v.ref.id}/rencontre`} className="hover:underline" style={{ color: "var(--agent)" }}>{tx.actions.dictated}</Link><Link href={`/p/${v.ref.id}/signature?doc=${encodeURIComponent(d.id)}`} className="hover:underline" style={{ color: "var(--agent)" }}>{tx.actions.asSigned}</Link></span>
                   </div>
                 )}
               </div>
@@ -64,7 +65,7 @@ export function ActionsView({ v, praticien }: { v: PatientView; praticien: { ini
           })}
         </section>
       </main>
-      <Omni placeholder="« Ajoute un bon de transport », « passe la kiné à domicile »…" onSubmit={(t) => composer.run({ texte: t, patientId: v.ref.id, ecran: "actions" })} suggestions={[{ k: "ajouter", t: "Ajoute un bon de transport assis" }, { k: "modifier", t: "Passe la kiné à domicile, 10 séances" }, { k: "retirer", t: "Retire le courrier, je l'appellerai" }, { k: "ordo", t: "Ajoute du paracétamol 1 g si douleur" }]} cta={<CtaLink href={`/p/${v.ref.id}/signature`}>Signer <Kbd dark>⌘⏎</Kbd></CtaLink>}>{composer.open && <ComposeCard state={composer.state} onClose={composer.reset} />}</Omni>
+      <Omni placeholder={tx.actions.omni} onSubmit={(t) => composer.run({ texte: t, patientId: v.ref.id, ecran: "actions" })} suggestions={[{ k: tx.keys.ajouter, t: "Ajoute un bon de transport assis" }, { k: tx.keys.modifier, t: "Passe la kiné à domicile, 10 séances" }, { k: tx.keys.retirer, t: "Retire le courrier, je l'appellerai" }, { k: tx.keys.ordo, t: "Ajoute du paracétamol 1 g si douleur" }]} cta={<CtaLink href={`/p/${v.ref.id}/signature`}>{tx.actions.sign} <Kbd dark>⌘⏎</Kbd></CtaLink>}>{composer.open && <ComposeCard state={composer.state} onClose={composer.reset} />}</Omni>
     </div>
   );
 }
