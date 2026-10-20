@@ -175,7 +175,8 @@ function nirPlausible(m: RegExpExecArray): boolean {
 const MOIS = "janvier|f[ée]vrier|mars|avril|mai|juin|juillet|ao[ûu]t|septembre|octobre|novembre|d[ée]cembre";
 const DATE_COMPLETE = `(?:\\d{1,2}[\\/.\\-]\\d{1,2}[\\/.\\-](?:19|20)\\d{2}|\\d{1,2}(?:er)?\\s+(?:${MOIS})\\s+(?:19|20)\\d{2}|(?:19|20)\\d{2}-\\d{2}-\\d{2})`;
 /** Une date complète précédée, à quelques mots près, d'un marqueur de naissance. */
-const NAISSANCE = new RegExp(`\\b(?:n[ée]e?|naissance|ddn|date de naiss\\.?)\\b[^.\\n]{0,24}?${DATE_COMPLETE}`, "i");
+// Pas de `\\b` : il ignore les lettres accentuées (« né le » n'aurait pas de frontière après « é »).
+const NAISSANCE = new RegExp(`(?<![\\p{L}\\d])(?:n[ée]e?|naissance|ddn|date de naiss\\.?)(?![\\p{L}\\d])[^.\\n]{0,24}?${DATE_COMPLETE}`, "iu");
 
 /**
  * Repère un identifiant réel dans un texte libre. Renvoie la raison du refus,
