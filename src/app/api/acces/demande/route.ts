@@ -1,6 +1,6 @@
 import { after } from "next/server";
 import { DemandeSchema, CONSENT_VERSION, type Demande, type DemandeErreur, type DemandeReponse } from "@/sandbox/acces/schema";
-import { clientIp, hit } from "@/lib/server/guard";
+import { clientIp, hit, sameOrigin } from "@/lib/server/guard";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
@@ -19,6 +19,10 @@ export const maxDuration = 30;
  *   `not_configured` en production.
  * - Après un 201, si `DWIGHT_WEBHOOK_URL` est posé, Dwight est prévenu
  *   (core ne le fait pas) ; un échec de Dwight n'échoue pas la demande.
+ * - Même origine seulement (`Origin`, `Sec-Fetch-Site`) et corps JSON : un
+ *   formulaire d'un autre site ne peut pas déposer de demande au nom de ses
+ *   visiteurs (et contourner le rate limit par IP en les multipliant).
+ * - Les journaux ne contiennent ni l'adresse ni les valeurs saisies.
  */
 
 const json = (body: DemandeReponse, status: number, headers: Record<string, string> = {}) =>
@@ -39,12 +43,23 @@ const intEnv = (name: string, fallback: number) => {
 
 const CHAMPS = new Set<keyof Demande>(["email", "full_name", "organisation", "org_type", "job_title", "country", "note", "consent", "locale"]);
 
-/** Le champ fautif d'un 422 de core, quand il est lisible (`detail.field`, ou `loc` FastAPI). */
+/**
+ * Le champ fautif d'un 422 de core, quand il est lisible : `loc` d'une erreur
+ * de validation FastAPI, ou le message de `INVALID_FIELD`
+ * (« Field 'organisation' contains forbidden content. »).
+ */
 function champ(detail: unknown): keyof Demande | undefined {
   const brut = Array.isArray(detail)
     ? (detail[0] as { loc?: unknown[] } | undefined)?.loc?.at(-1)
-    : (detail as { field?: unknown } | null)?.field;
+    : (detail as { field?: unknown } | null)?.field ?? /Field '([a-z_]+)'/.exec(String((detail as { message?: unknown } | null)?.message ?? ""))?.[1];
   return typeof brut === "string" && CHAMPS.has(brut as keyof Demande) ? (brut as keyof Demande) : undefined;
+}
+
+/** Un résumé d'erreur 422 de core sans les valeurs saisies (FastAPI renvoie `input`). */
+function resume(detail: unknown): string {
+  if (Array.isArray(detail)) return detail.slice(0, 5).map((e: { type?: unknown; loc?: unknown[] }) => `${String(e?.type ?? "?")}@${(e?.loc ?? []).map(String).join(".")}`).join(", ");
+  const code = (detail as { code?: unknown } | null)?.code;
+  return typeof code === "string" ? `${code}${champ(detail) ? ` ${champ(detail)}` : ""}` : "?";
 }
 
 async function prevenirDwight(d: Demande, id: string | null) {
@@ -79,6 +94,8 @@ async function prevenirDwight(d: Demande, id: string | null) {
 }
 
 export async function POST(req: Request) {
+  if (!sameOrigin(req)) return refus("invalid", 403);
+  if (!(req.headers.get("content-type") ?? "").toLowerCase().startsWith("application/json")) return refus("invalid", 415);
   const max = intEnv("STUDIO_ACCESS_RATE_LIMIT_PER_HOUR", 10);
   if (max > 0) {
     const { n, resetS } = await hit("acces", clientIp(req));
@@ -87,7 +104,11 @@ export async function POST(req: Request) {
   if (Number(req.headers.get("content-length") ?? 0) > 16_000) return refus("invalid", 413);
 
   let raw: unknown;
-  try { raw = await req.json(); } catch { return refus("invalid", 400); }
+  try {
+    const texte = await req.text();
+    if (texte.length > 16_000) return refus("invalid", 413);
+    raw = JSON.parse(texte);
+  } catch { return refus("invalid", 400); }
   const parsed = DemandeSchema.safeParse(raw);
   if (!parsed.success) {
     const issue = parsed.error.issues[0];
@@ -146,7 +167,7 @@ export async function POST(req: Request) {
   const code = (detail as { code?: unknown } | null)?.code;
   if (res.status === 422) {
     if (code === "EMAIL_NOT_PROFESSIONAL") return refus("perso", 422, "email");
-    console.error("[acces] core 422", JSON.stringify(detail).slice(0, 300));
+    console.error("[acces] core 422", resume(detail));
     return refus("invalid", 422, champ(detail));
   }
   if (res.status === 429) return refus("rate_limited", 429);

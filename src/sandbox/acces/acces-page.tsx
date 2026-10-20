@@ -38,6 +38,13 @@ function DemandeForm({ lang, onSent }: { lang: Lang; onSent: (email: string) => 
   const [erreurs, setErreurs] = React.useState<Erreurs>({});
   const [global, setGlobal] = React.useState<string | null>(null);
   const [envoi, setEnvoi] = React.useState(false);
+  // Après un envoi refusé, le premier champ fautif prend le focus : son libellé et son erreur sont lus.
+  const formRef = React.useRef<HTMLFormElement>(null);
+  const [focusErreur, setFocusErreur] = React.useState(0);
+  React.useEffect(() => {
+    if (focusErreur) formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
+  }, [focusErreur]);
+  const signaler = (errs: Erreurs) => { setErreurs(errs); setFocusErreur((n) => n + 1); };
 
   const perso = emailPerso(email);
 
@@ -65,7 +72,7 @@ function DemandeForm({ lang, onSent }: { lang: Lang; onSent: (email: string) => 
         const champ = issue.path[0] as keyof Demande;
         if (!errs[champ]) errs[champ] = messageChamp(champ, valeurs[champ] ?? "");
       }
-      setErreurs(errs);
+      signaler(errs);
       return;
     }
     setErreurs({});
@@ -75,8 +82,8 @@ function DemandeForm({ lang, onSent }: { lang: Lang; onSent: (email: string) => 
       const j = (await r.json().catch(() => null)) as DemandeReponse | null;
       if (j?.ok) { onSent(parsed.data.email); return; }
       if (j && !j.ok) {
-        if (j.code === "perso") { setErreurs({ email: t.form.perso }); return; }
-        if (j.code === "invalid" && j.field) { setErreurs({ [j.field]: messageChamp(j.field, valeurs[j.field] ?? "x") }); return; }
+        if (j.code === "perso") { signaler({ email: t.form.perso }); return; }
+        if (j.code === "invalid" && j.field) { signaler({ [j.field]: messageChamp(j.field, valeurs[j.field] ?? "x") }); return; }
         setGlobal(t.errors[j.code]);
         return;
       }
@@ -91,7 +98,7 @@ function DemandeForm({ lang, onSent }: { lang: Lang; onSent: (email: string) => 
   const clear = (champ: keyof Demande) => setErreurs((e) => (e[champ] ? { ...e, [champ]: undefined } : e));
 
   return (
-    <form onSubmit={submit} noValidate className="grid gap-4 px-6 pb-6 pt-5">
+    <form ref={formRef} onSubmit={submit} noValidate className="grid gap-4 px-6 pb-6 pt-5">
       <div className="grid grid-cols-1 gap-3.5 min-[821px]:grid-cols-2">
         <Field label={t.form.name} className="content-start" error={erreurs.full_name}>
           <Input type="text" name="name" autoComplete="name" value={fullName} onChange={(e) => { setFullName(e.target.value); clear("full_name"); }} placeholder={t.form.namePh} aria-invalid={!!erreurs.full_name} maxLength={120} />
@@ -103,7 +110,7 @@ function DemandeForm({ lang, onSent }: { lang: Lang; onSent: (email: string) => 
           <Input type="text" name="organization" autoComplete="organization" value={org} onChange={(e) => { setOrg(e.target.value); clear("organisation"); }} placeholder={t.form.orgPh} aria-invalid={!!erreurs.organisation} maxLength={160} />
         </Field>
         <Field label={t.form.type} className="content-start" error={erreurs.org_type}>
-          <Select name="org_type" value={orgType} onChange={(e) => setOrgType(e.target.value as OrgType)}>
+          <Select name="org_type" aria-invalid={!!erreurs.org_type} value={orgType} onChange={(e) => setOrgType(e.target.value as OrgType)}>
             {ORG_TYPES.map((k) => <option key={k} value={k}>{t.form.types[k]}</option>)}
           </Select>
         </Field>
@@ -111,19 +118,19 @@ function DemandeForm({ lang, onSent }: { lang: Lang; onSent: (email: string) => 
           <Input type="text" name="job_title" autoComplete="organization-title" value={role} onChange={(e) => { setRole(e.target.value); clear("job_title"); }} placeholder={t.form.rolePh} aria-invalid={!!erreurs.job_title} maxLength={120} />
         </Field>
         <Field label={t.form.country} className="content-start" error={erreurs.country}>
-          <Select name="country" value={country} onChange={(e) => setCountry(e.target.value as Country)}>
+          <Select name="country" aria-invalid={!!erreurs.country} value={country} onChange={(e) => setCountry(e.target.value as Country)}>
             {COUNTRIES.map((k) => <option key={k} value={k}>{t.form.countries[k]}</option>)}
           </Select>
         </Field>
         <Field label={t.form.note} optional={t.form.optional} className="content-start min-[821px]:col-span-2" error={erreurs.note}>
-          <Textarea name="note" rows={4} value={note} onChange={(e) => { setNote(e.target.value); clear("note"); }} placeholder={t.form.notePh} maxLength={2000} />
+          <Textarea name="note" aria-invalid={!!erreurs.note} rows={4} value={note} onChange={(e) => { setNote(e.target.value); clear("note"); }} placeholder={t.form.notePh} maxLength={2000} />
         </Field>
         <div className="grid gap-1.5 min-[821px]:col-span-2">
           <label className="flex items-start gap-2.5 text-[13px] text-muted-foreground">
-            <input type="checkbox" checked={consent} onChange={(e) => { setConsent(e.target.checked); clear("consent"); }} className="mt-0.5 size-4 shrink-0 accent-primary" />
+            <input type="checkbox" name="consent" checked={consent} aria-invalid={!!erreurs.consent} aria-describedby={erreurs.consent ? "acces-consent-err" : undefined} onChange={(e) => { setConsent(e.target.checked); clear("consent"); }} className="mt-0.5 size-4 shrink-0 accent-primary" />
             <span>{t.form.consent}</span>
           </label>
-          {erreurs.consent && <span className="text-[12.5px] text-destructive">{erreurs.consent}</span>}
+          {erreurs.consent && <span id="acces-consent-err" className="text-[12.5px] text-destructive">{erreurs.consent}</span>}
         </div>
       </div>
       {global && <p role="alert" className="m-0 text-[13px] text-destructive">{global}</p>}
@@ -137,10 +144,13 @@ function DemandeForm({ lang, onSent }: { lang: Lang; onSent: (email: string) => 
 
 function Recu({ lang, email, onEdit }: { lang: Lang; email: string; onEdit: () => void }) {
   const t = acces[lang];
+  // Le formulaire disparaît sous le focus : le titre le reprend, et le lecteur d'écran annonce la confirmation.
+  const titre = React.useRef<HTMLHeadingElement>(null);
+  React.useEffect(() => { titre.current?.focus(); }, []);
   return (
     <div className="grid justify-items-start gap-3.5 p-6" role="status">
       <span className="grid size-8 place-items-center rounded-md border border-border bg-muted"><Check size={16} aria-hidden="true" /></span>
-      <h2 className="m-0 text-base font-semibold tracking-[-.01em]">{t.sent.title}</h2>
+      <h2 ref={titre} tabIndex={-1} className="m-0 text-base font-semibold tracking-[-.01em] outline-none">{t.sent.title}</h2>
       <p className="m-0 text-muted-foreground">{t.sent.text} <b className="font-medium text-foreground">{email || t.sent.fallback}</b>.</p>
       <div className="flex flex-wrap gap-2">
         <Link href={route(lang, "home")} className={buttonClass()}>{t.back}</Link>

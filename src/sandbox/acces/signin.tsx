@@ -125,7 +125,7 @@ function ClerkSignin({ lang, invited, ticket, ticketStatus }: Props) {
       {invited && invitation === "idle" && <p role="status" className="m-0 text-[13px] text-foreground">{t.invitedPending}</p>}
       {invitation === "failed" && <p role="alert" className="m-0 text-[13px] text-destructive">{t.invitedFailed}</p>}
       {invitation === "running" ? (
-        <p className="m-0 text-[13px] text-muted-foreground" aria-busy="true">{t.invited}</p>
+        <p role="status" className="m-0 text-[13px] text-muted-foreground" aria-busy="true">{t.invitedRunning}</p>
       ) : etape === "email" ? (
         <form onSubmit={envoyer} className="grid gap-3">
           <Field label={t.email}>

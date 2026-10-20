@@ -66,6 +66,20 @@ function hasLiveToken(req: Request): boolean {
   return timingSafeEqual(a, b);
 }
 
+/**
+ * Vrai quand la requête vient d'une page de ce site, pas d'un formulaire ou
+ * d'un `fetch` d'un autre site (`Sec-Fetch-Site`, sinon `Origin`). Sans l'un
+ * ni l'autre (curl, appel serveur) : vrai, il n'y a pas de navigateur à abuser.
+ */
+export function sameOrigin(req: Request): boolean {
+  const site = req.headers.get("sec-fetch-site");
+  if (site && site !== "same-origin" && site !== "none") return false;
+  const origin = req.headers.get("origin");
+  if (!origin) return true;
+  const host = req.headers.get("x-forwarded-host") ?? req.headers.get("host");
+  try { return !!host && new URL(origin).host === host; } catch { return false; }
+}
+
 export function clientIp(req: Request): string {
   const xff = req.headers.get("x-forwarded-for");
   if (xff) return xff.split(",")[0]!.trim() || "inconnue";
@@ -134,7 +148,8 @@ const json = (body: unknown, status: number, headers: Record<string, string> = {
 export async function guardLive(req: Request): Promise<GuardResult> {
   if (hasLiveToken(req)) return { ok: true, replay: false };
   const replay = req.headers.get(REPLAY_HEADER) === "1";
-  const userId = replay ? null : await getStudioUserId();
+  // La session (cookie Clerk) ne compte que pour une requête de ce site : une page tierce ne dépense pas le quota d'un compte.
+  const userId = replay || !sameOrigin(req) ? null : await getStudioUserId();
   if (userId) {
     // Compte invité : le verrou tombe, le quota par compte remplace le rate limit par IP.
     const max = intEnv("STUDIO_USER_QUOTA_PER_DAY", 60);
