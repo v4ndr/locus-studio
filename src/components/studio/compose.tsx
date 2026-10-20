@@ -1,4 +1,5 @@
 "use client";
+import { TriangleAlert } from "lucide-react";
 import * as React from "react";
 import Link from "./nav";
 import { useRouter } from "./nav";
@@ -203,7 +204,7 @@ export function ComposeCard({ state, onClose, onRetry, suivreSeul = true, onVali
                   <span className="flex min-w-0 flex-1 flex-col">
                     <span className={cn("truncate text-sm", off && "line-through")}>{a.titre}{modifie && <span className="ml-2 text-[11px]" style={{ color: "var(--agent)" }}>{t.edited}</span>}</span>
                     <span className="truncate text-xs text-dim-2">{a.ligne}<span className="sm:hidden"> · <span style={{ color: STATUT[a.statut]?.color }}>{STATUT[a.statut]?.label}</span> · {L(a.destination)}</span></span>
-                    {a.alerte && <span className="mt-0.5 text-xs font-medium text-warn">{t.allergy} {a.alerte}</span>}
+                    {a.alerte && <span className="mt-0.5 text-xs font-medium text-warn"><TriangleAlert size={16} aria-hidden="true" className="mr-1 inline-block shrink-0 align-[-3px]" />{t.allergy} {a.alerte}</span>}
                   </span>
                   <span className="hidden shrink-0 text-xs sm:inline" style={{ color: STATUT[a.statut]?.color }}>{STATUT[a.statut]?.label}</span>
                   <span className="hidden shrink-0 text-[11px] text-dim-2 sm:inline">{L(a.destination)}</span>

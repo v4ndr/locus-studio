@@ -1,4 +1,5 @@
 "use client";
+import { TriangleAlert } from "lucide-react";
 import * as React from "react";
 import type { ComposeAction } from "@/locus/compose/contract";
 import { chargeOf, materialize, alerteAllergie, isoParis, type Charge, type RxLigne, RX_LABEL, CR_TYPE, DOS_LABEL, MSG_A, SORTIES, jourFr, heureFr } from "@/locus/compose/materialize";
@@ -254,7 +255,7 @@ export function ActionPanel({ action, patient, onChange, onClose, onRemove, titr
           {onChange && <div className="flex rounded-full border border-line bg-paper p-0.5 lg:hidden">{(["modifier", "apercu"] as const).map((o) => <button key={o} type="button" onClick={() => setOnglet(o)} aria-pressed={onglet === o} className={cn("min-h-9 rounded-full px-3 py-1 text-xs", onglet === o ? "bg-ink text-paper" : "text-ink-2")}>{o === "modifier" ? t.edit : t.preview}</button>)}</div>}
           <button ref={fermer} type="button" onClick={onClose} className="flex min-h-9 items-center gap-2 rounded-[8px] px-2 py-1 text-sm text-dim-2 hover:text-ink">{d.close} <Kbd>esc</Kbd></button>
         </div>
-        {action.alerte && <div className="flex items-start gap-2.5 border-b border-line-2 bg-[color-mix(in_srgb,var(--warn)_12%,var(--paper))] px-5 py-2.5 text-[13px] leading-[1.45] text-warn" role="alert"><span className="mt-px shrink-0 font-semibold">{t.allergy}</span><span className="min-w-0 flex-1">{action.alerte}{t.allergyCheck(!!onChange)}</span></div>}
+        {action.alerte && <div className="flex items-start gap-2.5 border-b border-line-2 bg-[color-mix(in_srgb,var(--warn)_12%,var(--paper))] px-5 py-2.5 text-[13px] leading-[1.45] text-warn" role="alert"><span className="mt-px shrink-0 font-semibold"><TriangleAlert size={16} aria-hidden="true" className="mr-1 inline-block shrink-0 align-[-3px]" />{t.allergy}</span><span className="min-w-0 flex-1">{action.alerte}{t.allergyCheck(!!onChange)}</span></div>}
         <div className={cn("grid min-h-0 flex-1 overflow-y-auto", onChange ? "lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)]" : "")}>
           {onChange && c && (
             <div className={cn("flex flex-col gap-4 border-line-2 px-5 py-5 lg:border-r", onglet !== "modifier" && "hidden lg:flex")}>
