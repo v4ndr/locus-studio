@@ -1,12 +1,130 @@
 import type { Dict } from "./config";
 
-/** Zone chatbot sourcé (`/[lang]/chatbot`). Rempli par la PR « Chatbot ». */
+/**
+ * Zone chatbot sourcé (`/[lang]/chatbot`) : libellés de l'interface.
+ * Le contenu médical des scénarios rejoués est dans `src/data/chatbot/`.
+ */
 const fr = {
   meta: { title: "Chatbot sourcé", description: "Votre chatbot, avec et sans Locus, sur la même question." },
+  head: { api: "Appel API", request: "Demander un accès" },
+  rag: { title: "RAG simple", meta: "recos HAS" },
+  locus: {
+    title: "Locus",
+    fast: "mode rapide",
+    deep: "mode approfondi",
+    reasoning: "Raisonnement",
+    alsoChecked: "Vérifié aussi :",
+    waitVerdict: "En attente de précisions.",
+    waitWhy: "Répondez aux questions ci-dessus pour obtenir la réponse.",
+    skip: "Passer",
+    rerun: "Relancer avec ces réglages",
+    sources: "Sources",
+  },
+  alerts: { ci: "Contre-indication", risk: "Interaction à risque", nv: "Interaction non vérifiée", missing: "Source désactivée" },
+  steps: {
+    lecture: "Lecture du cas",
+    ambiguites: "Recherche des ambiguïtés",
+    cadres: "Vérification des conditions des recommandations",
+    formulation: "Préparation des questions",
+    redaction: "Rédaction de la réponse",
+    retrieval: (docs: number) => `${docs} documents consultés`,
+    rcp: (n: number) => `${n} rubriques de RCP consultées`,
+    reprise: "Reprise avec vos précisions",
+  },
+  api: { title: "Requête équivalente", copy: "Copier", copied: "Copié", account: "compte sandbox", formKey: "<key rendue par le formulaire>", contexte: "<orchestration.contexte du tour précédent>" },
+  dock: {
+    gate: "Les questions libres demandent un accès.",
+    request: "Demander un accès",
+    label: "Question clinique",
+    placeholder: "Posez une question clinique",
+    send: "Envoyer",
+    suggestions: "Questions suggérées",
+  },
+  settings: {
+    title: "Réglages Locus",
+    elic: ["Élicitation", "Demande les données manquantes"],
+    desamb: ["Désambiguïsation", "Lève les termes ambigus"],
+    deep: ["Mode approfondi", "Vérifications supplémentaires, plus lent"],
+    reason: ["Afficher le raisonnement", "Étapes et sources consultées"],
+    inline: ["Citations dans le texte", "Source après chaque affirmation"],
+    sources: "Sources",
+    lastSource: "Gardez au moins une source.",
+    format: "Format",
+    short: "Court",
+    long: "Détaillé",
+    fineReplay: "Scénario rejoué sur un patient fictif.",
+    fineLive: "Réponses en direct. N'utilisez pas de données réelles de patients.",
+  },
+  live: {
+    error: "Réponse indisponible pour le moment. Réessayez.",
+    ragNoIndex: "Index du RAG simple absent sur ce déploiement.",
+    ragOff: "RAG simple non configuré sur ce déploiement.",
+    replayOnly: "Le mode live n'est pas ouvert sur ce déploiement : seules les questions suggérées sont rejouées.",
+    tooLong: "Question trop longue.",
+    /** Affiché au-dessus d'une réponse live de Locus quand l'interface n'est pas en français (core répond en français). */
+    frenchNote: "",
+  },
 };
 
 const en: typeof fr = {
   meta: { title: "Grounded chatbot", description: "Your chatbot, with and without Locus, on the same question." },
+  head: { api: "API call", request: "Request access" },
+  rag: { title: "Basic RAG", meta: "HAS guidelines" },
+  locus: {
+    title: "Locus",
+    fast: "fast mode",
+    deep: "deep mode",
+    reasoning: "Reasoning",
+    alsoChecked: "Also checked:",
+    waitVerdict: "Waiting for details.",
+    waitWhy: "Answer the questions above to get the answer.",
+    skip: "Skip",
+    rerun: "Run again with these settings",
+    sources: "Sources",
+  },
+  alerts: { ci: "Contraindication", risk: "Risky interaction", nv: "Interaction not checked", missing: "Source turned off" },
+  steps: {
+    lecture: "Reading the case",
+    ambiguites: "Looking for ambiguities",
+    cadres: "Checking guideline conditions",
+    formulation: "Preparing the questions",
+    redaction: "Writing the answer",
+    retrieval: (docs: number) => `${docs} documents consulted`,
+    rcp: (n: number) => `${n} SmPC sections consulted`,
+    reprise: "Resuming with your details",
+  },
+  api: { title: "Equivalent request", copy: "Copy", copied: "Copied", account: "sandbox account", formKey: "<key returned by the form>", contexte: "<orchestration.contexte from the previous turn>" },
+  dock: {
+    gate: "Free-form questions require access.",
+    request: "Request access",
+    label: "Clinical question",
+    placeholder: "Ask a clinical question",
+    send: "Send",
+    suggestions: "Suggested questions",
+  },
+  settings: {
+    title: "Locus settings",
+    elic: ["Elicitation", "Asks for missing data"],
+    desamb: ["Disambiguation", "Resolves ambiguous terms"],
+    deep: ["Deep mode", "Extra checks, slower"],
+    reason: ["Show reasoning", "Steps and sources consulted"],
+    inline: ["Inline citations", "Source after each statement"],
+    sources: "Sources",
+    lastSource: "Keep at least one source.",
+    format: "Format",
+    short: "Short",
+    long: "Detailed",
+    fineReplay: "Replayed scenario on a fictional patient.",
+    fineLive: "Live answers. Do not enter real patient data.",
+  },
+  live: {
+    error: "Answer unavailable right now. Try again.",
+    ragNoIndex: "The basic RAG index is missing on this deployment.",
+    ragOff: "Basic RAG is not configured on this deployment.",
+    replayOnly: "Live mode is not open on this deployment: only suggested questions are replayed.",
+    tooLong: "Question too long.",
+    frenchNote: "Answer in French (French guidelines)",
+  },
 };
 
 export const chatbot: Dict<typeof fr> = { fr, en };
