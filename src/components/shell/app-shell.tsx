@@ -2,7 +2,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { BookOpen, Building, House, KeyRound, Library, Menu, Moon, Search, Sun, X, type LucideIcon } from "lucide-react";
+import { BookOpen, House, KeyRound, Library, Menu, Moon, Search, Sun, X, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { common, LANG_COOKIE, LANGS, route, TOOLS, type Lang, type RouteKey } from "@/i18n";
 import { useLang } from "@/i18n/lang";
@@ -15,6 +15,7 @@ import { GraphBackground } from "./graph-background";
 import { useTheme, type Mode } from "./theme";
 import { CommandPalette, type PaletteItem } from "./command-palette";
 import { TOOL_ICONS } from "./tool-icons";
+import { AccountFooter, MobileSignin } from "@/sandbox/acces/account";
 
 /**
  * La coque console de l'app (identité Noir) : sidebar fixe de 248 px, zone
@@ -93,11 +94,7 @@ function Sidebar({ lang, pathname, drawer, onClose, onSearch }: { lang: Lang; pa
           <Segmented<Mode> label={t.theme.label} value={mode} onChange={setMode} options={[{ value: "dark", label: <Moon aria-hidden="true" />, aria: t.theme.dark }, { value: "light", label: <Sun aria-hidden="true" />, aria: t.theme.light }]} />
           <Segmented<Lang> label={t.language.label} value={lang} onChange={setLang} options={LANGS.map((l) => ({ value: l, label: l.toUpperCase() }))} />
         </div>
-        <div className="flex items-center gap-2.5">
-          <span className="grid size-[30px] shrink-0 place-items-center rounded-[7px] border border-input text-muted-foreground"><Building size={16} aria-hidden="true" /></span>
-          <span className="grid min-w-0 flex-1 leading-tight"><span className="truncate">{t.account.guest}</span><small className="truncate text-xs text-muted-foreground">{t.account.guestSub}</small></span>
-          <Link href={route(lang, "acces")} onClick={fermer} className={buttonClass({ size: "sm" })}>{t.account.signin}</Link>
-        </div>
+        <AccountFooter lang={lang} onNavigate={fermer} />
       </div>
     </aside>
   );
@@ -144,7 +141,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <div className="flex items-center gap-2 px-4 py-2.5">
               <Wordmark lang={lang} />
               <span className="flex-1" />
-              <Link href={route(lang, "acces")} className={buttonClass({ size: "sm" })}>{t.account.signin}</Link>
+              <MobileSignin lang={lang} />
               <button type="button" onClick={() => setDrawer(true)} aria-label={t.menu.open} aria-expanded={drawer} className={buttonClass({ size: "icon" })}><Menu size={16} aria-hidden="true" /></button>
             </div>
             <p className="m-0 flex items-center gap-1.5 border-t border-border px-4 py-1.5 text-xs text-muted-foreground"><StatusDot />{t.banner}</p>

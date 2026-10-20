@@ -1,5 +1,5 @@
 import "server-only";
-import { authHeaders, coreConfig, paths, type CoreConfig } from "./config";
+import { userAuthHeaders, coreConfig, paths, type CoreConfig } from "./config";
 import { readNdjson } from "./ndjson";
 import { toPublic, type LogicComputeRequest, type LogicComputeResponse, type RetrieveRequest, type RetrieveSpecialite, type RetrieveRubric, type StreamEvent, type StudioStreamEvent, type RetrieveSource } from "./contract";
 import { simulateRetrieve, simulateSpecialite, simulateLogic } from "./simulation";
@@ -27,7 +27,7 @@ export async function* retrieveStream(req: RetrieveRequest, cfg: CoreConfig = co
   try {
     res = await fetch(cfg.url + p.retrieve, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Accept: "application/x-ndjson", ...authHeaders(cfg) },
+      headers: { "Content-Type": "application/json", Accept: "application/x-ndjson", ...(await userAuthHeaders(cfg)) },
       body: JSON.stringify(body),
       redirect: "manual",
     });
@@ -81,34 +81,34 @@ export async function* retrieveStream(req: RetrieveRequest, cfg: CoreConfig = co
 
 export async function specialite(cis: string, cfg: CoreConfig = coreConfig()): Promise<RetrieveSpecialite | null> {
   if (cfg.mode === "simulation") return simulateSpecialite(cis);
-  const res = await fetch(cfg.url + paths(cfg).specialite(cis), { headers: authHeaders(cfg), redirect: "manual" }).catch(() => null);
+  const res = await fetch(cfg.url + paths(cfg).specialite(cis), { headers: await userAuthHeaders(cfg), redirect: "manual" }).catch(() => null);
   if (!res || !res.ok) return simulateSpecialite(cis);
   return (await res.json()) as RetrieveSpecialite;
 }
 
 export async function rubric(id: string, cfg: CoreConfig = coreConfig()): Promise<RetrieveRubric | null> {
   if (cfg.mode === "simulation") return null;
-  const res = await fetch(cfg.url + paths(cfg).rubric(id), { headers: authHeaders(cfg), redirect: "manual" }).catch(() => null);
+  const res = await fetch(cfg.url + paths(cfg).rubric(id), { headers: await userAuthHeaders(cfg), redirect: "manual" }).catch(() => null);
   if (!res || !res.ok) return null;
   return (await res.json()) as RetrieveRubric;
 }
 
 export async function logicCompute(req: LogicComputeRequest, cfg: CoreConfig = coreConfig()): Promise<LogicComputeResponse> {
   if (cfg.mode !== "core") return simulateLogic(req);
-  const res = await fetch(cfg.url + paths(cfg).logic, { method: "POST", headers: { "Content-Type": "application/json", ...authHeaders(cfg) }, body: JSON.stringify(req) }).catch(() => null);
+  const res = await fetch(cfg.url + paths(cfg).logic, { method: "POST", headers: { "Content-Type": "application/json", ...(await userAuthHeaders(cfg)) }, body: JSON.stringify(req) }).catch(() => null);
   if (!res || !res.ok) return simulateLogic(req);
   return (await res.json()) as LogicComputeResponse;
 }
 
 export async function sources(cfg: CoreConfig = coreConfig()): Promise<RetrieveSource[]> {
   if (cfg.mode !== "core") return [{ id: "HAS", name: "Haute Autorité de Santé", docs: 0 }, { id: "ANSM", name: "ANSM", docs: 0 }, { id: "SPF", name: "Santé publique France", docs: 0 }];
-  const res = await fetch(cfg.url + paths(cfg).sources, { headers: authHeaders(cfg) }).catch(() => null);
+  const res = await fetch(cfg.url + paths(cfg).sources, { headers: await userAuthHeaders(cfg) }).catch(() => null);
   if (!res || !res.ok) return [];
   return (await res.json()) as RetrieveSource[];
 }
 
 export async function feedback(traceId: string, vote: -1 | 0 | 1, note?: string, cfg: CoreConfig = coreConfig()): Promise<boolean> {
   if (cfg.mode !== "core" || !traceId) return true;
-  const res = await fetch(cfg.url + paths(cfg).feedback, { method: "POST", headers: { "Content-Type": "application/json", ...authHeaders(cfg) }, body: JSON.stringify({ trace_id: traceId, vote, note }) }).catch(() => null);
+  const res = await fetch(cfg.url + paths(cfg).feedback, { method: "POST", headers: { "Content-Type": "application/json", ...(await userAuthHeaders(cfg)) }, body: JSON.stringify({ trace_id: traceId, vote, note }) }).catch(() => null);
   return !!res && res.ok;
 }
