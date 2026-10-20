@@ -1,6 +1,6 @@
 "use client";
 import * as React from "react";
-import Link from "next/link";
+import Link from "./nav";
 import type { InboxView as IV, InboxRow, InboxKind, Urgence } from "@/studio/types";
 import { Header, Omni, Avatar, Kbd, I } from "./chrome";
 import { ComposeCard, useCompose } from "./compose";
@@ -60,13 +60,13 @@ export function InboxView({ v, praticien }: { v: IV; praticien: { initials: stri
         <nav aria-label="Boîtes" className="flex flex-wrap gap-1.5">
           {(["courriers", "bio", "messages"] as InboxKind[]).map((k) => (
             <Link key={k} href={`/inbox/${k}`} aria-current={k === v.kind ? "page" : undefined} className={cn("flex min-h-10 items-center gap-2 rounded-full border px-3 py-[7px] text-[13px] hover:text-ink", k === v.kind ? "border-ink bg-ink text-paper hover:text-paper" : "border-line bg-paper text-ink-2")}>
-              {TITRES[k].h1}{compte(k) > 0 && <span className={cn("d text-[11px]", k === v.kind ? "text-paper" : "")} style={k !== v.kind ? { color: "var(--accent)" } : undefined}>{compte(k)}</span>}
+              {TITRES[k].h1}{compte(k) > 0 && <span className={cn("d text-[11px]", k === v.kind ? "text-paper" : "")} style={k !== v.kind ? { color: "var(--agent)" } : undefined}>{compte(k)}</span>}
             </Link>
           ))}
         </nav>
         <div className="flex flex-col gap-1.5">
-          <h1 className="m-0 text-2xl font-medium tracking-[-.02em]">{t.h1}{nonLus.length > 0 && <span className="ml-3 text-base font-normal text-muted-2">{nonLus.length} non lu{nonLus.length > 1 ? "s" : ""}</span>}</h1>
-          <p className="m-0 text-sm text-muted-2">{t.sous}</p>
+          <h1 className="m-0 text-2xl font-medium tracking-[-.02em]">{t.h1}{nonLus.length > 0 && <span className="ml-3 text-base font-normal text-dim-2">{nonLus.length} non lu{nonLus.length > 1 ? "s" : ""}</span>}</h1>
+          <p className="m-0 text-sm text-dim-2">{t.sous}</p>
         </div>
         {types.length > 0 && (
           <div className="flex flex-wrap gap-1.5">
@@ -74,7 +74,7 @@ export function InboxView({ v, praticien }: { v: IV; praticien: { initials: stri
           </div>
         )}
 
-        {nonLus.length === 0 && <div className="rounded-[14px] border border-dashed border-line px-5 py-8 text-center text-sm text-muted-2">{t.vide}</div>}
+        {nonLus.length === 0 && <div className="rounded-[14px] border border-dashed border-line px-5 py-8 text-center text-sm text-dim-2">{t.vide}</div>}
         {GROUPES.map((g) => {
           const rs = nonLus.filter((r) => g.urg.includes(r.urgence));
           if (!rs.length) return null;
@@ -92,7 +92,7 @@ export function InboxView({ v, praticien }: { v: IV; praticien: { initials: stri
             {vus.length > 8 && <button type="button" onClick={() => setTousVus((x) => !x)} className="mt-1 min-h-10 self-start rounded-[10px] px-3 py-2 text-sm text-ink-3 hover:bg-hover">{tousVus ? "Replier" : `Voir les ${vus.length - 8} autres`}</button>}
           </section>
         )}
-        {faitsIci.length > 0 && <p className="m-0 text-xs text-muted-2">{faitsIci.length} traité{faitsIci.length > 1 ? "s" : ""} aujourd'hui sur ce poste · {faitsIci.filter((f) => f.what === "envoyé").length} envoyé{faitsIci.filter((f) => f.what === "envoyé").length > 1 ? "s" : ""}, {faitsIci.filter((f) => f.what === "classé").length} classé{faitsIci.filter((f) => f.what === "classé").length > 1 ? "s" : ""}.</p>}
+        {faitsIci.length > 0 && <p className="m-0 text-xs text-dim-2">{faitsIci.length} traité{faitsIci.length > 1 ? "s" : ""} aujourd'hui sur ce poste · {faitsIci.filter((f) => f.what === "envoyé").length} envoyé{faitsIci.filter((f) => f.what === "envoyé").length > 1 ? "s" : ""}, {faitsIci.filter((f) => f.what === "classé").length} classé{faitsIci.filter((f) => f.what === "classé").length > 1 ? "s" : ""}.</p>}
       </main>
       <Omni onSubmit={(t) => composer.run({ texte: t, ecran: "inbox", boite: v.kind, patientId: ouverte?.patient.id, docId: ouverte?.id })} placeholder={ouverte ? `À propos de ${ouverte.patient.nom} : « réponds-lui que c'est normal », « rendez-vous cette semaine »…` : v.kind === "messages" ? "Ouvrez un message, puis : « réponds-lui que c'est normal », « rendez-vous cette semaine »…" : v.kind === "bio" ? "« Les créatinines en baisse ce mois », « classe tout ce qui est normal »…" : "« Résume les courriers de l'hôpital », « classe tout ce qui est pour info »…"} suggestions={ouverte ? [{ k: "répondre", t: `Réponds à ${ouverte.de.split(" (")[0]} que c'est normal, pas d'inquiétude` }, { k: "rdv", t: `Rendez-vous pour ${ouverte.patient.nom} cette semaine, 15 minutes` }, { k: "dossier", t: `Ordonnance : renouvellement pour ${ouverte.patient.nom}` }] : v.kind === "messages" ? [{ k: "ouvrir", t: "Ouvre le dossier de Claire Moreau" }, { k: "question", t: "Angine de l'enfant : quand un antibiotique ?" }] : v.kind === "bio" ? [{ k: "question", t: "LDL à 1,32 g/L sans facteur de risque : quelle cible ?" }, { k: "ouvrir", t: "Ouvre le dossier de Josiane Petit" }] : [{ k: "question", t: "Épicondylite résistante : quelle prise en charge ?" }, { k: "ouvrir", t: "Ouvre le dossier de Claire Moreau" }]}>{composer.open && <ComposeCard state={composer.state} onClose={composer.reset} onRetry={(i) => composer.run(i)} />}</Omni>
     </div>
@@ -100,7 +100,7 @@ export function InboxView({ v, praticien }: { v: IV; praticien: { initials: stri
 }
 
 function Row({ r, kind, open, onOpen, onDone, muted }: { r: InboxRow; kind: InboxKind; open: boolean; onOpen: () => void; onDone: (what: "envoyé" | "classé", texte?: string) => void; muted?: boolean }) {
-  const dot = r.urgence === "immediate" ? "var(--rec)" : r.urgence === "jour" ? "var(--warn-dot)" : r.urgence === "semaine" ? "var(--accent)" : "var(--gray-dot)";
+  const dot = r.urgence === "immediate" ? "var(--rec)" : r.urgence === "jour" ? "var(--warn-dot)" : r.urgence === "semaine" ? "var(--agent)" : "var(--gray-dot)";
   const [rep, setRep] = React.useState(r.reponse ?? "");
   React.useEffect(() => { setRep(r.reponse ?? ""); }, [r.reponse, open]);
   const head = (
@@ -108,9 +108,9 @@ function Row({ r, kind, open, onOpen, onDone, muted }: { r: InboxRow; kind: Inbo
       <span className="mt-[7px] h-2 w-2 shrink-0 rounded-full" style={{ background: r.nonLu ? dot : "transparent", boxShadow: r.nonLu ? undefined : `inset 0 0 0 1.5px ${dot}` }} />
       <Avatar initials={r.patient.initials} hue={r.patient.hue} size={30} className="mt-px" />
       <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <span className="flex flex-wrap items-baseline gap-x-2"><span className={cn("text-[15px]", r.nonLu && !muted && "font-medium")}>{r.patient.nom}</span><span className="text-[13px] text-muted-2">{r.de}{r.deType && DE[r.deType] && r.de !== r.patient.nom ? ` · ${DE[r.deType]}` : ""}</span></span>
-        <span className={cn("text-sm", muted ? "text-muted-2" : "text-ink-2")}>{r.titre}</span>
-        {r.resume && !open && <span className="line-clamp-2 text-[13px] text-muted-2 sm:truncate">{r.resume}</span>}
+        <span className="flex flex-wrap items-baseline gap-x-2"><span className={cn("text-[15px]", r.nonLu && !muted && "font-medium")}>{r.patient.nom}</span><span className="text-[13px] text-dim-2">{r.de}{r.deType && DE[r.deType] && r.de !== r.patient.nom ? ` · ${DE[r.deType]}` : ""}</span></span>
+        <span className={cn("text-sm", muted ? "text-dim-2" : "text-ink-2")}>{r.titre}</span>
+        {r.resume && !open && <span className="line-clamp-2 text-[13px] text-dim-2 sm:truncate">{r.resume}</span>}
       </span>
       <span className="d shrink-0 text-[11px]">{r.quand}</span>
     </>
@@ -123,16 +123,16 @@ function Row({ r, kind, open, onOpen, onDone, muted }: { r: InboxRow; kind: Inbo
       {open && (
         <div className="flex flex-col gap-3 px-3 pb-3 sm:pl-[68px]">
           <p className="m-0 whitespace-pre-line text-sm leading-relaxed">{r.corps}</p>
-          {r.resume && <div className="flex flex-col gap-1 rounded-[10px] bg-accent-soft-2 px-3.5 py-2.5 text-sm"><span className="k" style={{ color: "var(--accent)" }}>Locus{r.intention && INTENTION[r.intention] ? ` · ${INTENTION[r.intention]}` : ""}</span>{r.resume}</div>}
+          {r.resume && <div className="flex flex-col gap-1 rounded-[10px] bg-agent-soft-2 px-3.5 py-2.5 text-sm"><span className="k" style={{ color: "var(--agent)" }}>Locus{r.intention && INTENTION[r.intention] ? ` · ${INTENTION[r.intention]}` : ""}</span>{r.resume}</div>}
           {r.reponse ? (
             <label className="flex flex-col gap-1 rounded-[10px] border border-line px-3.5 py-2.5 text-sm"><span className="k">Réponse préparée · modifiez-la avant d'envoyer</span><textarea autoComplete="off" autoCorrect="off" spellCheck={false} id={`rep-${r.id}`} value={rep} onChange={(e) => setRep(e.target.value)} rows={Math.min(12, Math.max(4, rep.split("\n").length + 1))} className="w-full resize-y bg-transparent text-base leading-relaxed text-ink sm:text-sm" /></label>
           ) : (
-            <p className="m-0 text-xs text-muted-2">Pas de réponse préparée : demandez-la dans la barre du bas (« réponds-lui que… ») ou ouvrez le dossier.</p>
+            <p className="m-0 text-xs text-dim-2">Pas de réponse préparée : demandez-la dans la barre du bas (« réponds-lui que… ») ou ouvrez le dossier.</p>
           )}
           <div className="flex flex-wrap items-center gap-2">
             {r.reponse && <button type="button" disabled={!rep.trim()} onClick={() => onDone("envoyé", rep)} className="flex min-h-11 items-center rounded-[10px] bg-ink px-3.5 py-2 text-sm text-paper disabled:opacity-40">Envoyer{r.deType === "patient" ? " · messagerie patient" : r.deType === "secretariat" ? " · interne" : " · MSSanté"} <Kbd dark className="ml-2">⌘⏎</Kbd></button>}
             <Link href={`/p/${r.patient.id}`} className="flex min-h-11 items-center rounded-[10px] border border-line bg-paper px-3.5 py-2 text-sm text-ink hover:bg-hover hover:text-ink">Ouvrir le dossier</Link>
-            <button type="button" onClick={() => onDone("classé")} className="min-h-11 rounded-[10px] px-3 py-2 text-sm text-muted-2 hover:bg-hover">Classer sans répondre</button>
+            <button type="button" onClick={() => onDone("classé")} className="min-h-11 rounded-[10px] px-3 py-2 text-sm text-dim-2 hover:bg-hover">Classer sans répondre</button>
           </div>
         </div>
       )}

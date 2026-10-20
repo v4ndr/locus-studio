@@ -1,7 +1,8 @@
 "use client";
 import * as React from "react";
-import Link from "next/link";
-import { useSearchParams, useRouter, usePathname } from "next/navigation";
+import Link from "./nav";
+import { useSearchParams, usePathname } from "next/navigation";
+import { useRouter } from "./nav";
 import type { PatientView, DocRow } from "@/studio/types";
 import { Header, Omni, I } from "./chrome";
 import { ComposeCard, useCompose } from "./compose";
@@ -41,17 +42,17 @@ function Inner({ v, praticien }: { v: PatientView; praticien: { initials: string
           <div className="flex flex-[1_1_280px] items-center gap-2.5 rounded-[10px] border border-line bg-paper px-3.5 py-[9px]">
             <I.search size={15} />
             <label htmlFor="s" className="sr-only">Rechercher</label>
-            <input id="s" name="locus-filtre" value={q} autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck={false} data-1p-ignore data-lpignore="true" onChange={(e) => setQ(e.target.value)} placeholder="Rechercher dans le contenu, l'émetteur, un médicament…" className="min-h-8 min-w-0 flex-1 bg-transparent text-base text-ink outline-none placeholder:text-muted-3 sm:text-sm" />
+            <input id="s" name="locus-filtre" value={q} autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck={false} data-1p-ignore data-lpignore="true" onChange={(e) => setQ(e.target.value)} placeholder="Rechercher dans le contenu, l'émetteur, un médicament…" className="min-h-8 min-w-0 flex-1 bg-transparent text-base text-ink outline-none placeholder:text-dim-3 sm:text-sm" />
           </div>
-          <span className="hidden text-[13px] text-muted-2 sm:inline">Tout le dossier, du plus récent au plus ancien · filtrez par type, cherchez un mot.</span>
+          <span className="hidden text-[13px] text-dim-2 sm:inline">Tout le dossier, du plus récent au plus ancien · filtrez par type, cherchez un mot.</span>
         </div>
         <div className="flex flex-wrap gap-1.5">
           {LABELS.map((l) => { const on = l === type; return <Link key={l} href={hrefType(l)} replace scroll={false} onClick={() => setTypeState(l)} aria-current={on ? "true" : undefined} className={cn("flex min-h-9 items-center rounded-full border px-3 py-[7px] text-[13px] hover:text-ink", on ? "border-ink bg-ink text-paper hover:text-paper" : "border-line bg-paper text-ink-2")}>{PLURAL[l] ?? l}</Link>; })}
         </div>
         <div className="rounded-[14px] border border-line-3 bg-paper">
           <div className="tr tr-head"><span className="k">Date</span><span className="k">Type</span><span className="k">Document</span><span className="k">Émetteur</span><span /></div>
-          {rows.map((r, i) => <Link key={r.id} href={`/p/${v.ref.id}/documents/${r.id}?from=dossier${type !== "Tous" ? `&type=${encodeURIComponent(type)}` : ""}`} className={cn("tr text-ink hover:bg-bg hover:text-ink", i > 0 && "border-t border-soft")}><span className="d">{r.date}</span><span className="text-[13px] text-ink-3">{r.type}</span><span className="min-w-0 truncate">{r.titre}</span><span className="truncate text-[13px] text-muted-2">{r.de}</span><I.chevron /></Link>)}
-          {rows.length === 0 && <div className="px-4 py-3 text-sm text-muted-2">Aucun document.</div>}
+          {rows.map((r, i) => <Link key={r.id} href={`/p/${v.ref.id}/documents/${r.id}?from=dossier${type !== "Tous" ? `&type=${encodeURIComponent(type)}` : ""}`} className={cn("tr text-ink hover:bg-bg hover:text-ink", i > 0 && "border-t border-soft")}><span className="d">{r.date}</span><span className="text-[13px] text-ink-3">{r.type}</span><span className="min-w-0 truncate">{r.titre}</span><span className="truncate text-[13px] text-dim-2">{r.de}</span><I.chevron /></Link>)}
+          {rows.length === 0 && <div className="px-4 py-3 text-sm text-dim-2">Aucun document.</div>}
         </div>
       </main>
       <Omni placeholder="« Toutes les TSH depuis 2020 », « renvoie le CR du scanner au kiné »…" onSubmit={(t) => composer.run({ texte: t, patientId: v.ref.id, ecran: "documents" })} suggestions={[{ k: "chercher", t: "Toutes les TSH depuis 2020, en courbe" }, { k: "envoyer", t: "Renvoie le compte rendu du scanner au kiné" }, { k: "résumer", t: "Résume les courriers du cardiologue en trois lignes" }, { k: "dmp", t: "Partage la dernière ordonnance sur Mon espace santé" }]}>{composer.open && <ComposeCard state={composer.state} onClose={composer.reset} />}</Omni>

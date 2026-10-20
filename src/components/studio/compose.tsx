@@ -1,7 +1,7 @@
 "use client";
 import * as React from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import Link from "./nav";
+import { useRouter } from "./nav";
 import type { ComposeEvent, ComposeInput, ComposePlan, ComposeAction } from "@/locus/compose/contract";
 import { readNdjson } from "@/locus/ndjson";
 import { Kbd, I } from "./chrome";
@@ -9,6 +9,8 @@ import { Md } from "../md";
 import { ActionPanel, dialogOuvert, type PatientRendu } from "./rendu";
 import { cn } from "@/lib/cn";
 import { fetchLive } from "@/lib/live";
+import { studio } from "@/i18n";
+import { useLang } from "@/i18n/lang";
 
 /**
  * Le composer côté navigateur : on envoie la demande, on reçoit les étapes,
@@ -38,7 +40,8 @@ export function useCompose() {
         setS((p) => {
           switch (ev.step) {
             case "reflexion": return { ...p, steps: [...p.steps, ev.titre] };
-            case "outil": return { ...p, steps: [...p.steps, `${ev.nom} · ${ev.detail}`] };
+            // Étapes grossières seulement : pas de nom d'outil, pas de reformulation, pas de détail de pipeline.
+            case "outil": { const l = ev.nom === "locus" ? "Je consulte Locus" : ev.detail; return p.steps[p.steps.length - 1] === l ? p : { ...p, steps: [...p.steps, l] }; }
             case "action": return { ...p, actions: [...p.actions, ev.action] };
             case "texte": return { ...p, texte: ev.texte };
             case "done": return { ...p, plan: ev.plan, actions: ev.plan.actions, busy: false };
@@ -97,6 +100,7 @@ export function ComposeCard({ state, onClose, onRetry, suivreSeul = true, onVali
   /** Ce qui s'affiche sous le compte rendu une fois validé (liens de sortie). */
   apres?: React.ReactNode;
 }) {
+  const lang = useLang();
   const router = useRouter();
   const [open, setOpen] = React.useState<string | null>(null);
   React.useEffect(() => { if (ouvrirId) setOpen(ouvrirId); }, [ouvrirId]);
@@ -144,7 +148,8 @@ export function ComposeCard({ state, onClose, onRetry, suivreSeul = true, onVali
   }, [valider, valide, docs.length, done, onClose]);
 
   const last = state.steps[state.steps.length - 1];
-  const via = state.plan ? (state.plan.via === "claude" ? `${state.plan.modele} · ${state.plan.locus ? `locus ×${state.plan.locus}` : "sans locus"}` : `simulation · ${state.plan.locus ? `locus ×${state.plan.locus}` : "règles"}`) : null;
+  // Ni modèle, ni compteur d'appels : seulement le scénario rejoué quand c'en est un.
+  const via = state.plan?.via === "simulation" ? studio[lang].replay : null;
 
   // Une re-signature : le plan venait d'une note déjà signée (ses actions portaient déjà un envoi).
   const resignature = !!state.plan?.actions.some((a) => a.envoyeLe);
@@ -155,7 +160,7 @@ export function ComposeCard({ state, onClose, onRetry, suivreSeul = true, onVali
           <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-ok-soft text-ok"><I.check size={13} w={2.5} /></span>
           <span className="text-[15px] font-medium">{valide.length} action{valide.length > 1 ? "s" : ""} signée{valide.length > 1 ? "s" : ""}{valide.some((a) => a.renvoye) ? " · les documents modifiés sont renvoyés" : " · envoyées et inscrites au dossier"}</span>
           <span className="flex-1" />
-          <button type="button" onClick={onClose} aria-label="Fermer" className="flex h-9 w-9 items-center justify-center rounded-full text-lg text-muted-2 hover:bg-hover hover:text-ink">×</button>
+          <button type="button" onClick={onClose} aria-label="Fermer" className="flex h-9 w-9 items-center justify-center rounded-full text-lg text-dim-2 hover:bg-hover hover:text-ink">×</button>
         </div>
         <div className="flex flex-col">
           {valide.map((a, i) => <button key={a.id} type="button" onClick={() => setOpen(a.id)} className={cn("flex min-h-11 items-center gap-3 rounded-[8px] px-1 py-2 text-left text-sm hover:bg-hover", i > 0 && "border-t border-line-4")}><span className="d flex h-6 min-w-6 shrink-0 items-center justify-center rounded-[6px] bg-soft px-1 text-[10px] text-ink-3">{a.code}</span><span className="flex min-w-0 flex-1 flex-col"><span className="line-clamp-2 sm:truncate">{a.titre}</span><span className="text-xs text-ok">{fait(a, resignature)}</span></span><I.chevron /></button>)}
@@ -167,16 +172,16 @@ export function ComposeCard({ state, onClose, onRetry, suivreSeul = true, onVali
   }
 
   return (
-    <div className="flex flex-col gap-3 rounded-[14px] border border-accent-line bg-paper px-[18px] py-4" style={{ boxShadow: "var(--shadow-accent)" }}>
+    <div className="flex flex-col gap-3 rounded-[14px] border border-agent-line bg-paper px-[18px] py-4" style={{ boxShadow: "var(--shadow-accent)" }}>
       <div className="flex items-center gap-2.5">
-        <span className="k whitespace-nowrap" style={{ color: "var(--accent)" }}>{done ? (gardes.length ? `${gardes.length} action${gardes.length > 1 ? "s" : ""} à valider` : docs.length ? "rien à valider" : state.plan?.references.length || state.plan?.locus ? "réponse de Locus" : "locus · composer") : "locus · composer"}</span>
-        {state.input && !done && <span className="truncate text-[13px] text-muted-2">« {state.input.texte || state.input.note?.replace(/\s+/g, " ").slice(0, 80)} »</span>}
+        <span className="k whitespace-nowrap" style={{ color: "var(--agent)" }}>{done ? (gardes.length ? `${gardes.length} action${gardes.length > 1 ? "s" : ""} à valider` : docs.length ? "rien à valider" : state.plan?.references.length || state.plan?.locus ? "réponse de Locus" : "locus · composer") : "locus · composer"}</span>
+        {state.input && !done && <span className="truncate text-[13px] text-dim-2">« {state.input.texte || state.input.note?.replace(/\s+/g, " ").slice(0, 80)} »</span>}
         <span className="flex-1" />
-        <button type="button" onClick={onClose} aria-label="Fermer" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-lg text-muted-2 hover:bg-hover hover:text-ink">×</button>
+        <button type="button" onClick={onClose} aria-label="Fermer" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-lg text-dim-2 hover:bg-hover hover:text-ink">×</button>
       </div>
 
       {!done && !state.error && (
-        <div className="flex items-center gap-2.5 text-sm text-muted-2"><span className="h-2 w-2 rounded-full bg-accent animate-pulse-soft" />{last ?? "Je lis la demande…"}</div>
+        <div className="flex items-center gap-2.5 text-sm text-dim-2"><span className="h-2 w-2 rounded-full bg-brand animate-pulse-soft" />{last ?? "Je lis la demande…"}</div>
       )}
       {state.error && <div className="flex flex-wrap items-center gap-3 text-sm text-rec-text"><span className="flex-1">{state.error}</span>{state.input && onRetry && <button type="button" onClick={() => onRetry(state.input!)} className="rounded-[8px] border border-line bg-paper px-3 py-1.5 text-xs text-ink hover:bg-hover">Réessayer</button>}</div>}
 
@@ -192,12 +197,12 @@ export function ComposeCard({ state, onClose, onRetry, suivreSeul = true, onVali
                 <button type="button" onClick={() => setOpen(a.id)} className="flex min-h-11 min-w-0 flex-1 items-center gap-3 py-1.5 text-left" title="Ouvrir le document">
                   <span className="d flex h-6 min-w-6 shrink-0 items-center justify-center rounded-[6px] bg-soft px-1 text-[10px] text-ink-3">{a.code}</span>
                   <span className="flex min-w-0 flex-1 flex-col">
-                    <span className={cn("truncate text-sm", off && "line-through")}>{a.titre}{modifie && <span className="ml-2 text-[11px]" style={{ color: "var(--accent)" }}>modifié</span>}</span>
-                    <span className="truncate text-xs text-muted-2">{a.ligne}<span className="sm:hidden"> · <span style={{ color: STATUT[a.statut]?.color }}>{STATUT[a.statut]?.label}</span> · {a.destination}</span></span>
+                    <span className={cn("truncate text-sm", off && "line-through")}>{a.titre}{modifie && <span className="ml-2 text-[11px]" style={{ color: "var(--agent)" }}>modifié</span>}</span>
+                    <span className="truncate text-xs text-dim-2">{a.ligne}<span className="sm:hidden"> · <span style={{ color: STATUT[a.statut]?.color }}>{STATUT[a.statut]?.label}</span> · {a.destination}</span></span>
                     {a.alerte && <span className="mt-0.5 text-xs font-medium text-warn">⚠ allergie au dossier : {a.alerte}</span>}
                   </span>
                   <span className="hidden shrink-0 text-xs sm:inline" style={{ color: STATUT[a.statut]?.color }}>{STATUT[a.statut]?.label}</span>
-                  <span className="hidden shrink-0 text-[11px] text-muted-2 sm:inline">{a.destination}</span>
+                  <span className="hidden shrink-0 text-[11px] text-dim-2 sm:inline">{a.destination}</span>
                   <I.chevron />
                 </button>
               </div>
@@ -212,13 +217,13 @@ export function ComposeCard({ state, onClose, onRetry, suivreSeul = true, onVali
       )}
 
       {state.plan && state.plan.references.length > 0 && (
-        <div className="text-xs text-muted-2">{state.plan.references.map((r, i) => <span key={i} className="mr-3">[{i + 1}] {r.url ? <a href={r.url} target="_blank" rel="noreferrer" className="underline decoration-line underline-offset-2">{r.titre}</a> : r.titre} · {r.editeur}{r.annee ? ` ${r.annee}` : ""}</span>)}</div>
+        <div className="text-xs text-dim-2">{state.plan.references.map((r, i) => <span key={i} className="mr-3">[{i + 1}] {r.url ? <a href={r.url} target="_blank" rel="noreferrer" className="underline decoration-line underline-offset-2">{r.titre}</a> : r.titre} · {r.editeur}{r.annee ? ` ${r.annee}` : ""}</span>)}</div>
       )}
 
       {done && (
         <div className="flex flex-wrap items-center gap-2">
           {gardes.length > 0 && !masquerValider && <button type="button" onClick={valider} className="flex min-h-11 items-center gap-2 rounded-[10px] bg-ink px-4 py-[9px] text-sm text-paper">{libelleValider ?? (gardes.length > 1 ? `Valider les ${gardes.length}` : "Valider")} <Kbd dark>⌘⏎</Kbd></button>}
-          {!masquerValider && <button type="button" onClick={onClose} className="flex min-h-11 items-center gap-2 rounded-[10px] px-3 py-[9px] text-sm text-muted-2 hover:bg-hover hover:text-ink">{gardes.length > 0 || docs.length > 0 ? "Annuler" : "Fermer"} <Kbd>esc</Kbd></button>}
+          {!masquerValider && <button type="button" onClick={onClose} className="flex min-h-11 items-center gap-2 rounded-[10px] px-3 py-[9px] text-sm text-dim-2 hover:bg-hover hover:text-ink">{gardes.length > 0 || docs.length > 0 ? "Annuler" : "Fermer"} <Kbd>esc</Kbd></button>}
           <span className="flex-1" />
           {via && <span className="d text-[11px]">{via}</span>}
         </div>

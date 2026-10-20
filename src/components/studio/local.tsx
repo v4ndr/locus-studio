@@ -1,7 +1,8 @@
 "use client";
 import * as React from "react";
-import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import Link from "./nav";
+import { useSearchParams } from "next/navigation";
+import { useRouter } from "./nav";
 import { Header, Omni, Kbd, I, Avatar } from "./chrome";
 import { ComposeCard, useCompose } from "./compose";
 import { NoteEditor, NoteRow, BrouillonBanner, listBrouillons, AJOUTS, type Brouillon, type Ajout } from "./note";
@@ -18,7 +19,7 @@ const PRATICIEN = { initials: "RV" };
 /* ------------------------------------------------------------------ */
 
 /* Hors du formulaire : un composant recréé à chaque rendu perdrait le focus à chaque touche. */
-function F({ label, children, hint }: { label: string; children: React.ReactNode; hint?: string }) { return <label className="flex flex-col gap-1.5"><span className="k">{label}{hint && <span className="ml-2 normal-case tracking-normal text-muted-3">{hint}</span>}</span>{children}</label>; }
+function F({ label, children, hint }: { label: string; children: React.ReactNode; hint?: string }) { return <label className="flex flex-col gap-1.5"><span className="k">{label}{hint && <span className="ml-2 normal-case tracking-normal text-dim-3">{hint}</span>}</span>{children}</label>; }
 
 export function PatientForm({ initial, onDone }: { initial?: PatientLocal; onDone?: (p: PatientLocal) => void }) {
   const router = useRouter();
@@ -48,7 +49,7 @@ export function PatientForm({ initial, onDone }: { initial?: PatientLocal; onDon
     cab.upsert(p);
     onDone ? onDone(p) : router.push(`/d/${p.id}`);
   };
-  const cls = "min-h-11 rounded-[10px] border border-line bg-paper px-3.5 py-2.5 text-base text-ink placeholder:text-muted-3 sm:text-[15px]";
+  const cls = "min-h-11 rounded-[10px] border border-line bg-paper px-3.5 py-2.5 text-base text-ink placeholder:text-dim-3 sm:text-[15px]";
   return (
     <form onSubmit={(e) => { e.preventDefault(); save(); }} className="flex flex-col gap-5">
       <div className="grid gap-4 sm:grid-cols-2">
@@ -66,9 +67,9 @@ export function PatientForm({ initial, onDone }: { initial?: PatientLocal; onDon
       </div>
       <div className="flex flex-wrap items-center gap-2.5">
         <button type="submit" disabled={!ok} className="flex min-h-11 items-center gap-2 rounded-[10px] bg-ink px-4 py-[9px] text-sm text-paper disabled:opacity-40">{initial ? "Enregistrer" : "Créer le dossier"} <Kbd dark>⏎</Kbd></button>
-        {initial && <button type="button" onClick={() => { if (confirm(`Supprimer le dossier de ${initial.prenomUsuel} ${initial.nomUsage}${initial.notes.length ? ` et ses ${initial.notes.length} note${initial.notes.length > 1 ? "s" : ""}` : ""} ? Les brouillons en cours sont effacés aussi.`)) { cab.remove(initial.id); router.push("/d"); } }} className="min-h-11 rounded-[10px] px-3 py-[9px] text-sm text-muted-2 hover:text-rec-text">Supprimer</button>}
+        {initial && <button type="button" onClick={() => { if (confirm(`Supprimer le dossier de ${initial.prenomUsuel} ${initial.nomUsage}${initial.notes.length ? ` et ses ${initial.notes.length} note${initial.notes.length > 1 ? "s" : ""}` : ""} ? Les brouillons en cours sont effacés aussi.`)) { cab.remove(initial.id); router.push("/d"); } }} className="min-h-11 rounded-[10px] px-3 py-[9px] text-sm text-dim-2 hover:text-rec-text">Supprimer</button>}
         <span className="flex-1" />
-        <span className="text-xs text-muted-2">{doublon ? <span className="text-warn">Un dossier existe déjà à cette identité · <Link href={`/d/${doublon.id}`} className="underline">l'ouvrir</Link></span> : "Sans carte Vitale : identité déclarative, INS à qualifier plus tard. Tout reste sur ce poste."}</span>
+        <span className="text-xs text-dim-2">{doublon ? <span className="text-warn">Un dossier existe déjà à cette identité · <Link href={`/d/${doublon.id}`} className="underline">l'ouvrir</Link></span> : "Sans carte Vitale : identité déclarative, INS à qualifier plus tard. Tout reste sur ce poste."}</span>
       </div>
     </form>
   );
@@ -79,7 +80,7 @@ export function NouveauView() {
     <div className="flex min-h-dvh flex-col">
       <Header praticien={PRATICIEN} back="/d" />
       <main className="mx-auto flex w-full max-w-[760px] flex-1 flex-col gap-6 px-4 pb-10 pt-8 sm:px-6 sm:pt-12">
-        <div className="flex flex-col gap-1.5"><h1 className="m-0 text-2xl font-medium tracking-[-.02em]">Nouveau patient</h1><p className="m-0 text-sm text-muted-2">Le minimum pour commencer : une identité, ce qu'on sait. Le reste viendra des notes.</p></div>
+        <div className="flex flex-col gap-1.5"><h1 className="m-0 text-2xl font-medium tracking-[-.02em]">Nouveau patient</h1><p className="m-0 text-sm text-dim-2">Le minimum pour commencer : une identité, ce qu'on sait. Le reste viendra des notes.</p></div>
         <React.Suspense fallback={null}><PatientForm /></React.Suspense>
       </main>
     </div>
@@ -105,15 +106,15 @@ export function CabinetView() {
           <span className="flex-1" />
           <Link href="/nouveau" className="flex items-center gap-2 rounded-[10px] bg-ink px-3.5 py-[8px] text-sm text-paper hover:text-paper"><I.plus /> Nouveau patient</Link>
         </div>
-        <p className="m-0 text-sm text-muted-2">Les dossiers créés ici vivent dans ce navigateur. Exportez la journée en JSON pour la garder ou la rejouer ailleurs.</p>
+        <p className="m-0 text-sm text-dim-2">Les dossiers créés ici vivent dans ce navigateur. Exportez la journée en JSON pour la garder ou la rejouer ailleurs.</p>
         {cab.persistError && <div role="alert" className="rounded-[10px] border border-rec px-3.5 py-2.5 text-sm text-rec-text">{cab.persistError}</div>}
         {info && <div role="status" className="rounded-[10px] bg-soft px-3.5 py-2.5 text-sm">{info}</div>}
         <div className="flex flex-col gap-1">
-          {cab.patients.length === 0 && <div className="rounded-[14px] border border-dashed border-line px-5 py-8 text-center text-sm text-muted-2">Aucun dossier créé. Commencez par « Nouveau patient ».</div>}
+          {cab.patients.length === 0 && <div className="rounded-[14px] border border-dashed border-line px-5 py-8 text-center text-sm text-dim-2">Aucun dossier créé. Commencez par « Nouveau patient ».</div>}
           {cab.patients.map((p) => (
             <Link key={p.id} href={`/d/${p.id}`} className="flex items-center gap-4 rounded-[10px] px-3.5 py-3 text-ink hover:bg-hover hover:text-ink">
               <Avatar initials={initials(p.prenomUsuel, p.nomUsage)} hue={(p.nomUsage.length * 37) % 360} />
-              <span className="flex min-w-0 flex-1 flex-col"><span className="text-[15px]">{p.prenomUsuel} {p.nomUsage}</span><span className="text-[13px] text-muted">{ageDe(p.naissance)} ans · {p.notes.length} note{p.notes.length > 1 ? "s" : ""}{p.traitements.length ? ` · ${p.traitements.length} traitement${p.traitements.length > 1 ? "s" : ""}` : ""}</span></span>
+              <span className="flex min-w-0 flex-1 flex-col"><span className="text-[15px]">{p.prenomUsuel} {p.nomUsage}</span><span className="text-[13px] text-dim">{ageDe(p.naissance)} ans · {p.notes.length} note{p.notes.length > 1 ? "s" : ""}{p.traitements.length ? ` · ${p.traitements.length} traitement${p.traitements.length > 1 ? "s" : ""}` : ""}</span></span>
               <I.chevron />
             </Link>
           ))}
@@ -152,7 +153,7 @@ export function DossierLocalView({ id }: { id: string }) {
   React.useEffect(() => { if (!cab.ready) return; const b = listBrouillons(id)[0]; if (b) ouvrir(b); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [id, cab.ready]);
   if (!cab.ready) return <div className="flex min-h-dvh flex-col"><Header praticien={PRATICIEN} back="/d" /></div>;
   if (!p) return (
-    <div className="flex min-h-dvh flex-col"><Header praticien={PRATICIEN} back="/d" /><main className="mx-auto flex max-w-[720px] flex-1 flex-col items-center justify-center gap-3 px-6 text-center"><h1 className="m-0 text-xl font-medium">Dossier introuvable sur ce poste</h1><p className="m-0 text-sm text-muted-2">Les dossiers créés sans carte Vitale vivent dans le navigateur qui les a créés. Importez l'export JSON pour le retrouver.</p><Link href="/d" className="text-sm" style={{ color: "var(--accent)" }}>Cabinet local →</Link></main></div>
+    <div className="flex min-h-dvh flex-col"><Header praticien={PRATICIEN} back="/d" /><main className="mx-auto flex max-w-[720px] flex-1 flex-col items-center justify-center gap-3 px-6 text-center"><h1 className="m-0 text-xl font-medium">Dossier introuvable sur ce poste</h1><p className="m-0 text-sm text-dim-2">Les dossiers créés sans carte Vitale vivent dans le navigateur qui les a créés. Importez l'export JSON pour le retrouver.</p><Link href="/d" className="text-sm" style={{ color: "var(--agent)" }}>Cabinet local →</Link></main></div>
   );
   const nom = `${p.prenomUsuel} ${p.nomUsage}`;
   const pr: PatientRendu = { nom, naissance: p.naissance.split("-").reverse().join("/"), sexe: p.sexe, age: ageDe(p.naissance), allergies: p.allergies };
@@ -180,9 +181,9 @@ export function DossierLocalView({ id }: { id: string }) {
             <span className="k px-1 pb-2.5">À noter</span>
             {aNoter.map((n, i) => (
               <div key={i} className={cn("flex items-center gap-3 border-t border-line-4 px-1 py-3 text-[15px]", i === aNoter.length - 1 && "border-b")}>
-                <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: n.dot === "accent" ? "var(--accent)" : "var(--gray-dot)" }} />
+                <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: n.dot === "accent" ? "var(--agent)" : "var(--gray-dot)" }} />
                 <span className="flex-1">{n.texte}</span>
-                <span className="d min-w-[46px] text-right" style={{ color: n.dot === "accent" ? "var(--accent)" : undefined }}>{n.tag}</span>
+                <span className="d min-w-[46px] text-right" style={{ color: n.dot === "accent" ? "var(--agent)" : undefined }}>{n.tag}</span>
               </div>
             ))}
           </section>
@@ -196,13 +197,13 @@ export function DossierLocalView({ id }: { id: string }) {
         {vueActions && (
           <section className="card overflow-hidden">
             <div className="flex items-center gap-3 border-b border-line-4 px-4 py-3"><span className="k">Actions validées</span><span className="d">{p.notes.reduce((n, x) => n + x.actions.length, 0)}</span></div>
-            {p.notes.flatMap((n) => n.actions.map((a) => ({ a, n }))).length === 0 && <div className="px-4 py-3 text-sm text-muted-2">Aucune action validée pour l'instant.</div>}
+            {p.notes.flatMap((n) => n.actions.map((a) => ({ a, n }))).length === 0 && <div className="px-4 py-3 text-sm text-dim-2">Aucune action validée pour l'instant.</div>}
             {p.notes.flatMap((n) => n.actions.map((a) => ({ a, n }))).map(({ a, n }, i) => (
               <button type="button" key={`${n.id}-${a.id}`} onClick={() => setDoc(a)} className={cn("flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm hover:bg-hover", i > 0 && "border-t border-line-4")} title="Voir le document envoyé">
                 <span className="d w-[42px] shrink-0 text-[11px]">{new Date(a.envoyeLe ?? n.date).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" })}</span>
                 <span className="d flex h-6 min-w-6 shrink-0 items-center justify-center rounded-[6px] bg-soft px-1 text-[10px] text-ink-3">{a.code}</span>
                 <span className="min-w-0 flex-1 truncate">{a.titre}</span>
-                <span className="hidden text-[11px] text-muted-3 sm:inline">{a.destination}</span>
+                <span className="hidden text-[11px] text-dim-3 sm:inline">{a.destination}</span>
                 {a.renvoye && <span className="text-[11px] text-ok">renvoyé</span>}
                 <I.chevron />
               </button>
@@ -217,13 +218,13 @@ export function DossierLocalView({ id }: { id: string }) {
         ) : (
           <section ref={notesRef} className="flex scroll-mt-24 flex-col gap-2">
             <div className="flex items-center gap-3"><span className="k px-1">Notes</span><span className="flex-1" /><button type="button" onClick={() => ouvrir()} className="flex min-h-10 items-center gap-2 rounded-[10px] bg-ink px-3.5 py-[8px] text-sm text-paper"><I.plus /> Consultation</button></div>
-            {p.notes.length === 0 && <div className="rounded-[14px] border border-dashed border-line px-5 py-6 text-center text-sm text-muted-2">Aucune note. La première consultation commence ici : écrivez ou dictez, Locus décline en actions, vous signez.</div>}
+            {p.notes.length === 0 && <div className="rounded-[14px] border border-dashed border-line px-5 py-6 text-center text-sm text-dim-2">Aucune note. La première consultation commence ici : écrivez ou dictez, Locus décline en actions, vous signez.</div>}
             {p.notes.map((n) => <NoteRow key={n.id} n={n} patient={pr} onModifier={() => ouvrir({ patientId: p.id, noteId: n.id } as Brouillon)} onDelete={() => { cab.removeNote(p.id, n.id); setVersion((v) => v + 1); }} />)}
           </section>
         )}
       </main>
       <Omni placeholder="Ordo, rendez-vous, mail, courrier, arrêt, question… tout." onSubmit={(t) => composer.run({ texte: t, patientId: p.id, patient: patientPayload(p), ecran: "dossier" })} suggestions={[{ k: "ordo", t: p.traitements[0] ? `Renouvelle ${p.traitements[0].split(/[·,]/)[0].trim()} pour 3 mois` : "Ordonnance : paracétamol 1 g, 3/j si douleur, 5 jours" }, { k: "rdv", t: "Revoir dans 6 semaines, 20 minutes" }, { k: "mail", t: `Mail à ${p.prenomUsuel} : résultats rassurants` }, { k: "arrêt", t: "Arrêt de travail 5 jours, sorties libres" }, { k: "question", t: "Quelle surveillance pour ce traitement ?" }]} cta={<div className="relative flex shrink-0 items-stretch"><button type="button" onClick={() => ouvrir()} className="flex min-h-11 items-center gap-2 whitespace-nowrap rounded-l-[10px] bg-ink px-3.5 py-[9px] text-sm font-medium text-paper sm:px-4">+ Consultation</button><button type="button" onClick={() => setMenu((m) => !m)} aria-expanded={menu} aria-haspopup="menu" aria-label="Ajouter autre chose" className="flex min-h-11 w-9 items-center justify-center rounded-r-[10px] border-l border-paper/20 bg-ink text-paper"><I.chevron open={menu} color="var(--paper)" /></button>{menu && <div role="menu" className="absolute bottom-full right-0 z-20 mb-1 flex min-w-[200px] flex-col rounded-[12px] border border-line bg-paper p-1" style={{ boxShadow: "var(--shadow)" }}><span className="k px-3 pb-1 pt-2">Sans note · juste</span>{AJOUTS.map((a) => <button key={a.k} type="button" role="menuitem" onClick={() => ouvrir(undefined, a.k)} className="min-h-10 rounded-[8px] px-3 py-2 text-left text-sm text-ink hover:bg-hover">{a.label}</button>)}</div>}</div>}>
-        {composer.open && <ComposeCard state={composer.state} onClose={composer.reset} onRetry={(i) => composer.run(i)} suivreSeul={false} patient={pr} onValide={(actions, plan) => { const now = new Date().toISOString(); const envoyees = actions.map((a) => ({ ...a, envoyeLe: now, renvoye: false })); cab.saveNote(p.id, { id: nid("n"), date: now, motif: envoyees.map((a) => a.code).filter((c, i, arr) => arr.indexOf(c) === i).join(" · "), texte: composer.state.input?.texte ?? "", actions: envoyees, synthese: plan.synthese, via: plan.via, chrono: { saisie: 0, composition: 0, validation: 0 }, origine: "commande" }); setVersion((v) => v + 1); return envoyees; }} />}
+        {composer.open && <ComposeCard state={composer.state} onClose={composer.reset} onRetry={(i) => composer.run(i)} suivreSeul={false} patient={pr} onValide={(actions, plan) => { const now = new Date().toISOString(); const envoyees = actions.map((a) => ({ ...a, envoyeLe: now, renvoye: false })); cab.saveNote(p.id, { id: nid("n"), date: now, motif: envoyees.map((a) => a.code).filter((c, i, arr) => arr.indexOf(c) === i).join(" · "), texte: composer.state.input?.texte ?? "", actions: envoyees, synthese: plan.synthese, via: plan.via, origine: "commande" }); setVersion((v) => v + 1); return envoyees; }} />}
       </Omni>
     </div>
   );

@@ -1,7 +1,7 @@
 "use client";
 import * as React from "react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
+import { useRouter } from "./nav";
+import Link from "./nav";
 import type { HomeData, PatientRef } from "@/studio/types";
 import { Header, Kbd, I, Avatar } from "./chrome";
 import { ComposeCard, useCompose } from "./compose";
@@ -79,44 +79,43 @@ export function Home({ data }: { data: HomeData }) {
           {!open && <h1 className="m-0 text-[26px] font-medium tracking-[-.02em] sm:text-[28px]">Qui voyez-vous ?</h1>}
           <div className={cn("overflow-hidden rounded-[14px] border border-line bg-paper", open ? "shadow-[0_8px_24px_rgba(17,17,17,.06)]" : "")} style={!open ? { boxShadow: "var(--shadow)" } : undefined}>
             <div className={cn("flex items-center gap-3.5 px-5 py-[18px]", open && "border-b border-line-2")} onClick={() => { inputRef.current?.focus(); setOpen(true); }}>
-              <I.search color={open ? "var(--ink)" : "var(--muted-2)"} />
+              <I.search color={open ? "var(--ink)" : "var(--dim-2)"} />
               <label htmlFor="q" className="sr-only">Recherche</label>
-              <input id="q" name="locus-recherche" ref={inputRef} autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck={false} data-1p-ignore data-lpignore="true" value={q} onChange={(e) => { setQ(e.target.value); setSel(0); setOpen(true); }} onFocus={() => { if (!viaTab.current) setOpen(true); }} placeholder="Nom, date de naissance, ou une demande…" aria-expanded={open} className="min-h-10 flex-1 bg-transparent text-[17px] text-ink outline-none placeholder:text-muted-3" />
+              <input id="q" name="locus-recherche" ref={inputRef} autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck={false} data-1p-ignore data-lpignore="true" value={q} onChange={(e) => { setQ(e.target.value); setSel(0); setOpen(true); }} onFocus={() => { if (!viaTab.current) setOpen(true); }} placeholder="Nom, date de naissance, ou une demande…" aria-expanded={open} className="min-h-10 flex-1 bg-transparent text-[17px] text-ink outline-none placeholder:text-dim-3" />
               <Kbd>{open ? "esc" : "⌘K"}</Kbd>
             </div>
             {open && (
               <div className="p-2.5">
                 <div className="k px-3 py-2">Patients</div>
-                {hits.length === 0 && q && <div className="px-3 py-3 text-sm text-muted-2">Aucun patient à ce nom.</div>}
+                {hits.length === 0 && q && <div className="px-3 py-3 text-sm text-dim-2">Aucun patient à ce nom.</div>}
                 {hits.map((h, i) => <PatientRow key={h.id} p={h} active={i === sel} first={i === 0} data={data} onHover={() => setSel(i)} exclure={hits.map((x) => x.id)} />)}
                 {askRow && (
-                  <button type="button" onMouseEnter={() => setSel(hits.length)} onClick={() => demander(q.trim())} className={cn("flex w-full items-center gap-3 rounded-[10px] px-3 py-3 text-left text-sm text-ink", sel === hits.length ? "bg-accent-soft-2" : "hover:bg-hover")}>
-                    <span className="flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-full bg-accent-soft text-[11px] font-semibold" style={{ color: "var(--accent)" }}>⌘K</span>
-                    <span className="flex min-w-0 flex-1 flex-col gap-[3px]"><span className="text-[15px]">Demander à Locus</span><span className="truncate text-[13px] text-muted">« {q} » — une ordonnance, un rendez-vous, un message, une question : il compose, vous validez.</span></span>
+                  <button type="button" onMouseEnter={() => setSel(hits.length)} onClick={() => demander(q.trim())} className={cn("flex w-full items-center gap-3 rounded-[10px] px-3 py-3 text-left text-sm text-ink", sel === hits.length ? "bg-agent-soft-2" : "hover:bg-hover")}>
+                    <span className="flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-full bg-agent-soft text-[11px] font-semibold" style={{ color: "var(--agent)" }}>⌘K</span>
+                    <span className="flex min-w-0 flex-1 flex-col gap-[3px]"><span className="text-[15px]">Demander à Locus</span><span className="truncate text-[13px] text-dim">« {q} » — une ordonnance, un rendez-vous, un message, une question : il compose, vous validez.</span></span>
                     {sel === hits.length && <Kbd>⏎</Kbd>}
                   </button>
                 )}
                 {hits.length === 0 && !q && (
                   <>
-                    <div className="px-3 pb-2 text-sm text-muted-2">Un nom, une date de naissance, ou directement une demande :</div>
+                    <div className="px-3 pb-2 text-sm text-dim-2">Un nom, une date de naissance, ou directement une demande :</div>
                     {EXEMPLES.map((e, i) => e.demande ? (
-                      <button key={e.t} type="button" onMouseEnter={() => setSel(i)} onClick={() => demander(e.t)} className={cn("flex min-h-10 w-full items-center gap-3 rounded-[10px] px-3 py-2.5 text-left text-sm text-ink", i === sel ? "bg-accent-soft-2" : "hover:bg-hover")}>
+                      <button key={e.t} type="button" onMouseEnter={() => setSel(i)} onClick={() => demander(e.t)} className={cn("flex min-h-10 w-full items-center gap-3 rounded-[10px] px-3 py-2.5 text-left text-sm text-ink", i === sel ? "bg-agent-soft-2" : "hover:bg-hover")}>
                         <span className="d w-[72px] shrink-0 text-[10px]">{e.k}</span><span className="min-w-0 flex-1 truncate">{e.t}</span>{i === sel && <Kbd>⏎</Kbd>}
                       </button>
                     ) : (
-                      <Link key={e.t} href={e.href} onMouseEnter={() => setSel(i)} className={cn("flex min-h-10 items-center gap-3 rounded-[10px] px-3 py-2.5 text-sm text-ink hover:text-ink", i === sel ? "bg-accent-soft-2" : "hover:bg-hover")}>
+                      <Link key={e.t} href={e.href} onMouseEnter={() => setSel(i)} className={cn("flex min-h-10 items-center gap-3 rounded-[10px] px-3 py-2.5 text-sm text-ink hover:text-ink", i === sel ? "bg-agent-soft-2" : "hover:bg-hover")}>
                         <span className="d w-[72px] shrink-0 text-[10px]">{e.k}</span><span className="min-w-0 flex-1 truncate">{e.t}</span>{i === sel && <Kbd>⏎</Kbd>}
                       </Link>
                     ))}
                   </>
                 )}
                 <div className="k px-3 pb-2 pt-3.5">Actions</div>
-                <div className="flex items-center gap-3 rounded-[10px] px-3 py-3 text-sm text-muted-2" title="Lecteur de carte Vitale : non branché dans le studio"><I.card /><span className="flex-1">Lire la carte Vitale pour confirmer <span className="text-xs">· lecteur mocké, pas de lecteur ici</span></span></div>
-                <Link href={`/nouveau${q ? `?q=${encodeURIComponent(q)}` : ""}`} className="flex items-center gap-3 rounded-[10px] px-3 py-3 text-sm text-ink-2 hover:bg-hover hover:text-ink"><I.plus /><span className="flex-1">Nouveau patient{q ? ` « ${q.slice(0, 1).toUpperCase() + q.slice(1, 24)}${q.length > 24 ? "…" : ""} »` : ""} · sans carte Vitale</span></Link>
+                <div className="flex items-center gap-3 rounded-[10px] px-3 py-3 text-sm text-dim-2" title="Lecteur de carte Vitale : non branché dans le studio"><I.card /><span className="flex-1">Lire la carte Vitale pour confirmer <span className="text-xs">· lecteur mocké, pas de lecteur ici</span></span></div>
               </div>
             )}
           </div>
-          {open && context && <p className="m-0 text-[13px] text-muted-2">{context}</p>}
+          {open && context && <p className="m-0 text-[13px] text-dim-2">{context}</p>}
           {composer.open && <ComposeCard state={composer.state} onClose={composer.reset} onRetry={(i) => composer.run(i)} />}
           {!open && (
             <>
@@ -124,8 +123,7 @@ export function Home({ data }: { data: HomeData }) {
                 <Pill href="/inbox/courriers" label="Courriers" n={data.courriersNonLus} />
                 <Pill href="/inbox/bio" label="Résultats bio" n={data.bioNonLues} />
                 <Pill href="/inbox/messages" label="Messages" n={data.messagesNonLus} />
-                <Pill href="/d" label="Cabinet local" n={cab.patients.length} />
-                <Link href="/nouveau" className="flex items-center gap-1.5 rounded-lg border border-dashed border-line px-2.5 py-1.5 text-xs text-ink-2 hover:bg-hover hover:text-ink"><I.plus /> Nouveau patient</Link>
+                {/* Cabinet local et création de dossier : outils de test, masqués du sandbox public (réservés aux comptes connectés, PR Accès). */}
               </div>
               <BrouillonsAccueil />
               <section className="flex flex-col gap-1">
@@ -160,7 +158,7 @@ export function Home({ data }: { data: HomeData }) {
 
 /** Les trois boîtes, en pastilles : le compte des non-lus, triés par Locus. */
 function Pill({ href, label, n }: { href: string; label: string; n: number }) {
-  return <Link href={href} className="flex items-center gap-2 rounded-lg border border-line bg-paper px-2.5 py-1.5 text-xs text-ink hover:bg-hover hover:text-ink"><span>{label}</span>{n > 0 ? <span className="d rounded-[5px] bg-accent-soft px-1.5 text-[11px]" style={{ color: "var(--accent)" }}>{n}</span> : <span className="d text-[11px]">0</span>}</Link>;
+  return <Link href={href} className="flex items-center gap-2 rounded-lg border border-line bg-paper px-2.5 py-1.5 text-xs text-ink hover:bg-hover hover:text-ink"><span>{label}</span>{n > 0 ? <span className="d rounded-[5px] bg-agent-soft px-1.5 text-[11px]" style={{ color: "var(--agent)" }}>{n}</span> : <span className="d text-[11px]">0</span>}</Link>;
 }
 
 /** Ce qu'on peut demander directement depuis l'accueil, sans ouvrir un dossier. */
@@ -173,9 +171,9 @@ const EXEMPLES: { k: string; t: string; href: string; /** Composé par Locus (un
 ];
 
 function Slot({ r, active, onHover }: { r: HomeData["agenda"][number]; active: boolean; onHover: () => void }) {
-  const inner = <><span className="k w-12 shrink-0" style={r.prochain ? { color: "var(--accent)" } : undefined}>{r.heure}</span><span className={cn("min-w-0 flex-1 truncate text-[15px]", r.prochain && "font-medium")}>{r.nom}</span><span className="hidden text-[13px] text-muted-2 sm:inline">{r.motif}</span></>;
+  const inner = <><span className="k w-12 shrink-0" style={r.prochain ? { color: "var(--agent)" } : undefined}>{r.heure}</span><span className={cn("min-w-0 flex-1 truncate text-[15px]", r.prochain && "font-medium")}>{r.nom}</span><span className="hidden text-[13px] text-dim-2 sm:inline">{r.motif}</span></>;
   const cls = cn("flex items-center gap-3 rounded-[10px] px-3.5 py-3 text-ink hover:text-ink sm:gap-4", active ? "bg-hover" : "hover:bg-hover");
-  if (r.libre) return <div className={cn(cls, "text-muted-2")} onMouseEnter={onHover}>{inner}</div>;
+  if (r.libre) return <div className={cn(cls, "text-dim-2")} onMouseEnter={onHover}>{inner}</div>;
   return <Link href={`/p/${r.patientId}`} className={cls} onMouseEnter={onHover}>{inner}</Link>;
 }
 
@@ -183,17 +181,17 @@ function PatientRow({ p, active, first, data, onHover, exclure }: { p: PatientRe
   const fam = data.patients.filter((x) => x.id !== p.id && x.nomUsage === p.nomUsage && !exclure?.includes(x.id));
   return (
     <>
-      <Link href={p.id.startsWith("loc_") ? `/d/${p.id}` : `/p/${p.id}`} onMouseEnter={onHover} className={cn("flex items-center gap-3 rounded-[10px] px-3 py-3.5 text-ink hover:text-ink sm:gap-4", active ? "bg-accent-soft-2" : "hover:bg-hover")}>
+      <Link href={p.id.startsWith("loc_") ? `/d/${p.id}` : `/p/${p.id}`} onMouseEnter={onHover} className={cn("flex items-center gap-3 rounded-[10px] px-3 py-3.5 text-ink hover:text-ink sm:gap-4", active ? "bg-agent-soft-2" : "hover:bg-hover")}>
         <Avatar initials={p.initials} accent={first} />
-        <span className="flex flex-1 flex-col gap-[3px]"><span className={cn("text-[15px]", first && "font-medium")}>{p.nom}</span><span className="text-[13px] text-muted">{p.age} ans · né{(p.sexe ? p.sexe === "F" : /^(Marguerite|Léa|Inès|Sophie|Claire|Monique|Nadia|Emma|Thi|Aminata|Hélène|Josiane)/.test(p.prenom)) ? "e" : ""} le {p.naissance}{p.profession ? ` · ${p.profession}` : ""}</span></span>
+        <span className="flex flex-1 flex-col gap-[3px]"><span className={cn("text-[15px]", first && "font-medium")}>{p.nom}</span><span className="text-[13px] text-dim">{p.age} ans · né{(p.sexe ? p.sexe === "F" : /^(Marguerite|Léa|Inès|Sophie|Claire|Monique|Nadia|Emma|Thi|Aminata|Hélène|Josiane)/.test(p.prenom)) ? "e" : ""} le {p.naissance}{p.profession ? ` · ${p.profession}` : ""}</span></span>
         {p.ins === "qualifiee" && <span className="hidden items-center gap-1.5 text-xs text-ok sm:flex"><I.check />INS qualifiée</span>}
-        {p.ins === "provisoire" && <span className="hidden text-xs text-muted-2 sm:inline">dossier local</span>}
+        {p.ins === "provisoire" && <span className="hidden text-xs text-dim-2 sm:inline">dossier local</span>}
         {active && <Kbd>⏎</Kbd>}
       </Link>
       {first && fam.slice(0, 1).map((f) => (
         <Link key={f.id} href={`/p/${f.id}`} className="flex items-center gap-3 rounded-[10px] px-3 py-3.5 text-ink hover:bg-hover hover:text-ink sm:gap-4">
           <Avatar initials={f.initials} />
-          <span className="flex flex-1 flex-col gap-[3px]"><span className="text-[15px]">{f.nom}</span><span className="text-[13px] text-muted">{f.age} ans · même nom</span></span>
+          <span className="flex flex-1 flex-col gap-[3px]"><span className="text-[15px]">{f.nom}</span><span className="text-[13px] text-dim">{f.age} ans · même nom</span></span>
         </Link>
       ))}
     </>

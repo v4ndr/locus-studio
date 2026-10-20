@@ -11,6 +11,8 @@ import { simulateRetrieve, simulateSpecialite, simulateLogic } from "./simulatio
  */
 
 const STUDIO_VERSION = "0.1.0";
+/** Le seul message d'erreur qui sort : ni URL de core, ni flag, ni détail de pipeline. */
+const INDISPONIBLE = "Locus est momentanément indisponible. Réessayez.";
 
 export async function* retrieveStream(req: RetrieveRequest, cfg: CoreConfig = coreConfig()): AsyncGenerator<StudioStreamEvent> {
   if (cfg.mode === "simulation") {
@@ -30,16 +32,20 @@ export async function* retrieveStream(req: RetrieveRequest, cfg: CoreConfig = co
       redirect: "manual",
     });
   } catch (e) {
-    yield { step: "error", detail: `locus-core injoignable (${cfg.url}) : ${e instanceof Error ? e.message : String(e)}` };
+    console.error("[locus] injoignable", e);
+    yield { step: "error", detail: INDISPONIBLE };
     return;
   }
   if (res.status === 302 || res.status === 303) {
-    yield { step: "error", detail: "La Sandbox de locus-core est derrière une session admin (302 → /login). Lancer core avec MCP_OAUTH_ENABLED=false, ou renseigner LOCUS_API_KEY." };
+    // Sandbox de core derrière une session admin : lancer core avec MCP_OAUTH_ENABLED=false, ou renseigner LOCUS_API_KEY.
+    console.error("[locus] redirection", res.status, res.headers.get("location"));
+    yield { step: "error", detail: INDISPONIBLE };
     return;
   }
   if (!res.ok || !res.body) {
     const txt = await res.text().catch(() => "");
-    yield { step: "error", detail: `locus-core a répondu ${res.status} : ${txt.slice(0, 300)}` };
+    console.error("[locus]", res.status, txt.slice(0, 300));
+    yield { step: "error", detail: INDISPONIBLE };
     return;
   }
   for await (const ev of readNdjson<StreamEvent>(res.body)) {
@@ -54,7 +60,7 @@ export async function* retrieveStream(req: RetrieveRequest, cfg: CoreConfig = co
         yield { step: "retrieval", docs: Number((ev as { docs?: number }).docs ?? 0), chunks: Number((ev as { chunks?: number }).chunks ?? 0) };
         break;
       case "query_maker":
-        yield { step: "reflexion", titre: `Je reformule : ${String((ev as { reformulated?: string }).reformulated ?? "")}` };
+        /* La reformulation est de la PI Locus : elle ne sort pas du serveur. */
         break;
       case "answer":
         yield { step: "answer", answer: String((ev as { answer?: string }).answer ?? "") };
@@ -63,7 +69,8 @@ export async function* retrieveStream(req: RetrieveRequest, cfg: CoreConfig = co
         yield { step: "done", payload: toPublic((ev as { payload: Parameters<typeof toPublic>[0] }).payload, "locus-core") };
         break;
       case "error":
-        yield { step: "error", detail: String((ev as { detail?: string }).detail ?? "erreur") };
+        console.error("[locus] erreur de flux", (ev as { detail?: string }).detail);
+        yield { step: "error", detail: INDISPONIBLE };
         break;
       default:
         /* route, rcp, drugs, logic… : du détail de pipeline, pas une étape produit. */

@@ -26,14 +26,14 @@ export function DocumentRendu({ action, patient, date, compact }: { action: Comp
   const quand = date ?? action.envoyeLe ?? new Date().toISOString();
   const entete = (
     <div className="flex justify-between gap-4 text-[12px] leading-[1.45]">
-      <div className="flex flex-col"><b className="font-semibold text-[13px]">{PRAT.nom}</b><span className="text-muted-2">{PRAT.specialite} · RPPS {PRAT.rpps}</span><span className="text-muted-2">{PRAT.cabinet}</span><span className="text-muted-2">{PRAT.adresse}</span></div>
-      <div className="flex flex-col items-end text-muted-2"><span>Lyon, le {frDate(quand)}</span>{action.envoyeLe && <span className="text-ok">{action.renvoye ? "renvoyé" : "envoyé"} {frDate(action.envoyeLe)}</span>}</div>
+      <div className="flex flex-col"><b className="font-semibold text-[13px]">{PRAT.nom}</b><span className="text-dim-2">{PRAT.specialite} · RPPS {PRAT.rpps}</span><span className="text-dim-2">{PRAT.cabinet}</span><span className="text-dim-2">{PRAT.adresse}</span></div>
+      <div className="flex flex-col items-end text-dim-2"><span>Lyon, le {frDate(quand)}</span>{action.envoyeLe && <span className="text-ok">{action.renvoye ? "renvoyé" : "envoyé"} {frDate(action.envoyeLe)}</span>}</div>
     </div>
   );
   const bloc = (
-    <div className="flex flex-col text-[13px]"><span>{patient.sexe === "F" ? "Mme" : patient.sexe === "M" ? "M." : ""} {patient.nom}</span>{patient.naissance && <span className="text-muted-2">né{patient.sexe === "F" ? "e" : ""} le {patient.naissance}{patient.age !== undefined ? ` · ${patient.age} ans` : ""}</span>}</div>
+    <div className="flex flex-col text-[13px]"><span>{patient.sexe === "F" ? "Mme" : patient.sexe === "M" ? "M." : ""} {patient.nom}</span>{patient.naissance && <span className="text-dim-2">né{patient.sexe === "F" ? "e" : ""} le {patient.naissance}{patient.age !== undefined ? ` · ${patient.age} ans` : ""}</span>}</div>
   );
-  const signature = (texte: string) => <div className="mt-auto flex items-end justify-between gap-4 pt-4"><span className="text-[11px] text-muted-2">{texte}</span><span className="rounded-lg border-[1.5px] border-dashed border-accent-line px-3.5 py-2 text-[12px]" style={{ color: "var(--accent)" }}>{action.envoyeLe ? "Signé e-CPS" : "Signature e-CPS"}</span></div>;
+  const signature = (texte: string) => <div className="mt-auto flex items-end justify-between gap-4 pt-4"><span className="text-[11px] text-dim-2">{texte}</span><span className="rounded-lg border-[1.5px] border-dashed border-agent-line px-3.5 py-2 text-[12px]" style={{ color: "var(--agent)" }}>{action.envoyeLe ? "Signé e-CPS" : "Signature e-CPS"}</span></div>;
 
   let corps: React.ReactNode;
   if (!c) corps = <p className="m-0 text-sm">{action.titre}</p>;
@@ -43,9 +43,9 @@ export function DocumentRendu({ action, patient, date, compact }: { action: Comp
         <>
           <h2 className="m-0 text-[15px] font-semibold uppercase tracking-[.04em]">{RX_LABEL[c.type] ?? "Ordonnance"}{c.lignes.some((l) => l.ald) ? " · ALD" : ""}</h2>
           <ol className="m-0 flex list-decimal flex-col gap-2.5 pl-5 text-[13px] leading-[1.5]">
-            {c.lignes.filter((l) => l.libelle.trim()).map((l, i) => <li key={i}><b className="font-medium">{l.libelle}</b>{c.type === "medicament" && l.posologie ? <><br />{l.posologie}</> : null}{c.type === "medicament" && l.duree ? <span className="text-muted-2"> · {l.duree}</span> : null}{c.type === "medicament" && l.renouvellement ? <span className="text-muted-2"> · à renouveler {l.renouvellement} fois</span> : null}{l.ald ? <span className="ml-2 rounded-[4px] bg-soft px-1.5 text-[11px]">ALD</span> : null}</li>)}
+            {c.lignes.filter((l) => l.libelle.trim()).map((l, i) => <li key={i}><b className="font-medium">{l.libelle}</b>{c.type === "medicament" && l.posologie ? <><br />{l.posologie}</> : null}{c.type === "medicament" && l.duree ? <span className="text-dim-2"> · {l.duree}</span> : null}{c.type === "medicament" && l.renouvellement ? <span className="text-dim-2"> · à renouveler {l.renouvellement} fois</span> : null}{l.ald ? <span className="ml-2 rounded-[4px] bg-soft px-1.5 text-[11px]">ALD</span> : null}</li>)}
           </ol>
-          {c.indication && <div className="text-[13px]"><span className="text-muted-2">Renseignements cliniques · </span>{c.indication}</div>}
+          {c.indication && <div className="text-[13px]"><span className="text-dim-2">Renseignements cliniques · </span>{c.indication}</div>}
           {signature(action.envoyeLe ? "Ordonnance numérique · transmise à la pharmacie et au patient" : "Ordonnance numérique à la signature · QR code")}
         </>
       );
@@ -54,7 +54,7 @@ export function DocumentRendu({ action, patient, date, compact }: { action: Comp
       corps = (
         <>
           <h2 className="m-0 text-[15px] font-semibold uppercase tracking-[.04em]">Rendez-vous</h2>
-          <div className="grid grid-cols-[110px_1fr] gap-x-4 gap-y-1.5 text-[13px]"><span className="text-muted-2">Quand</span><span>{c.debut ? `${jourFr(c.debut)} à ${heureFr(c.debut)}` : "à planifier"}</span><span className="text-muted-2">Durée</span><span>{c.duree_min} min</span><span className="text-muted-2">Motif</span><span>{c.motif}</span><span className="text-muted-2">Avec</span><span>{PRAT.nom}</span></div>
+          <div className="grid grid-cols-[110px_1fr] gap-x-4 gap-y-1.5 text-[13px]"><span className="text-dim-2">Quand</span><span>{c.debut ? `${jourFr(c.debut)} à ${heureFr(c.debut)}` : "à planifier"}</span><span className="text-dim-2">Durée</span><span>{c.duree_min} min</span><span className="text-dim-2">Motif</span><span>{c.motif}</span><span className="text-dim-2">Avec</span><span>{PRAT.nom}</span></div>
           <div className="rounded-[10px] bg-bg px-3.5 py-3 text-[12px] leading-[1.5]"><span className="k">SMS au patient</span><br />Bonjour, votre rendez-vous avec le {PRAT.nom} est fixé le {c.debut ? `${jourFr(c.debut).toLowerCase()} à ${heureFr(c.debut).replace(":", " h ")}` : "…"}. {PRAT.cabinet}, {PRAT.adresse}. Pour annuler ou déplacer, répondez à ce message.</div>
           {signature(action.envoyeLe ? "Inscrit à l'agenda · SMS envoyé" : "Sera inscrit à l'agenda, SMS envoyé au patient")}
         </>
@@ -64,7 +64,7 @@ export function DocumentRendu({ action, patient, date, compact }: { action: Comp
       corps = (
         <>
           <h2 className="m-0 text-[15px] font-semibold uppercase tracking-[.04em]">Message sécurisé</h2>
-          <div className="grid grid-cols-[110px_1fr] gap-x-4 gap-y-1.5 text-[13px]"><span className="text-muted-2">À</span><span>{c.nom || (c.a === "patient" ? patient.nom : MSG_A[c.a] ?? c.a)} <span className="text-muted-2">· {c.a === "patient" ? "messagerie patient" : "MSSanté"}</span></span><span className="text-muted-2">Objet</span><span>{c.objet}</span></div>
+          <div className="grid grid-cols-[110px_1fr] gap-x-4 gap-y-1.5 text-[13px]"><span className="text-dim-2">À</span><span>{c.nom || (c.a === "patient" ? patient.nom : MSG_A[c.a] ?? c.a)} <span className="text-dim-2">· {c.a === "patient" ? "messagerie patient" : "MSSanté"}</span></span><span className="text-dim-2">Objet</span><span>{c.objet}</span></div>
           <div className="whitespace-pre-line text-[13px] leading-[1.6]">{c.corps}</div>
           {signature(action.envoyeLe ? "Envoyé" : `De ${PRAT.mssante}`)}
         </>
@@ -73,8 +73,8 @@ export function DocumentRendu({ action, patient, date, compact }: { action: Comp
     case "courrier":
       corps = (
         <>
-          <div className="text-[13px]"><span className="text-muted-2">À l'attention de</span> {c.destinataire}{c.specialite ? <span className="text-muted-2"> · {c.specialite}</span> : null}</div>
-          <h2 className="m-0 text-[15px] font-semibold">{c.titre}<span className="ml-2 text-[11px] font-normal text-muted-2">{CR_TYPE[c.type] ?? c.type}</span></h2>
+          <div className="text-[13px]"><span className="text-dim-2">À l'attention de</span> {c.destinataire}{c.specialite ? <span className="text-dim-2"> · {c.specialite}</span> : null}</div>
+          <h2 className="m-0 text-[15px] font-semibold">{c.titre}<span className="ml-2 text-[11px] font-normal text-dim-2">{CR_TYPE[c.type] ?? c.type}</span></h2>
           <div className="text-[13px]"><Md text={c.corps} /></div>
           {signature(["certificat", "attestation", "courrier-patient"].includes(c.type) ? (action.envoyeLe ? "Signé · remis au patient" : "Remis au patient en main propre après signature") : action.envoyeLe ? "Envoyé par MSSanté" : `Par MSSanté, de ${PRAT.mssante}`)}
         </>
@@ -84,9 +84,9 @@ export function DocumentRendu({ action, patient, date, compact }: { action: Comp
       corps = (
         <>
           <h2 className="m-0 text-[15px] font-semibold uppercase tracking-[.04em]">Avis d'arrêt de travail{c.prolongation ? " · prolongation" : ""}</h2>
-          <div className="grid grid-cols-[110px_1fr] gap-x-4 gap-y-1.5 text-[13px]"><span className="text-muted-2">Du</span><span>{frDate(quand)}</span><span className="text-muted-2">Au</span><span>{finArret(quand, c.jours)} inclus · {c.jours} jour{c.jours > 1 ? "s" : ""}</span><span className="text-muted-2">Sorties</span><span>{SORTIES[c.sorties] ?? c.sorties}</span><span className="text-muted-2">Temps partiel</span><span>{c.temps_partiel ? "oui" : "non"}</span></div>
+          <div className="grid grid-cols-[110px_1fr] gap-x-4 gap-y-1.5 text-[13px]"><span className="text-dim-2">Du</span><span>{frDate(quand)}</span><span className="text-dim-2">Au</span><span>{finArret(quand, c.jours)} inclus · {c.jours} jour{c.jours > 1 ? "s" : ""}</span><span className="text-dim-2">Sorties</span><span>{SORTIES[c.sorties] ?? c.sorties}</span><span className="text-dim-2">Temps partiel</span><span>{c.temps_partiel ? "oui" : "non"}</span></div>
           <div className="rounded-[10px] border border-dashed border-line px-3.5 py-2.5 text-[12px] leading-[1.5]"><span className="k">Volet 1 · médical, confidentiel</span><br />Motif : {c.motif}</div>
-          <div className="text-[11px] text-muted-2">Volets 2 et 3 (employeur, assuré) sans le motif.</div>
+          <div className="text-[11px] text-dim-2">Volets 2 et 3 (employeur, assuré) sans le motif.</div>
           {signature(action.envoyeLe ? "Télétransmis à la CPAM (AAT)" : "Téléservice AAT · télétransmis à la signature")}
         </>
       );
@@ -96,7 +96,7 @@ export function DocumentRendu({ action, patient, date, compact }: { action: Comp
         <>
           <h2 className="m-0 text-[15px] font-semibold uppercase tracking-[.04em]">Fiche · {DOS_LABEL[c.type] ?? c.type}</h2>
           <div className="text-[13px] leading-[1.55]"><b className="font-medium">{c.libelle}</b>{c.detail ? <><br />{c.detail}</> : null}</div>
-          <div className="mt-auto pt-4 text-[11px] text-muted-2">{action.envoyeLe ? "Ajouté à la fiche du patient." : "Sera ajouté à la fiche du patient à la validation. Rien n'est signé ni envoyé."}</div>
+          <div className="mt-auto pt-4 text-[11px] text-dim-2">{action.envoyeLe ? "Ajouté à la fiche du patient." : "Sera ajouté à la fiche du patient à la validation. Rien n'est signé ni envoyé."}</div>
         </>
       );
       break;
@@ -136,7 +136,7 @@ function Form({ c, onChange }: { c: Charge; onChange: (c: Charge) => void }) {
         <div className="flex flex-col gap-3">
           {c.lignes.map((l, i) => (
             <div key={i} className="flex flex-col gap-2 rounded-[10px] border border-line-3 bg-bg p-3">
-              <div className="flex items-center gap-2"><span className="d text-[11px]">ligne {i + 1}</span><span className="flex-1" />{c.lignes.length > 1 && <button type="button" onClick={() => onChange({ ...c, lignes: c.lignes.filter((_, j) => j !== i) })} className="min-h-8 text-xs text-muted-2 hover:text-rec-text">Retirer</button>}</div>
+              <div className="flex items-center gap-2"><span className="d text-[11px]">ligne {i + 1}</span><span className="flex-1" />{c.lignes.length > 1 && <button type="button" onClick={() => onChange({ ...c, lignes: c.lignes.filter((_, j) => j !== i) })} className="min-h-8 text-xs text-dim-2 hover:text-rec-text">Retirer</button>}</div>
               <input autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck={false} data-1p-ignore data-lpignore="true" value={l.libelle} onChange={(e) => set(i, { libelle: e.target.value })} placeholder="DCI et dosage" aria-label={`Ligne ${i + 1} · libellé`} className={inp} />
               <div className="grid gap-2 sm:grid-cols-2">
                 <input autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck={false} data-1p-ignore data-lpignore="true" value={l.posologie ?? ""} onChange={(e) => set(i, { posologie: e.target.value })} placeholder="Posologie · 1 cp matin et soir" aria-label={`Ligne ${i + 1} · posologie`} className={inp} />
@@ -144,7 +144,7 @@ function Form({ c, onChange }: { c: Charge; onChange: (c: Charge) => void }) {
               </div>
               <div className="flex flex-wrap items-center gap-4 text-sm">
                 <label className="flex items-center gap-2"><input type="checkbox" checked={!!l.ald} onChange={(e) => set(i, { ald: e.target.checked })} /> ALD</label>
-                {l.renouvellement ? <span className="text-muted-2">à renouveler {l.renouvellement} fois <button type="button" onClick={() => set(i, { renouvellement: undefined })} className="ml-1 underline">retirer</button></span> : <button type="button" onClick={() => set(i, { renouvellement: 1 })} className="text-muted-2 underline">ajouter un renouvellement</button>}
+                {l.renouvellement ? <span className="text-dim-2">à renouveler {l.renouvellement} fois <button type="button" onClick={() => set(i, { renouvellement: undefined })} className="ml-1 underline">retirer</button></span> : <button type="button" onClick={() => set(i, { renouvellement: 1 })} className="text-dim-2 underline">ajouter un renouvellement</button>}
               </div>
             </div>
           ))}
@@ -248,22 +248,22 @@ export function ActionPanel({ action, patient, onChange, onClose, onRemove, titr
           <span className="min-w-0 flex-1 truncate text-sm font-medium">{titre ?? action.titre}</span>
           {action.envoyeLe && <span className="hidden text-xs text-ok sm:inline">{action.renvoye ? "renvoyé" : "envoyé"} le {frDate(action.envoyeLe)}{onChange ? " · toute modification sera renvoyée" : ""}</span>}
           {onChange && <div className="flex rounded-full border border-line bg-paper p-0.5 lg:hidden">{(["modifier", "apercu"] as const).map((o) => <button key={o} type="button" onClick={() => setOnglet(o)} aria-pressed={onglet === o} className={cn("min-h-9 rounded-full px-3 py-1 text-xs", onglet === o ? "bg-ink text-paper" : "text-ink-2")}>{o === "modifier" ? "Modifier" : "Aperçu"}</button>)}</div>}
-          <button ref={fermer} type="button" onClick={onClose} className="flex min-h-9 items-center gap-2 rounded-[8px] px-2 py-1 text-sm text-muted-2 hover:text-ink">Fermer <Kbd>esc</Kbd></button>
+          <button ref={fermer} type="button" onClick={onClose} className="flex min-h-9 items-center gap-2 rounded-[8px] px-2 py-1 text-sm text-dim-2 hover:text-ink">Fermer <Kbd>esc</Kbd></button>
         </div>
         {action.alerte && <div className="flex items-start gap-2.5 border-b border-line-2 bg-[color-mix(in_srgb,var(--warn)_12%,var(--paper))] px-5 py-2.5 text-[13px] leading-[1.45] text-warn" role="alert"><span className="mt-px shrink-0 font-semibold">⚠ Allergie au dossier</span><span className="min-w-0 flex-1">{action.alerte} · à vérifier avant signature{onChange ? " ; changez la ligne ou retirez-la du plan" : ""}.</span></div>}
         <div className={cn("grid min-h-0 flex-1 overflow-y-auto", onChange ? "lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)]" : "")}>
           {onChange && c && (
             <div className={cn("flex flex-col gap-4 border-line-2 px-5 py-5 lg:border-r", onglet !== "modifier" && "hidden lg:flex")}>
               <Form c={c} onChange={update} />
-              {action.justification && <div className="rounded-[10px] bg-accent-soft-2 px-3.5 py-2.5 text-[13px] leading-[1.5]"><span className="k" style={{ color: "var(--accent)" }}>Pourquoi</span><br />{action.justification}</div>}
-              <span className="text-xs text-muted-2">{action.kind === "ordonnance" ? "Une autre nature d'ordonnance (examen, kiné…) est une autre ordonnance : « + Ajouter » dans la consultation. " : ""}{action.envoyeLe ? "Une fois enregistrée, cette version est renvoyée et remplace l'envoi précédent." : action.kind === "dossier" ? "Ajouté à la fiche à la validation." : "Rien ne part avant la signature."}</span>
+              {action.justification && <div className="rounded-[10px] bg-agent-soft-2 px-3.5 py-2.5 text-[13px] leading-[1.5]"><span className="k" style={{ color: "var(--agent)" }}>Pourquoi</span><br />{action.justification}</div>}
+              <span className="text-xs text-dim-2">{action.kind === "ordonnance" ? "Une autre nature d'ordonnance (examen, kiné…) est une autre ordonnance : « + Ajouter » dans la consultation. " : ""}{action.envoyeLe ? "Une fois enregistrée, cette version est renvoyée et remplace l'envoi précédent." : action.kind === "dossier" ? "Ajouté à la fiche à la validation." : "Rien ne part avant la signature."}</span>
             </div>
           )}
           <div className={cn("bg-soft/40 px-4 py-5 sm:px-6", onChange && onglet !== "apercu" && "hidden lg:block")}>
             <div className="mx-auto max-w-[640px]"><DocumentRendu action={action} patient={patient} /></div>
           </div>
         </div>
-        {onChange && <div className="flex items-center gap-2 border-t border-line-2 px-5 py-3">{onRemove && <button type="button" onClick={() => { onRemove(); onClose(); }} className="min-h-11 rounded-[10px] px-3 py-[9px] text-sm text-muted-2 hover:text-rec-text">Supprimer</button>}<span className="flex-1" /><button type="button" onClick={onClose} className="flex min-h-11 items-center gap-2 rounded-[10px] bg-ink px-4 py-[9px] text-sm text-paper"><I.check size={13} color="var(--paper)" w={2.5} /> Terminé</button></div>}
+        {onChange && <div className="flex items-center gap-2 border-t border-line-2 px-5 py-3">{onRemove && <button type="button" onClick={() => { onRemove(); onClose(); }} className="min-h-11 rounded-[10px] px-3 py-[9px] text-sm text-dim-2 hover:text-rec-text">Supprimer</button>}<span className="flex-1" /><button type="button" onClick={onClose} className="flex min-h-11 items-center gap-2 rounded-[10px] bg-ink px-4 py-[9px] text-sm text-paper"><I.check size={13} color="var(--paper)" w={2.5} /> Terminé</button></div>}
       </div>
     </div>
   );

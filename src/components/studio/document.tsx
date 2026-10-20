@@ -1,14 +1,15 @@
 "use client";
 import * as React from "react";
-import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import Link from "./nav";
+import { useSearchParams } from "next/navigation";
+import { useRouter } from "./nav";
 import type { PatientView, DocView, DocRow, InboxRow, InboxKind, Urgence } from "@/studio/types";
 import { Header, Omni, Kbd, I, Avatar } from "./chrome";
 import { ComposeCard, useCompose } from "./compose";
 import { Md } from "../md";
 import { cn } from "@/lib/cn";
 
-const URG: Record<string, { label: string; cls: string }> = { immediate: { label: "immédiat", cls: "text-rec-text" }, jour: { label: "à voir aujourd'hui", cls: "text-warn" }, semaine: { label: "cette semaine", cls: "text-ink-3" }, aucune: { label: "pour info", cls: "text-muted-2" } };
+const URG: Record<string, { label: string; cls: string }> = { immediate: { label: "immédiat", cls: "text-rec-text" }, jour: { label: "à voir aujourd'hui", cls: "text-warn" }, semaine: { label: "cette semaine", cls: "text-ink-3" }, aucune: { label: "pour info", cls: "text-dim-2" } };
 const TYPES: (DocRow["type"] | "Tous")[] = ["Tous", "Ordonnance", "Courrier", "Biologie", "Imagerie", "Arrêt · certif", "Consultation"];
 const PLURAL: Record<string, string> = { Ordonnance: "Ordonnances", Courrier: "Courriers", Consultation: "Consultations" };
 const URG_PILLS: { id: string; label: string; urg: Urgence[] }[] = [{ id: "tous", label: "Tous", urg: ["immediate", "jour", "semaine", "aucune"] }, { id: "jour", label: "Aujourd'hui", urg: ["immediate", "jour"] }, { id: "semaine", label: "Semaine", urg: ["semaine"] }, { id: "info", label: "Info", urg: ["aucune"] }];
@@ -68,19 +69,19 @@ function Inner({ v, doc, boite, boiteKind, praticien }: { v: PatientView; doc: D
       <nav aria-label="Autres documents" className="flex max-h-[calc(100dvh-220px)] flex-col gap-0.5 overflow-y-auto pr-1">
         {inBox
           ? rowsBoite.map((r) => (
-            <Link key={r.id} href={hrefOf(r.id, r.patient.id)} aria-current={r.id === doc.id ? "page" : undefined} onClick={() => setListOpen(false)} className={cn("flex items-start gap-2.5 rounded-[10px] px-2.5 py-2 text-ink hover:text-ink", r.id === doc.id ? "bg-accent-soft-2" : "hover:bg-hover")}>
+            <Link key={r.id} href={hrefOf(r.id, r.patient.id)} aria-current={r.id === doc.id ? "page" : undefined} onClick={() => setListOpen(false)} className={cn("flex items-start gap-2.5 rounded-[10px] px-2.5 py-2 text-ink hover:text-ink", r.id === doc.id ? "bg-agent-soft-2" : "hover:bg-hover")}>
               <Avatar initials={r.patient.initials} hue={r.patient.hue} size={24} className="mt-px text-[10px]" />
-              <span className="flex min-w-0 flex-1 flex-col"><span className={cn("truncate text-[13px]", r.nonLu && "font-medium")}>{r.patient.nom}</span><span className="truncate text-xs text-muted-2">{r.titre}</span></span>
-              <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: r.nonLu ? (r.urgence === "jour" || r.urgence === "immediate" ? "var(--warn-dot)" : r.urgence === "semaine" ? "var(--accent)" : "var(--gray-dot)") : "transparent" }} />
+              <span className="flex min-w-0 flex-1 flex-col"><span className={cn("truncate text-[13px]", r.nonLu && "font-medium")}>{r.patient.nom}</span><span className="truncate text-xs text-dim-2">{r.titre}</span></span>
+              <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: r.nonLu ? (r.urgence === "jour" || r.urgence === "immediate" ? "var(--warn-dot)" : r.urgence === "semaine" ? "var(--agent)" : "var(--gray-dot)") : "transparent" }} />
             </Link>
           ))
           : rowsDossier.map((r) => (
-            <Link key={r.id} href={hrefOf(r.id)} aria-current={r.id === doc.id ? "page" : undefined} onClick={() => setListOpen(false)} className={cn("flex flex-col rounded-[10px] px-2.5 py-2 text-ink hover:text-ink", r.id === doc.id ? "bg-accent-soft-2" : "hover:bg-hover")}>
-              <span className="flex items-baseline gap-2"><span className="d text-[11px]">{r.date}</span><span className="text-xs text-muted-2">{r.type}</span></span>
+            <Link key={r.id} href={hrefOf(r.id)} aria-current={r.id === doc.id ? "page" : undefined} onClick={() => setListOpen(false)} className={cn("flex flex-col rounded-[10px] px-2.5 py-2 text-ink hover:text-ink", r.id === doc.id ? "bg-agent-soft-2" : "hover:bg-hover")}>
+              <span className="flex items-baseline gap-2"><span className="d text-[11px]">{r.date}</span><span className="text-xs text-dim-2">{r.type}</span></span>
               <span className="truncate text-[13px]">{r.titre}</span>
             </Link>
           ))}
-        {ids.length === 0 && <span className="px-2.5 py-2 text-xs text-muted-2">Rien dans ce tri.</span>}
+        {ids.length === 0 && <span className="px-2.5 py-2 text-xs text-dim-2">Rien dans ce tri.</span>}
       </nav>
     </div>
   );
@@ -96,13 +97,13 @@ function Inner({ v, doc, boite, boiteKind, praticien }: { v: PatientView; doc: D
             {listOpen && <div className="card mt-3 p-3">{sidebar}</div>}
           </div>
           <div className="flex flex-col gap-2">
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1"><span className="k">{doc.type}</span><span className="d">{doc.date}</span><span className="d">·</span><span className="text-[13px] text-muted-2">{doc.de}</span></div>
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1"><span className="k">{doc.type}</span><span className="d">{doc.date}</span><span className="d">·</span><span className="text-[13px] text-dim-2">{doc.de}</span></div>
             <h1 className="m-0 text-[22px] font-medium leading-[1.3] tracking-[-.02em] sm:text-2xl">{doc.titre}</h1>
           </div>
 
           {doc.lecture && (
-            <section className="flex flex-col gap-2 rounded-[14px] border border-accent-line bg-accent-soft-2 px-5 py-4">
-              <div className="flex items-center gap-2.5"><span className="k" style={{ color: "var(--accent)" }}>Lecture de Locus</span><span className="flex-1" /><span className={cn("text-xs", URG[doc.lecture.urgence].cls)}>{URG[doc.lecture.urgence].label}</span></div>
+            <section className="flex flex-col gap-2 rounded-[14px] border border-agent-line bg-agent-soft-2 px-5 py-4">
+              <div className="flex items-center gap-2.5"><span className="k" style={{ color: "var(--agent)" }}>Lecture de Locus</span><span className="flex-1" /><span className={cn("text-xs", URG[doc.lecture.urgence].cls)}>{URG[doc.lecture.urgence].label}</span></div>
               <p className="m-0 text-[15px] leading-relaxed">{doc.lecture.resume}</p>
               {doc.lecture.points.length > 0 && <ul className="m-0 flex list-disc flex-col gap-1 pl-5 text-sm text-ink-2">{doc.lecture.points.map((p, i) => <li key={i}>{p}</li>)}</ul>}
               <span className="d text-[11px]">confiance {Math.round(doc.lecture.confidence * 100)} % · le document complet est en dessous</span>
@@ -127,7 +128,7 @@ function Inner({ v, doc, boite, boiteKind, praticien }: { v: PatientView; doc: D
 
           {doc.note && (
             <section className="card flex flex-col px-5 py-2">
-              {doc.note.map((n, i) => <div key={i} className={cn("flex flex-col gap-1 py-3 text-sm leading-relaxed sm:flex-row sm:gap-4", i > 0 && "border-t border-line-4")}><span className="w-[130px] shrink-0 text-muted-2">{n.k}</span><span className="flex-1">{n.v}</span></div>)}
+              {doc.note.map((n, i) => <div key={i} className={cn("flex flex-col gap-1 py-3 text-sm leading-relaxed sm:flex-row sm:gap-4", i > 0 && "border-t border-line-4")}><span className="w-[130px] shrink-0 text-dim-2">{n.k}</span><span className="flex-1">{n.v}</span></div>)}
             </section>
           )}
 
@@ -139,7 +140,7 @@ function Inner({ v, doc, boite, boiteKind, praticien }: { v: PatientView; doc: D
 
           <section className="flex flex-col">
             <span className="k px-1 pb-2">Provenance</span>
-            {doc.meta.map((m, i) => <div key={i} className={cn("flex gap-4 border-t border-line-4 px-1 py-2.5 text-sm", i === doc.meta.length - 1 && "border-b")}><span className="w-[110px] shrink-0 text-muted-2">{m.k}</span><span className="flex-1">{m.v}</span></div>)}
+            {doc.meta.map((m, i) => <div key={i} className={cn("flex gap-4 border-t border-line-4 px-1 py-2.5 text-sm", i === doc.meta.length - 1 && "border-b")}><span className="w-[110px] shrink-0 text-dim-2">{m.k}</span><span className="flex-1">{m.v}</span></div>)}
           </section>
 
           <nav aria-label="Documents voisins" className="flex items-center justify-between gap-3 text-sm">

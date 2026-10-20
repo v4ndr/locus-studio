@@ -119,14 +119,12 @@ Pas de corticoïdes, pas d'AINS [1].`,
 
 const FALLBACK: Canned = {
   match: /./,
-  titre: "Réponse générique (simulation)",
-  answer: `# Aucun locus-core n'est configuré : voici une réponse de démonstration
+  titre: "Réponse générique (scénario rejoué)",
+  answer: `# Cette question sort du scénario rejoué
 
-Cette réponse est produite par le **mode simulation** du studio. Elle imite la forme d'une réponse de Locus — un titre qui répond, des points sourcés [1], des renvois vers les RCP — sans en avoir le fond.
+Le sandbox rejoue des réponses de Locus préparées à l'avance. Celle-ci en imite la forme (un titre qui répond, des points sourcés [1], des renvois vers les RCP) sans en avoir le fond.
 
-Pour une vraie réponse, renseigner \`LOCUS_CORE_URL\` (et \`LOCUS_API_KEY\`, ou lancer core en mode Sandbox) dans \`.env.local\`.
-
-Les thèmes couverts par la simulation : diabète, HTA, cystite, angine, fibrillation atriale, dépression.`,
+Les thèmes couverts par le scénario rejoué : diabète, HTA, cystite, angine, fibrillation atriale, dépression. Les questions libres demandent un accès live.`,
   docs: [HAS("has-generic", "Recommandations de bonne pratique", 2025, "https://www.has-sante.fr")],
 };
 

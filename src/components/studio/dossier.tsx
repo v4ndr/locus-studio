@@ -1,7 +1,7 @@
 "use client";
 import * as React from "react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
+import { useRouter } from "./nav";
+import Link from "./nav";
 import type { PatientView, Chip, NoteAction } from "@/studio/types";
 import { Header, Omni, ResultCard, CtaLink, I, Rich } from "./chrome";
 import { ComposeCard, useCompose } from "./compose";
@@ -40,7 +40,7 @@ export function DossierView({ v, praticien }: { v: PatientView; praticien: { ini
       <Header praticien={praticien} patient={{ id: v.ref.id, nom: v.ref.nom, initials: v.ref.initials, meta: v.meta }} />
       <main className="mx-auto flex w-full max-w-[720px] flex-1 flex-col gap-7 px-4 pb-8 pt-10 sm:px-6 sm:pt-16">
         <BrouillonBanner patientId={v.ref.id} href={`/p/${v.ref.id}/rencontre`} />
-        {me.signed && <div className="flex items-center gap-3 rounded-[12px] border border-line bg-paper px-4 py-3 text-sm"><I.check size={14} color="var(--ok)" w={2.5} /><span className="flex-1">Rencontre{v.rdv ? ` de ${v.rdv.heure}` : ""} clôturée : documents signés et envoyés, note inscrite au dossier.</span><button type="button" onClick={() => dispatch({ type: "reopen", patientId: v.ref.id })} className="min-h-9 text-xs text-muted-2 hover:text-ink">Rouvrir</button></div>}
+        {me.signed && <div className="flex items-center gap-3 rounded-[12px] border border-line bg-paper px-4 py-3 text-sm"><I.check size={14} color="var(--ok)" w={2.5} /><span className="flex-1">Rencontre{v.rdv ? ` de ${v.rdv.heure}` : ""} clôturée : documents signés et envoyés, note inscrite au dossier.</span><button type="button" onClick={() => dispatch({ type: "reopen", patientId: v.ref.id })} className="min-h-9 text-xs text-dim-2 hover:text-ink">Rouvrir</button></div>}
         <div className="flex flex-col gap-3">
           <span className="k px-px">Overview{v.rdv ? ` · ${v.rdv.heure} · ${v.rdv.motif}` : ""}</span>
           <p className="m-0 text-[21px] leading-[1.45] tracking-[-.01em] sm:text-2xl"><Rich text={v.prose} /></p>
@@ -49,9 +49,9 @@ export function DossierView({ v, praticien }: { v: PatientView; praticien: { ini
           <span className="k px-1 pb-2.5">À noter</span>
           {v.aNoter.map((n, i) => (
             <button key={i} type="button" onClick={() => act(n.action)} title={n.action.type === "doc" ? "Ouvrir le document" : n.action.type === "cmd" ? "Préparer" : n.action.type === "ask" ? "Demander à Locus" : "Voir dans le dossier"} className={cn("group flex w-full items-center gap-3 border-t border-line-4 px-1 py-3 text-left text-[15px] text-ink hover:bg-hover", i === v.aNoter.length - 1 && "border-b")}>
-              <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: n.dot === "accent" ? "var(--accent)" : n.dot === "warn" ? "var(--warn-dot)" : "var(--gray-dot)" }} />
+              <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: n.dot === "accent" ? "var(--agent)" : n.dot === "warn" ? "var(--warn-dot)" : "var(--gray-dot)" }} />
               <span className="flex-1">{n.texte}</span>
-              <span className="d min-w-[46px] text-right" style={{ color: n.dot === "accent" ? "var(--accent)" : n.dot === "warn" ? "var(--warn)" : undefined }}>{n.tag}</span>
+              <span className="d min-w-[46px] text-right" style={{ color: n.dot === "accent" ? "var(--agent)" : n.dot === "warn" ? "var(--warn)" : undefined }}>{n.tag}</span>
               <span className="opacity-0 transition-opacity group-hover:opacity-100"><I.chevron /></span>
             </button>
           ))}
@@ -70,11 +70,11 @@ export function DossierView({ v, praticien }: { v: PatientView; praticien: { ini
               {v.dossier.familiaux && <div className="li border-t border-soft pt-1.5 text-ink-3"><span className="flex-1"><b className="font-medium">Familiaux</b> · {v.dossier.familiaux}</span></div>}
             </Card>
             <Card id="fiche-allergies" title="Allergies · intolérances">{v.dossier.allergies.map((f, i) => <Li key={i} k={f.k} v={f.v} />)}</Card>
-            <Card title="Mode de vie">{v.dossier.modeDeVie.map((f, i) => <div key={i} className="li"><span className="w-[84px] shrink-0 text-muted-2">{f.k}</span><span className="flex-1">{f.v}</span></div>)}</Card>
+            <Card title="Mode de vie">{v.dossier.modeDeVie.map((f, i) => <div key={i} className="li"><span className="w-[84px] shrink-0 text-dim-2">{f.k}</span><span className="flex-1">{f.v}</span></div>)}</Card>
             <Card id="fiche-traitements" title="Traitements en cours">
               {v.dossier.traitements.length === 0 && <Li k="Aucun traitement de fond" />}
               {v.dossier.traitements.map((f, i) => <Li key={i} k={f.k} v={f.v} />)}
-              <Link href={`/p/${v.ref.id}/documents?type=Ordonnance`} className="text-[13px]" style={{ color: "var(--accent)" }}>Toutes les ordonnances →</Link>
+              <Link href={`/p/${v.ref.id}/documents?type=Ordonnance`} className="text-[13px]" style={{ color: "var(--agent)" }}>Toutes les ordonnances →</Link>
             </Card>
             <Card id="fiche-suivis" title="Suivis en cours">
               {v.dossier.suivis.length === 0 && <Li k="Rien en cours" />}
@@ -112,5 +112,5 @@ function Card({ id, title, children }: { id?: string; title: string; children: R
   return <section id={id} className="card flex scroll-mt-24 flex-col gap-2.5 px-5 py-[18px]"><span className="k">{title}</span>{children}</section>;
 }
 function Li({ k, v, muted, warn }: { k: string; v?: string; muted?: boolean; warn?: boolean }) {
-  return <div className="li"><span className={cn("flex-1", muted && "text-muted-2")}>{k}</span>{v && <span className="d" style={warn ? { color: "var(--warn)" } : undefined}>{v}</span>}</div>;
+  return <div className="li"><span className={cn("flex-1", muted && "text-dim-2")}>{k}</span>{v && <span className="d" style={warn ? { color: "var(--warn)" } : undefined}>{v}</span>}</div>;
 }

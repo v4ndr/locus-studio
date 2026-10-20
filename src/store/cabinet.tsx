@@ -41,8 +41,6 @@ export interface NoteLocal {
   actions: ComposeAction[];
   synthese?: string;
   via?: ComposePlan["via"];
-  /** Le chrono : saisie, composition, validation — en millisecondes. */
-  chrono: { saisie: number; composition: number; validation: number };
   /** Modifiée en place après signature : les documents modifiés ont été renvoyés. */
   modifieLe?: string;
   /** « commande » : validée depuis ⌘K, hors consultation ; sinon une consultation. */
@@ -75,13 +73,11 @@ function reducer(s: State, a: Action): State {
 /* ---------- Lecture défensive : ce qui vient du disque ou d'un fichier n'est jamais cru sur parole. ---------- */
 const str = (v: unknown, d = "") => (typeof v === "string" ? v : d);
 const arr = (v: unknown) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === "string").map((x) => x.trim()).filter(Boolean) : []);
-const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) && v >= 0 && v < 86_400_000 * 30 ? v : 0);
 function sanitizeNote(v: unknown): NoteLocal | null {
   if (!v || typeof v !== "object") return null;
   const n = v as Record<string, unknown>;
   if (!str(n.id) || !str(n.date)) return null;
-  const chrono = (n.chrono && typeof n.chrono === "object" ? n.chrono : {}) as Record<string, unknown>;
-  return { id: str(n.id), date: str(n.date), motif: str(n.motif) || undefined, texte: str(n.texte), actions: Array.isArray(n.actions) ? (n.actions as ComposeAction[]).filter((a) => a && typeof a === "object" && typeof a.id === "string") : [], synthese: str(n.synthese) || undefined, via: n.via === "claude" ? "claude" : n.via === "simulation" ? "simulation" : undefined, chrono: { saisie: num(chrono.saisie), composition: num(chrono.composition), validation: num(chrono.validation) }, modifieLe: str(n.modifieLe) || undefined, origine: n.origine === "commande" ? "commande" : undefined, transcript: str(n.transcript) || undefined };
+  return { id: str(n.id), date: str(n.date), motif: str(n.motif) || undefined, texte: str(n.texte), actions: Array.isArray(n.actions) ? (n.actions as ComposeAction[]).filter((a) => a && typeof a === "object" && typeof a.id === "string") : [], synthese: str(n.synthese) || undefined, via: n.via === "simulation" ? "simulation" : typeof n.via === "string" && n.via ? "live" : undefined, modifieLe: str(n.modifieLe) || undefined, origine: n.origine === "commande" ? "commande" : undefined, transcript: str(n.transcript) || undefined };
 }
 export function sanitizePatient(v: unknown): PatientLocal | null {
   if (!v || typeof v !== "object") return null;

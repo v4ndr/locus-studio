@@ -1,8 +1,9 @@
 "use client";
 import * as React from "react";
-import Link from "next/link";
+import Link from "./nav";
 import type { PatientView } from "@/studio/types";
-import { useSearchParams, useRouter, usePathname } from "next/navigation";
+import { useSearchParams, usePathname } from "next/navigation";
+import { useRouter } from "./nav";
 import { Header } from "./chrome";
 import { NoteEditor, NotesSession, readNotes } from "./note";
 import type { NoteLocal } from "@/store/cabinet";
@@ -36,7 +37,7 @@ function Inner({ v, praticien }: { v: PatientView; praticien: { initials: string
         <div className="flex flex-wrap items-center gap-3">
           <span className="k">Consultation{v.rdv ? ` · ${v.rdv.motif}` : ""}</span>
           <span className="flex-1" />
-          {scripte && <Link href={`/p/${v.ref.id}/actions`} className="text-xs text-muted-2 hover:text-ink">Scénario du design →</Link>}
+          {scripte && <Link href={`/p/${v.ref.id}/actions`} className="text-xs text-dim-2 hover:text-ink">Scénario du design →</Link>}
         </div>
         {lu && modifie && !base && <div className="rounded-[10px] bg-soft px-3.5 py-2.5 text-sm">Cette note n'est plus sur ce poste. <button type="button" onClick={() => router.replace(pathname)} className="underline">Nouvelle consultation</button></div>}
         {lu && (!modifie || base) && <NoteEditor key={base?.id ?? "nouvelle"} patientId={v.ref.id} nom={v.ref.nom} retour={`/p/${v.ref.id}`} consultHref={`/p/${v.ref.id}/rencontre`} script={scripte ? script : undefined} motifInitial={v.rdv?.motif} base={base} patient={patient} onSaved={() => setVersion((x) => x + 1)} onAnnuler={() => router.replace(pathname)} />}
