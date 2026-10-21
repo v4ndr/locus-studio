@@ -1,14 +1,65 @@
-# locus-studio — le LGC agentique
+# locus-studio — le sandbox Locus
 
-Un cabinet de médecine générale **AI-native**, construit comme un vrai produit
-web, pour montrer l'avenir, adoptable ou non tout de suite : **il n'y a plus de
-pages, il y a une rencontre et une commande**. Le médecin dit ; l'agent (qui s'appelle
-Locus) compose ; le médecin signe. Projet de recherche ouvert, sans prétention
-réglementaire — toutes les dépendances externes (SESAM-Vitale, INSi, MSSanté,
-DMP, ordonnance numérique, LAP) sont **mockées** ; le backend clinique, lui,
-est réel : **[locus-core](https://github.com/v4ndr/locus-core)**.
+Locus Studio est le **sandbox B2B de Locus** : quatre espaces publics, sur
+patients fictifs, en scénarios rejoués ; l'accès live est sur invitation.
+Identité visuelle « Noir » (console, sombre par défaut), interface en
+français et en anglais. Le backend clinique est réel :
+**[locus-core](https://github.com/v4ndr/locus-core)**.
 
-## Le parcours (`/`)
+| Route | Contenu |
+|---|---|
+| `/[lang]` | accueil : les quatre outils à égalité, nouveautés, ressources |
+| `/[lang]/lgc-natif/*` | **LGC natif IA** : le Studio historique (décrit ci-dessous), déplacé ici |
+| `/[lang]/integration-lgc` | **Intégration LGC** (à venir) |
+| `/[lang]/chatbot` | **Chatbot sourcé** (à venir) |
+| `/[lang]/scribe` | **Scribe + aide à la décision** (à venir) |
+| `/[lang]/acces` | demande d'accès et connexion (à venir) |
+
+`[lang]` vaut `fr` ou `en` ; les slugs sont les mêmes dans les deux langues.
+`/` redirige selon le cookie de la bascule FR/EN, puis `Accept-Language`
+(défaut `fr`). Les anciennes URL (`/p/*`, `/inbox/*`, `/nouveau`, `/d/*`)
+redirigent en 308 vers `/[lang]/lgc-natif/…` (`src/proxy.ts`).
+
+## La coque et l'identité
+
+- **Jetons** : `src/app/globals.css`, repris de `identite/tokens.css` aux noms
+  shadcn/ui (`--background`, `--foreground`, `--card`, `--muted`,
+  `--primary`, `--border`, `--ring`, `--sidebar`, `--brand`…), mappés dans
+  `@theme` (Tailwind v4 : `bg-background`, `text-muted-foreground`,
+  `border-border`…). Sombre par défaut ; clair via `data-mode="light"` sur
+  `<html>`, mémorisé en `localStorage` (`ls-mode`) et appliqué avant le
+  premier rendu (`src/components/shell/theme.tsx`). Teal (`--brand`) réservé
+  aux états actifs. Les anciens jetons du Studio (`ink`, `paper`, `line`,
+  `dim`, `agent`…) sont réalignés sur ces jetons.
+- **Coque** : `src/components/shell/` — `app-shell.tsx` (sidebar de 248 px,
+  tiroir sous 820 px, barre mobile avec le bandeau sandbox, ⌘K),
+  `command-palette.tsx`, `graph-background.tsx` (le fond en graphe),
+  `page-inner.tsx` (`PageInner`, `PageHead` : la colonne de 1120 px),
+  `coming-soon.tsx`, `locus-mark.tsx`, `tool-icons.ts`, `theme.tsx`.
+- **Composants de base** : `src/components/ui/` — `button.tsx` (`Button`,
+  `ButtonLink`, `buttonClass`), `card.tsx` (`Card`, `CardBody`, `CardIcon`,
+  `CardTitle`, `CardText`, `CardAction`, `CardFooter`, `Box`), `badge.tsx`
+  (`Badge`, `StatusDot`), `input.tsx` (`Input`, `Textarea`, `Select`,
+  `Field`), `switch.tsx`, `segmented.tsx`, `tooltip.tsx`, `kbd.tsx`. Icônes
+  `lucide-react` en 16 px.
+- **Dictionnaires** : `src/i18n/`, un fichier par zone (`common`, `home`,
+  `acces`, `chatbot`, `lgc`, `scribe`, `studio`), chacun `{ fr, en }` où
+  l'anglais a le type du français. Côté serveur : `home[lang].title` ; côté
+  client : `const lang = useLang()` (`src/i18n/lang.tsx`). Les routes et les
+  noms des outils : `src/i18n/routes.ts` (`route(lang, "chatbot")`) et
+  `common[lang].tools`. Seule l'interface est traduite : patients, documents
+  et corpus restent en français.
+- **Zones** : les composants de chaque espace vivent dans `src/sandbox/<zone>/`
+  (`home`, `acces`, `integration-lgc`, `chatbot`, `scribe`).
+
+## LGC natif IA : le parcours (`/[lang]/lgc-natif`)
+
+Un cabinet de médecine générale **AI-native** : **il n'y a plus de pages, il
+y a une rencontre et une commande**. Le médecin dit ; l'agent (qui s'appelle
+Locus) compose ; le médecin signe. Toutes les dépendances externes
+(SESAM-Vitale, INSi, MSSanté, DMP, ordonnance numérique, LAP) sont
+**mockées**. Les chemins ci-dessous sont relatifs à `/[lang]/lgc-natif` ;
+`src/components/studio/nav.tsx` traduit les liens historiques du Studio.
 
 Clair, centré, une seule colonne, et sur chaque écran **une seule entrée** :
 l'omni-saisie. Une rencontre se déroule en cinq temps, dans l'ordre du design :
@@ -17,7 +68,7 @@ l'omni-saisie. Une rencontre se déroule en cinq temps, dans l'ordre du design :
 |---|---|---|
 | 0 · Qui voyez-vous ? | `/` | une recherche (`⌘K`), l'agenda du matin, rien d'autre |
 | 1 · Overview | `/p/[id]` | le dossier en une phrase, trois choses à noter, le reste à un clic ; raccourcis préparés (RDV, mail, ordonnance) et questions à locus-core dans une carte à valider |
-| 2 · Consultation | `/p/[id]/rencontre` | la dictée au micro (reconnaissance vocale du navigateur) ou simulée (le script du patient, `⌥ espace`) remplit un **transcript** ; à l'arrêt, une **passe de synthèse** en fait une note très courte (Claude, ou des règles à sec), que l'on corrige ; le transcript reste consultable, « Régénérer la note » repart de lui ; on peut aussi écrire ou coller la note directement ; `⌘⏎` génère les actions via le composer, « Signer » enregistre la note ; chrono saisie / composition / validation |
+| 2 · Consultation | `/p/[id]/rencontre` | la dictée au micro (reconnaissance vocale du navigateur) ou simulée (le script du patient, `⌥ espace`) remplit un **transcript** ; à l'arrêt, une **passe de synthèse** en fait une note très courte (le modèle, ou des règles à sec), que l'on corrige ; le transcript reste consultable, « Régénérer la note » repart de lui ; on peut aussi écrire ou coller la note directement ; `⌘⏎` génère les actions via le composer, « Signer » enregistre la note |
 | 3 · Actions, scénario du design | `/p/[id]/actions` | les documents scriptés du patient, une question avant de signer (accessible depuis la consultation des patients scriptés) |
 | 4 · Signature | `/p/[id]/signature` | la liste avec les destinations, l'aperçu papier, un geste (e-CPS) ; puis « rencontre clôturée » |
 | 1b · Tout | `/p/[id]/documents` | tout le dossier en une table, filtrable ; chaque ligne s'ouvre |
@@ -33,8 +84,8 @@ arrêt, question). Clair ou sombre, au choix, mémorisé.
 
 Ce qu'on tape ne reçoit pas une réponse rédigée : il revient un **plan
 d'actions**, typé sur les objets du LGC, à valider d'un geste (`⌘⏎`). Une
-boucle d'agent côté serveur (`/api/compose`, NDJSON) donne à **Claude**
-(`claude-sonnet-5-5`) la demande, l'écran et le dossier (la même projection
+boucle d'agent côté serveur (`/api/compose`, NDJSON) donne à un **modèle
+frontière** (côté serveur uniquement, jamais nommé dans l'interface) la demande, l'écran et le dossier (la même projection
 `patient_ehr` que locus-core reçoit), et des **outils** qui sont les actions du
 logiciel : `proposer_ordonnance`, `proposer_rdv`, `proposer_message`,
 `proposer_courrier`, `proposer_arret`, `inscrire_au_dossier`, `ouvrir`,
@@ -45,13 +96,17 @@ ni envoyé par le serveur ; chaque action est une proposition, comme après la
 dictée.
 
 ```bash
-ANTHROPIC_API_KEY=sk-ant-…   # vide → composeur à règles : même plan, compréhension plus courte
+ANTHROPIC_API_KEY=…   # vide → composeur à règles : même plan, compréhension plus courte
 ```
 
 Le code : `src/locus/compose/` (contrat, contexte, outils, boucle, règles) et
 `src/components/studio/compose.tsx` (la carte du plan).
 
-## Le cabinet local : tester en conditions réelles
+## Le cabinet local : tester en conditions réelles (masqué du sandbox public)
+
+Le sandbox public n'affiche plus d'entrée vers ces écrans (outils de test
+personnels) ; ils restent joignables par leur URL, et seront réservés aux
+comptes connectés avec la PR « Accès ».
 
 Pour une journée de consultation avec de faux noms, sans carte Vitale et sans
 base : les dossiers créés vivent dans le navigateur (localStorage) et
@@ -74,8 +129,7 @@ relu ») ou se **retire** ; si la note change, « Régénérer » recompose. La
 consultation est un **brouillon persistant** : quitter l'écran ne perd rien,
 le dossier affiche « N actions à valider · Reprendre », l'accueil liste les
 consultations en cours. À la signature, le compte rendu dit ce qui est parti
-où. Un **chrono** mesure la saisie, la composition et la validation (il
-s'arrête quand l'onglet n'est plus visible).
+où.
 
 Une note signée se **modifie en place** (« Modifier » dans le dossier) : ses
 documents reviennent dans l'éditeur, chacun s'ouvre tel qu'il a été rendu et
@@ -106,6 +160,13 @@ pnpm install
 pnpm dev            # http://localhost:3000 — tout fonctionne à sec (mode simulation)
 ```
 
+Toutes les variables sont décrites dans `.env.example` : core
+(`LOCUS_CORE_URL`, `LOCUS_API_KEY`), composer (`ANTHROPIC_API_KEY`), routes
+live (`STUDIO_LIVE_TOKEN`, `STUDIO_LIVE_LOCK`, `STUDIO_RATE_LIMIT_PER_HOUR`,
+`STUDIO_REPLAY_RATE_LIMIT_PER_HOUR`, `UPSTASH_REDIS_REST_URL`,
+`UPSTASH_REDIS_REST_TOKEN`, `STUDIO_MKU_ALLOWLIST`) et URL publique
+(`NEXT_PUBLIC_SITE_URL`, pour les metadata et `hreflang`).
+
 Pour brancher le vrai retrieving :
 
 ```bash
@@ -121,6 +182,29 @@ cp .env.example .env.local
 
 Scripts : `dev`, `build`, `start`, `typecheck`, `test`.
 
+### Routes live et scénarios rejoués
+
+Les routes qui peuvent dépenser un appel de modèle ou des crédits Locus
+(`/api/compose`, `/api/note`, `/api/locus/*`) passent par
+`src/lib/server/guard.ts` :
+
+- **En production** (`VERCEL_ENV=production`, ou `NODE_ENV=production` hors
+  Vercel), elles répondent **403** sauf avec l'en-tête `x-studio-live-token`
+  égal à `STUDIO_LIVE_TOKEN`. Les previews Vercel et `next dev` restent
+  ouverts ; `STUDIO_LIVE_LOCK=1|0` force le verrou.
+- **Scénario rejoué** : sur ce 403, le navigateur (`src/lib/live.ts`) renvoie
+  la requête avec `x-studio-replay: 1` ; la route répond avec les règles et
+  Locus simulé, sans aucun appel externe.
+- **Rate limit par IP** (hors `next dev`) : 20 requêtes live par heure, 200
+  rejouées. En mémoire de l'instance, ou Upstash Redis (REST) si
+  `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` sont posés.
+  L'adresse vient de `x-real-ip` sur Vercel (posé par la plateforme), et du
+  dernier maillon de `x-forwarded-for` ailleurs : un `next start` exposé
+  sans reverse proxy laisse le client choisir son adresse.
+- `maxDuration` à 60 s ; `/api/locus/logic` n'accepte que des `mku_key` en
+  liste blanche ; `/api/locus/status` renvoie `{ ok }` seulement en
+  production ; `/api/note` refuse un NIR ou une date de naissance complète.
+
 ---
 
 L'agent du cabinet s'appelle **Locus**. Il signe « Locus, pour le Dr Vandepitterie ».
@@ -132,23 +216,28 @@ L'agent du cabinet s'appelle **Locus**. Il signe « Locus, pour le Dr Vandepitte
 ```
 src/
 ├── studio/                types et projection serveur du parcours (accueil, vue patient, document, boîtes)
-├── components/studio/     chrome, home, dossier, rencontre, actions, signature, documents, document, inbox, compose (la carte du plan), note (l'éditeur + chrono), local (patient sans carte Vitale, cabinet local)
+├── components/studio/     chrome, home, dossier, rencontre, actions, signature, documents, document, inbox, compose (la carte du plan), note (l'éditeur), local (patient sans carte Vitale, cabinet local)
 ├── domain/types.ts        le modèle du dossier — UNE enveloppe pour tout, provenance de 1re classe
 ├── data/                  le jeu de données : cabinet, horloge fixe (jeudi 15 oct. 2026), 22 patients
 │   ├── patients/          8 patients « héros » écrits à la main (dont Claire Moreau, la patiente du design), 14 autres décrits dans seeds.ts et construits par secondaires.ts
 │   ├── rencontres.ts      la dictée scriptée, les actions détectées, les documents générés, la question
 │   └── manifeste.ts       les prises de parti
 ├── locus/                 l'intégration locus-core
-│   ├── compose/           le composer ⌘K : Claude + les outils du LGC, Locus en outil ; composeur à règles sans clé
+│   ├── compose/           le composer ⌘K : un modèle + les outils du LGC, Locus en outil ; composeur à règles sans clé
 │   ├── contract.ts        le sous-ensemble du contrat v2 que le studio lit
 │   ├── client.server.ts   le client (serveur uniquement), 3 modes
 │   ├── ehr.ts             la projection dossier → patient_ehr
 │   ├── simulation.ts      le mode à sec
 │   └── capabilities.ts    le registre : ce que core sert, ce que le studio compose, ce qui est projeté
-├── app/                   Next 16 App Router — `/`, `/p/[id]/*`, `/inbox/[box]`, BFF (/api/locus/*, /api/compose)
-├── components/            l'interface (Tailwind v4, Geist, aucun kit)
+├── app/                   Next 16 App Router — `[lang]/` (accueil, zones, `lgc-natif/` : `p/[id]/*`, `inbox/[box]`, `d/`, `nouveau`), BFF (`api/`)
+├── proxy.ts               préfixe de langue (Accept-Language, cookie) et redirections 308 des anciennes URL
+├── i18n/                  dictionnaires typés, un fichier par zone ; routes et noms des outils
+├── components/shell/      la coque Noir : AppShell, sidebar, palette ⌘K, fond en graphe, thème
+├── components/ui/         composants de base (Button, Card, Badge, Input, Switch, Tooltip…)
+├── sandbox/<zone>/        les composants de chaque espace (home, acces, integration-lgc, chatbot, scribe)
+├── lib/server/guard.ts    le garde des routes live (verrou de production, rate limit, liste blanche, données réelles)
 ├── store/rencontre.tsx    l'état de session (réponses, signatures), persisté en localStorage
-└── store/cabinet.tsx      le cabinet local : patients créés sans carte Vitale, notes, chrono, export JSON
+└── store/cabinet.tsx      le cabinet local : patients créés sans carte Vitale, notes, export JSON
 docs/
 ├── scenes.md              la rencontre en cinq temps, écran par écran
 ├── manifeste-v1.md        la première version du manifeste (un meilleur LGC), conservée

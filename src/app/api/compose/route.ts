@@ -1,13 +1,14 @@
 import { z } from "zod";
-import { compose, composeMode, MODEL } from "@/locus/compose/run";
+import { compose, composeMode } from "@/locus/compose/run";
 import { ndjsonResponse } from "@/locus/ndjson";
+import { guardLive } from "@/lib/server/guard";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 300;
+export const maxDuration = 60;
 
 /**
  * Le composer : la ligne de commande du LGC. Le navigateur envoie la demande
- * et l'écran ; le serveur donne le contexte à Claude, qui appelle les outils
+ * et l'écran ; le serveur donne le contexte au modèle, qui appelle les outils
  * du logiciel (Locus en est un) ; le navigateur reçoit un plan d'actions.
  * Ni la clé du modèle ni celle de Locus ne franchissent le navigateur.
  *
@@ -42,6 +43,8 @@ const Input = z.object({
 }).strict();
 
 export async function POST(req: Request) {
+  const g = await guardLive(req);
+  if (!g.ok) return g.response;
   const len = Number(req.headers.get("content-length") ?? 0);
   if (len > 64_000) return Response.json({ error: "Demande trop longue." }, { status: 413 });
   let raw: unknown;
@@ -56,9 +59,12 @@ export async function POST(req: Request) {
   const note = b.note?.trim() || undefined;
   if (!texte && !note) return Response.json({ error: "Rien à composer : la demande est vide." }, { status: 400 });
   if (b.patient && b.patientId && b.patient.id !== b.patientId) return Response.json({ error: "Le patient local ne correspond pas à l'identifiant." }, { status: 400 });
-  return ndjsonResponse(compose({ texte, patientId: b.patientId, ecran: b.ecran, docId: b.docId, boite: b.boite, patient: b.patient, note, motif: b.motif || undefined }));
+  return ndjsonResponse(compose({ texte, patientId: b.patientId, ecran: b.ecran, docId: b.docId, boite: b.boite, patient: b.patient, note, motif: b.motif || undefined }, { replay: g.replay }));
 }
 
-export async function GET() {
-  return Response.json({ mode: composeMode(), modele: composeMode() === "claude" ? MODEL : null });
+export async function GET(req: Request) {
+  const g = await guardLive(req);
+  if (!g.ok) return g.response;
+  // Ni nom de modèle ni fournisseur dans une réponse publique.
+  return Response.json({ mode: g.replay || composeMode() === "simulation" ? "rejoue" : "live" });
 }

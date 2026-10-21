@@ -3,6 +3,7 @@ import { DOSSIERS } from "@/data";
 import { executeTool, type ToolCtx } from "./tools";
 import { resolvePatient, fromDataset } from "./patient";
 import { norm } from "@/lib/norm";
+import type { CoreConfig } from "@/locus/config";
 import type { ComposeEvent, ComposeInput, ComposePlan } from "./contract";
 
 /**
@@ -72,9 +73,9 @@ function posologieDe(seg: string, dci: string): { posologie: string; duree?: str
   return { posologie, duree };
 }
 
-export async function* simulateCompose(input: ComposeInput): AsyncGenerator<ComposeEvent> {
+export async function* simulateCompose(input: ComposeInput, core?: CoreConfig): AsyncGenerator<ComposeEvent> {
   const queue: ComposeEvent[] = [];
-  const ctx: ToolCtx = { input, actions: [], references: [], locus: 0, patient: resolvePatient(input), emit: (ev) => queue.push(ev) };
+  const ctx: ToolCtx = { input, actions: [], references: [], locus: 0, patient: resolvePatient(input), core, emit: (ev) => queue.push(ev) };
   const flush = function* () { while (queue.length) yield queue.shift()!; };
   const call = async (name: string, arg: Record<string, unknown>) => executeTool(name, arg, ctx);
   const note = input.ecran === "note" && !!input.note;

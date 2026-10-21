@@ -4,6 +4,7 @@ import { getDossier, displayName } from "@/data";
 import { at } from "@/data/clock";
 import { documentView } from "@/studio/view.server";
 import { retrieveStream } from "@/locus/client.server";
+import type { CoreConfig } from "@/locus/config";
 import { fromDataset, type PatientCtx } from "./patient";
 import { chargeOf, materialize, alerteAllergie } from "./materialize";
 import type { ComposeAction, ComposeRef, ComposeInput } from "./contract";
@@ -22,6 +23,8 @@ export interface ToolCtx {
   locus: number;
   /** Le patient résolu pendant la composition (depuis l'accueil, `ouvrir` le fixe). */
   patient?: PatientCtx;
+  /** Forcer une configuration de core (le scénario rejoué force la simulation). */
+  core?: CoreConfig;
   emit: (ev: { step: "outil"; nom: string; detail: string } | { step: "action"; action: ComposeAction }) => void;
 }
 
@@ -100,7 +103,7 @@ export async function executeTool(name: string, input: Record<string, unknown>, 
       ctx.locus += 1;
       ctx.emit({ step: "outil", nom: "locus", detail: s(input.question) });
       let answer = ""; let docs: { title?: string; source_name?: string; year?: number; url?: string }[] = []; let err = "";
-      for await (const ev of retrieveStream({ query: s(input.question), patient_ehr: pt?.ehr, mode: "rapide" })) {
+      for await (const ev of retrieveStream({ query: s(input.question), patient_ehr: pt?.ehr, mode: "rapide" }, ctx.core)) {
         if (ev.step === "reflexion") ctx.emit({ step: "outil", nom: "locus", detail: ev.titre });
         else if (ev.step === "done") { answer = ev.payload.answer; docs = ev.payload.docs; }
         else if (ev.step === "answer" && !answer) answer = ev.answer;

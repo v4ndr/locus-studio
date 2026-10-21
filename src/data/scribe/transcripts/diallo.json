@@ -1,0 +1,13 @@
+{
+  "id": "diallo",
+  "duree_s": 305,
+  "lignes": [
+    { "t": 0, "qui": "medecin", "texte": "Bonjour madame Diallo. Qu'est-ce qui ne va pas ?" },
+    { "t": 7, "qui": "patiente", "texte": "Je suis fatiguée depuis trois mois. Je suis essoufflée dans les escaliers." },
+    { "t": 26, "qui": "medecin", "texte": "Vos règles sont abondantes ?" },
+    { "t": 31, "qui": "patiente", "texte": "Oui, de plus en plus. Je change de protection toutes les deux heures." },
+    { "t": 52, "qui": "medecin", "texte": "Perte de poids, fièvre, sueurs la nuit ?" },
+    { "t": 60, "qui": "patiente", "texte": "Non, rien de tout ça." },
+    { "t": 189, "qui": "medecin", "texte": "Les conjonctives sont pâles. On fait une prise de sang." }
+  ]
+}

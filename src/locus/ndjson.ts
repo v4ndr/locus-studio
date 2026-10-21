@@ -41,7 +41,7 @@ export function ndjsonResponse(gen: AsyncIterable<unknown>): Response {
         // Jamais un message d'erreur JavaScript brut dans la carte : une phrase en français, le détail dans le journal du serveur.
         console.error("[compose]", e);
         const msg = e instanceof Error ? e.message : String(e);
-        const lisible = /^(Claude|Locus)/.test(msg) ? msg : "Le composer a rencontré une erreur en cours de route. Réessayez ; si cela persiste, reformulez la demande.";
+        const lisible = /^Locus/.test(msg) ? msg : "Le composer a rencontré une erreur en cours de route. Réessayez ; si cela persiste, reformulez la demande.";
         controller.enqueue(enc.encode(JSON.stringify({ step: "error", detail: lisible }) + "\n"));
       } finally {
         controller.close();
