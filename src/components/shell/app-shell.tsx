@@ -11,7 +11,6 @@ import { Badge, StatusDot } from "@/components/ui/badge";
 import { Kbd } from "@/components/ui/kbd";
 import { Segmented } from "@/components/ui/segmented";
 import { LocusMark } from "./locus-mark";
-import { GraphBackground } from "./graph-background";
 import { useTheme, type Mode } from "./theme";
 import { CommandPalette, type PaletteItem } from "./command-palette";
 import { TOOL_ICONS } from "./tool-icons";
@@ -147,7 +146,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <>
-      <GraphBackground />
       <div className="relative z-[1] grid min-h-dvh grid-cols-1 min-[821px]:grid-cols-[248px_minmax(0,1fr)]">
         <Sidebar lang={lang} pathname={pathname} drawer={false} onClose={() => setDrawer(false)} onSearch={() => setPalette(true)} />
         {drawer && <Sidebar lang={lang} pathname={pathname} drawer onClose={fermerTiroir} onSearch={() => { setDrawer(false); setPalette(true); }} />}

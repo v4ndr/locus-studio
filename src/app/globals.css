@@ -20,7 +20,7 @@
   --radius: .625rem;
   --shadow-xs: 0 1px 2px 0 rgba(0,0,0,.05); --shadow-sm: 0 1px 3px 0 rgba(0,0,0,.1), 0 1px 2px -1px rgba(0,0,0,.1);
   --field: rgba(255,255,255,.045);
-  --grain-op: .18; --grain-blend: screen;
+  --grain-op: .1; --grain-blend: screen;
   --grain: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='1.1' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.5  0 0 0 0 0.5  0 0 0 0 0.5  0 0 0 1 -0.1'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
   /* États (hors identité stricte, réservés aux alertes et validations). */
   --ok: #4ade80; --ok-soft: rgba(74,222,128,.1);
@@ -41,7 +41,7 @@
   --sidebar: #fafafa; --sidebar-foreground: #0a0a0a; --sidebar-accent: #f5f5f5; --sidebar-border: #e5e5e5;
   --brand: #14808c; --brand-soft: rgba(20,128,140,.09);
   --field: transparent;
-  --grain-op: .06; --grain-blend: multiply;
+  --grain-op: .05; --grain-blend: multiply;
   --ok: #15803d; --ok-soft: rgba(21,128,61,.08);
   --warn: #a35400; --warn-dot: #d97706;
   --rec: #b91c1c; --rec-text: #b91c1c;
@@ -162,10 +162,9 @@
 /* Icônes Lucide : 16 px, trait 2. */
 svg.i { width: 16px; height: 16px; flex: 0 0 auto; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 
-/* Fond : le graphe de connaissances (composant GraphBackground) et le grain. */
-.graph-bg { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; }
+/* Fond : un grain discret, rien d'autre. */
 .shell-main { position: relative; isolation: isolate; min-width: 0; }
-.shell-main::after { content: ""; position: fixed; inset: 0; pointer-events: none; background-image: var(--grain); background-size: 200px; opacity: var(--grain-op); mix-blend-mode: var(--grain-blend); z-index: -1; }
+.shell-main::after { content: ""; position: fixed; inset: 0; pointer-events: none; background-image: var(--grain); background-size: 160px; opacity: var(--grain-op); mix-blend-mode: var(--grain-blend); z-index: -1; }
 
 /* Le bouton bleu : texte blanc en clair, encre sombre sur le bleu éclairci en sombre — contraste tenu dans les deux. */
 .btn-accent { background: var(--primary); color: var(--primary-foreground); }
@@ -225,7 +224,7 @@ mark { background: var(--accent); color: var(--ink); border-radius: 3px; padding
   [role=dialog][aria-modal=true] > div > div > :not(:has(.papier)) { display: none !important; }
   .papier { box-shadow: none !important; border: none !important; min-height: auto !important; padding: 0 !important; }
   main { padding: 0 !important; max-width: none !important; }
-  aside, .graph-bg, .shell-side, .shell-mtop { display: none !important; }
+  aside, .shell-side, .shell-mtop { display: none !important; }
   .shell-main::after { display: none !important; }
 }
 .li { display: flex; gap: 12px; font-size: 14px; line-height: 1.45; }
