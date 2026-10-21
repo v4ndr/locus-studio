@@ -52,13 +52,14 @@ export async function* compose(input: ComposeInput, opts: { replay?: boolean } =
     try {
       message = await stream.finalMessage();
     } catch (e) {
-      yield { step: "error", detail: e instanceof Anthropic.APIError ? `Claude a répondu ${e.status} : ${e.message}` : e instanceof Error ? e.message : String(e) };
+      console.error("[compose]", e);
+      yield { step: "error", detail: "Le composer ne répond pas pour l'instant. Réessayez." };
       return;
     }
     const texts = message.content.filter((b): b is Anthropic.Beta.BetaTextBlock => b.type === "text").map((b) => b.text).join("\n").trim();
     if (texts) { synthese = texts; yield { step: "texte", texte: texts }; }
-    if (message.stop_reason === "refusal") { yield { step: "error", detail: "Claude a décliné cette demande." }; return; }
-    if (message.stop_reason === "max_tokens") { yield { step: "error", detail: "Réponse tronquée (max_tokens)." }; return; }
+    if (message.stop_reason === "refusal") { yield { step: "error", detail: "Cette demande n'a pas pu être composée." }; return; }
+    if (message.stop_reason === "max_tokens") { yield { step: "error", detail: "Composition interrompue : la demande est trop longue." }; return; }
     const uses = message.content.filter((b): b is Anthropic.Beta.BetaToolUseBlock => b.type === "tool_use");
     if (message.stop_reason !== "tool_use" || uses.length === 0) break;
 
@@ -76,7 +77,7 @@ export async function* compose(input: ComposeInput, opts: { replay?: boolean } =
   }
 
   const pt = ctx.patient;
-  const plan: ComposePlan = { synthese: (synthese || (ctx.actions.length ? "Prêt à valider." : "Je n'ai rien trouvé à faire avec cette demande.")).slice(0, 600), actions: ctx.actions, references: ctx.references, via: "claude", modele: MODEL, locus: ctx.locus, patient: pt ? { nom: pt.nom, sexe: pt.sexe, age: pt.age, naissance: pt.naissance, allergies: pt.allergies } : undefined };
+  const plan: ComposePlan = { synthese: (synthese || (ctx.actions.length ? "Prêt à valider." : "Je n'ai rien trouvé à faire avec cette demande.")).slice(0, 600), actions: ctx.actions, references: ctx.references, via: "live", locus: ctx.locus, patient: pt ? { nom: pt.nom, sexe: pt.sexe, age: pt.age, naissance: pt.naissance, allergies: pt.allergies } : undefined };
   yield { step: "done", plan };
 }
 

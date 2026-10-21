@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { compose, composeMode, MODEL } from "@/locus/compose/run";
+import { compose, composeMode } from "@/locus/compose/run";
 import { ndjsonResponse } from "@/locus/ndjson";
 import { guardLive } from "@/lib/server/guard";
 
@@ -8,7 +8,7 @@ export const maxDuration = 60;
 
 /**
  * Le composer : la ligne de commande du LGC. Le navigateur envoie la demande
- * et l'écran ; le serveur donne le contexte à Claude, qui appelle les outils
+ * et l'écran ; le serveur donne le contexte au modèle, qui appelle les outils
  * du logiciel (Locus en est un) ; le navigateur reçoit un plan d'actions.
  * Ni la clé du modèle ni celle de Locus ne franchissent le navigateur.
  *
@@ -65,7 +65,6 @@ export async function POST(req: Request) {
 export async function GET(req: Request) {
   const g = await guardLive(req);
   if (!g.ok) return g.response;
-  // Scénario rejoué : rien sur le mode réel du serveur (ni modèle, ni fournisseur).
-  if (g.replay) return Response.json({ mode: "simulation", modele: null });
-  return Response.json({ mode: composeMode(), modele: composeMode() === "claude" ? MODEL : null });
+  // Ni nom de modèle ni fournisseur dans une réponse publique.
+  return Response.json({ mode: g.replay || composeMode() === "simulation" ? "rejoue" : "live" });
 }
