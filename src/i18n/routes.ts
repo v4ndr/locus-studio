@@ -11,6 +11,9 @@ export const SLUGS = {
   integration: "integration-lgc",
   chatbot: "chatbot",
   scribe: "scribe",
+  sources: "sources",
+  documentation: "documentation",
+  clesApi: "cles-api",
 } as const;
 export type RouteKey = keyof typeof SLUGS;
 

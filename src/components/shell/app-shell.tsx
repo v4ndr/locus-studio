@@ -2,7 +2,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { BookOpen, Building, House, KeyRound, Library, Menu, Moon, Search, Sun, X, type LucideIcon } from "lucide-react";
+import { BookOpen, House, KeyRound, Library, Menu, Moon, Search, Sun, X, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { common, LANG_COOKIE, LANGS, route, TOOLS, type Lang, type RouteKey } from "@/i18n";
 import { useLang } from "@/i18n/lang";
@@ -15,6 +15,7 @@ import { GraphBackground } from "./graph-background";
 import { useTheme, type Mode } from "./theme";
 import { CommandPalette, type PaletteItem } from "./command-palette";
 import { TOOL_ICONS } from "./tool-icons";
+import { AccountFooter, MobileSignin } from "@/sandbox/acces/account";
 
 /**
  * La coque console de l'app (identité Noir) : sidebar fixe de 248 px, zone
@@ -25,6 +26,9 @@ import { TOOL_ICONS } from "./tool-icons";
  * `./page-inner`) donne la colonne standard de 1120 px.
  */
 
+
+/** Les routes plein écran : pas de sidebar ni de fond, la page porte son propre chrome. */
+const IMMERSIVE: RouteKey[] = ["integration"];
 
 function Wordmark({ lang, onClick }: { lang: Lang; onClick?: () => void }) {
   const t = common[lang];
@@ -83,9 +87,9 @@ function Sidebar({ lang, pathname, drawer, onClose, onSearch }: { lang: Lang; pa
         <div className="px-2 pb-1 pt-4 text-xs font-medium text-muted-foreground">{t.nav.sandbox}</div>
         {TOOLS.map((k) => <NavLink key={k} href={route(lang, k)} icon={TOOL_ICONS[k]} label={t.tools[k]} active={actif(k)} onClick={fermer} />)}
         <div className="px-2 pb-1 pt-4 text-xs font-medium text-muted-foreground">{t.nav.resources}</div>
-        <span aria-disabled="true" className="flex h-8 items-center gap-2 rounded-md px-2 opacity-60"><Library size={16} aria-hidden="true" /><span className="flex-1 truncate">{t.nav.sources}</span><Badge variant="secondary">{t.nav.soon}</Badge></span>
-        <span aria-disabled="true" className="flex h-8 items-center gap-2 rounded-md px-2 opacity-60"><BookOpen size={16} aria-hidden="true" /><span className="flex-1 truncate">{t.nav.docs}</span><Badge variant="secondary">{t.nav.soon}</Badge></span>
-        <NavLink href={route(lang, "acces")} icon={KeyRound} label={t.nav.keys} active={false} onClick={fermer} extra={<Badge variant="secondary">{t.nav.invite}</Badge>} />
+        <NavLink href={route(lang, "sources")} icon={Library} label={t.nav.sources} active={actif("sources")} onClick={fermer} />
+        <NavLink href={route(lang, "documentation")} icon={BookOpen} label={t.nav.docs} active={actif("documentation")} onClick={fermer} />
+        <NavLink href={route(lang, "clesApi")} icon={KeyRound} label={t.nav.keys} active={actif("clesApi")} onClick={fermer} extra={<Badge variant="secondary">{t.nav.invite}</Badge>} />
       </nav>
       <div className="mx-3 mb-2.5 grid gap-1 rounded-lg border border-sidebar-border bg-background p-3 text-[12.5px] text-muted-foreground">
         <b className="flex items-center gap-1.5 font-medium text-foreground"><StatusDot />{t.notice.title}</b>
@@ -96,11 +100,7 @@ function Sidebar({ lang, pathname, drawer, onClose, onSearch }: { lang: Lang; pa
           <Segmented<Mode> label={t.theme.label} value={mode} onChange={setMode} options={[{ value: "dark", label: <Moon aria-hidden="true" />, aria: t.theme.dark }, { value: "light", label: <Sun aria-hidden="true" />, aria: t.theme.light }]} />
           <Segmented<Lang> label={t.language.label} value={lang} onChange={setLang} options={LANGS.map((l) => ({ value: l, label: l.toUpperCase() }))} />
         </div>
-        <div className="flex items-center gap-2.5">
-          <span className="grid size-[30px] shrink-0 place-items-center rounded-[7px] border border-input text-muted-foreground"><Building size={16} aria-hidden="true" /></span>
-          <span className="grid min-w-0 flex-1 leading-tight"><span className="truncate">{t.account.guest}</span><small className="truncate text-xs text-muted-foreground">{t.account.guestSub}</small></span>
-          <Link href={route(lang, "acces")} onClick={fermer} className={buttonClass({ size: "sm" })}>{t.account.signin}</Link>
-        </div>
+        <AccountFooter lang={lang} onNavigate={fermer} />
       </div>
     </aside>
   );
@@ -141,6 +141,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     { href: route(lang, "acces"), label: t.account.request, icon: KeyRound },
   ];
 
+  if (IMMERSIVE.some((k) => pathname === route(lang, k) || pathname.startsWith(route(lang, k) + "/"))) {
+    return <>{children}{palette && <CommandPalette items={items} lang={lang} onClose={() => setPalette(false)} />}</>;
+  }
+
   return (
     <>
       <GraphBackground />
@@ -153,7 +157,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <div className="flex items-center gap-2 px-4 py-2.5">
               <Wordmark lang={lang} />
               <span className="flex-1" />
-              <Link href={route(lang, "acces")} className={buttonClass({ size: "sm" })}>{t.account.signin}</Link>
+              <MobileSignin lang={lang} />
               <button ref={menuRef} type="button" onClick={() => setDrawer(true)} aria-label={t.menu.open} aria-expanded={drawer} className={buttonClass({ size: "icon" })}><Menu size={16} aria-hidden="true" /></button>
             </div>
             <p className="m-0 flex items-center gap-1.5 border-t border-border px-4 py-1.5 text-xs text-muted-foreground"><StatusDot />{t.banner}</p>

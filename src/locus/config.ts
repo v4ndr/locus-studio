@@ -1,4 +1,5 @@
 import "server-only";
+import { locusUserRef } from "@/lib/server/user";
 
 /**
  * La configuration du backend, lue côté serveur uniquement.
@@ -41,4 +42,10 @@ export function paths(cfg: CoreConfig) {
 export function authHeaders(cfg: CoreConfig, userRef = "studio"): HeadersInit {
   if (!cfg.key) return {};
   return { Authorization: `Bearer ${cfg.key}`, "X-Locus-User-Ref": userRef };
+}
+
+/** Les en-têtes de core pour la requête en cours : `X-Locus-User-Ref: studio:<clerkUserId>` quand un compte est connecté. */
+export async function userAuthHeaders(cfg: CoreConfig): Promise<HeadersInit> {
+  if (!cfg.key) return {};
+  return authHeaders(cfg, await locusUserRef());
 }

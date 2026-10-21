@@ -12,3 +12,4 @@ export { chatbot, type ChatbotDict } from "./chatbot";
 export { lgc, type LgcDict } from "./lgc";
 export { scribe, type ScribeDict } from "./scribe";
 export { studio, type StudioDict } from "./studio";
+export { ressources, type RessourcesDict } from "./ressources";

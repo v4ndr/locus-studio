@@ -1,5 +1,6 @@
 import "server-only";
 import { createHash, timingSafeEqual } from "node:crypto";
+import { getStudioUserId } from "./user";
 
 /**
  * Le garde des routes live (`/api/compose`, `/api/note`, `/api/locus/*`) :
@@ -25,8 +26,10 @@ import { createHash, timingSafeEqual } from "node:crypto";
  *    l'instance, ou Upstash Redis (REST) si `UPSTASH_REDIS_REST_URL` et
  *    `UPSTASH_REDIS_REST_TOKEN` sont posés. Le jeton interne en est exempté.
  *
- * La PR « Accès » remplacera le verrou par l'authentification et un quota
- * par compte ; ce module reste le point d'entrée unique.
+ * 4. **Comptes (PR « Accès »).** Un utilisateur connecté (instance Clerk
+ *    Studio, voir `./user.ts`) passe le verrou de production. Ses requêtes
+ *    live sont comptées par compte et par jour (`STUDIO_USER_QUOTA_PER_DAY`,
+ *    60 par défaut, même compteur que le rate limit) au lieu de l'IP.
  */
 
 export const LIVE_TOKEN_HEADER = "x-studio-live-token";
@@ -64,6 +67,20 @@ function hasLiveToken(req: Request): boolean {
 }
 
 /**
+ * Vrai quand la requête vient d'une page de ce site, pas d'un formulaire ou
+ * d'un `fetch` d'un autre site (`Sec-Fetch-Site`, sinon `Origin`). Sans l'un
+ * ni l'autre (curl, appel serveur) : vrai, il n'y a pas de navigateur à abuser.
+ */
+export function sameOrigin(req: Request): boolean {
+  const site = req.headers.get("sec-fetch-site");
+  if (site && site !== "same-origin" && site !== "none") return false;
+  const origin = req.headers.get("origin");
+  if (!origin) return true;
+  const host = req.headers.get("x-forwarded-host") ?? req.headers.get("host");
+  try { return !!host && new URL(origin).host === host; } catch { return false; }
+}
+
+/**
  * L'adresse du client, pour le rate limit. Le premier élément de
  * `x-forwarded-for` est écrit par le client : il ne sert que là où la
  * plateforme réécrit l'en-tête. Sur Vercel, `x-real-ip` et
@@ -89,10 +106,10 @@ const intEnv = (name: string, fallback: number) => {
 const WINDOW_S = 3600;
 const memoire = new Map<string, { n: number; reset: number }>();
 
-function incrMemoire(key: string, nowS: number): number {
+function incrMemoire(key: string, nowS: number, windowS = WINDOW_S): number {
   const cur = memoire.get(key);
   if (!cur || cur.reset <= nowS) {
-    memoire.set(key, { n: 1, reset: nowS + WINDOW_S });
+    memoire.set(key, { n: 1, reset: nowS + windowS });
     // Ménage paresseux : la carte ne grossit pas indéfiniment sur une instance chaude.
     if (memoire.size > 5_000) for (const [k, v] of memoire) if (v.reset <= nowS) memoire.delete(k);
     return 1;
@@ -101,7 +118,7 @@ function incrMemoire(key: string, nowS: number): number {
   return cur.n;
 }
 
-async function incrUpstash(key: string): Promise<number | null> {
+async function incrUpstash(key: string, windowS = WINDOW_S): Promise<number | null> {
   const url = process.env.UPSTASH_REDIS_REST_URL?.trim().replace(/\/$/, "");
   const token = process.env.UPSTASH_REDIS_REST_TOKEN?.trim();
   if (!url || !token) return null;
@@ -109,7 +126,7 @@ async function incrUpstash(key: string): Promise<number | null> {
     const res = await fetch(`${url}/pipeline`, {
       method: "POST",
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-      body: JSON.stringify([["INCR", key], ["EXPIRE", key, String(WINDOW_S), "NX"]]),
+      body: JSON.stringify([["INCR", key], ["EXPIRE", key, String(windowS), "NX"]]),
       signal: AbortSignal.timeout(1500),
       cache: "no-store",
     });
@@ -123,12 +140,12 @@ async function incrUpstash(key: string): Promise<number | null> {
 }
 
 /** Compte une requête ; renvoie le nombre de requêtes de la fenêtre courante. */
-export async function hit(bucket: string, id: string): Promise<{ n: number; resetS: number }> {
+export async function hit(bucket: string, id: string, windowS = WINDOW_S): Promise<{ n: number; resetS: number }> {
   const nowS = Math.floor(Date.now() / 1000);
-  const fenetre = Math.floor(nowS / WINDOW_S);
+  const fenetre = Math.floor(nowS / windowS);
   const key = `studio:rl:${bucket}:${id}:${fenetre}`;
-  const n = (await incrUpstash(key)) ?? incrMemoire(key, nowS);
-  return { n, resetS: (fenetre + 1) * WINDOW_S - nowS };
+  const n = (await incrUpstash(key, windowS)) ?? incrMemoire(key, nowS, windowS);
+  return { n, resetS: (fenetre + 1) * windowS - nowS };
 }
 
 const json = (body: unknown, status: number, headers: Record<string, string> = {}) =>
@@ -141,6 +158,19 @@ const json = (body: unknown, status: number, headers: Record<string, string> = {
 export async function guardLive(req: Request): Promise<GuardResult> {
   if (hasLiveToken(req)) return { ok: true, replay: false };
   const replay = req.headers.get(REPLAY_HEADER) === "1";
+  // La session (cookie Clerk) ne compte que pour une requête de ce site : une page tierce ne dépense pas le quota d'un compte.
+  const userId = replay || !sameOrigin(req) ? null : await getStudioUserId();
+  if (userId) {
+    // Compte invité : le verrou tombe, le quota par compte remplace le rate limit par IP.
+    const max = intEnv("STUDIO_USER_QUOTA_PER_DAY", 60);
+    if (rateLimited() && max > 0) {
+      const { n, resetS } = await hit("user", userId, 86_400);
+      if (n > max) {
+        return { ok: false, response: json({ error: "Quota du jour atteint pour ce compte. Il se renouvelle demain ; pour l'augmenter, écrivez à l'équipe Locus.", code: "quota_exceeded" }, 429, { "Retry-After": String(resetS) }) };
+      }
+    }
+    return { ok: true, replay: false };
+  }
   if (!replay && liveLocked()) {
     return { ok: false, response: json({ error: "Le mode live est réservé aux comptes invités.", code: LIVE_LOCKED }, 403) };
   }

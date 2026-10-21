@@ -1,4 +1,5 @@
-import { NextResponse, type NextRequest } from "next/server";
+import { NextResponse, type NextFetchEvent, type NextRequest } from "next/server";
+import { clerkMiddleware } from "@clerk/nextjs/server";
 import { DEFAULT_LANG, LANG_COOKIE, isLang, type Lang } from "@/i18n/config";
 
 /**
@@ -7,6 +8,10 @@ import { DEFAULT_LANG, LANG_COOKIE, isLang, type Lang } from "@/i18n/config";
  *    déjà diffusées, redirigent en 308 vers `/[lang]/lgc-natif/…`.
  * 2. Une URL sans préfixe de langue redirige vers `/fr/…` ou `/en/…` :
  *    le cookie de la bascule FR/EN d'abord, puis `Accept-Language`, puis `fr`.
+ * 3. Avec les clés de l'instance Clerk Studio, Clerk lit la session sur les
+ *    pages et sur `/api/*` (le garde des routes live s'en sert, voir
+ *    `src/lib/server/guard.ts`). Sans clés, Clerk n'est pas chargé et l'app
+ *    tourne en visiteur.
  */
 
 const LEGACY = /^\/(p|inbox|nouveau|d)(\/|$)/;
@@ -24,9 +29,10 @@ function langFrom(req: NextRequest): Lang {
   return prefs.map((p) => p.lang).find(isLang) ?? DEFAULT_LANG;
 }
 
-export function proxy(req: NextRequest) {
+function langues(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const first = pathname.split("/")[1];
+  if (first === "api") return NextResponse.next();
   if (isLang(first)) return NextResponse.next();
 
   const url = req.nextUrl.clone();
@@ -39,7 +45,14 @@ export function proxy(req: NextRequest) {
   return NextResponse.redirect(url, 307);
 }
 
+const clerkOn = !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY?.trim() && !!process.env.CLERK_SECRET_KEY?.trim();
+const avecClerk = clerkOn ? clerkMiddleware((_auth, req) => langues(req)) : null;
+
+export function proxy(req: NextRequest, ev: NextFetchEvent) {
+  return avecClerk ? avecClerk(req, ev) : langues(req);
+}
+
 export const config = {
-  // Ni l'API, ni les fichiers de Next, ni les fichiers statiques (avec une extension).
-  matcher: ["/((?!api|_next|.*\\..*).*)"],
+  // Les pages (ni les fichiers de Next, ni les fichiers statiques avec une extension), et l'API pour la session Clerk.
+  matcher: ["/((?!api|_next|.*\\..*).*)", "/api/(.*)"],
 };

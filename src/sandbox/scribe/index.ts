@@ -1,2 +1,2 @@
-// Composants de la zone « scribe ». Rempli par la PR de la zone.
-export {};
+// Composants de la zone « scribe ».
+export { ScribePage } from "./scribe-page";

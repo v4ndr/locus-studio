@@ -7,6 +7,7 @@ import { AppShell } from "@/components/shell/app-shell";
 import { LangProvider } from "@/i18n/lang";
 import { LANGS, isLang } from "@/i18n";
 import { CabinetProvider } from "@/store/cabinet";
+import { AuthRoot } from "@/sandbox/acces/auth-root";
 
 const geist = Geist({ subsets: ["latin"], variable: "--font-geist", display: "swap", weight: ["400", "500", "600"] });
 const mono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono", display: "swap", weight: ["400", "500"] });
@@ -36,9 +37,11 @@ export default async function RootLayout({ children, params }: { children: React
       <body className="min-h-dvh font-sans">
         <ThemeScript />
         <LangProvider lang={lang}>
-          <CabinetProvider>
-            <AppShell>{children}</AppShell>
-          </CabinetProvider>
+          <AuthRoot lang={lang}>
+            <CabinetProvider>
+              <AppShell>{children}</AppShell>
+            </CabinetProvider>
+          </AuthRoot>
         </LangProvider>
       </body>
     </html>
