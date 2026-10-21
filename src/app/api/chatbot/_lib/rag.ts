@@ -16,9 +16,9 @@ import type { ChatEvent, ChatSource } from "@/sandbox/chatbot/events";
  */
 
 const API = "https://api.mistral.ai/v1";
-// Les identifiants épinglés par la spec (§4) sont posés dans l'environnement, jamais écrits dans le code.
-const embedModel = () => process.env.CHATBOT_RAG_EMBED_MODEL?.trim();
-const chatModel = () => process.env.CHATBOT_RAG_CHAT_MODEL?.trim();
+// Défauts serveur (spec §4), surchargeables par l'environnement. Ce fichier est `server-only` : rien n'atteint le navigateur.
+const embedModel = () => process.env.CHATBOT_RAG_EMBED_MODEL?.trim() || "mistral-embed";
+const chatModel = () => process.env.CHATBOT_RAG_CHAT_MODEL?.trim() || "mistral-small-latest";
 const TOP_K = 5;
 
 /** Le format écrit par `scripts/chatbot-index.ts`. */
