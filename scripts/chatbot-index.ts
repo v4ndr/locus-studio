@@ -22,7 +22,7 @@ import path from "node:path";
 
 const API = "https://api.mistral.ai/v1";
 /** Le modèle de plongement épinglé par la spec (§4), le même que celui de la route. */
-const MODEL = process.env.CHATBOT_RAG_EMBED_MODEL?.trim();
+const MODEL = process.env.CHATBOT_RAG_EMBED_MODEL?.trim() || "mistral-embed";
 /** ~800 tokens : environ 3 200 caractères de français. */
 const CHUNK_CHARS = 3200;
 const OVERLAP_CHARS = 300;
@@ -111,7 +111,7 @@ function quantifier(v: number[]): { e: string; s: number } {
 async function main() {
   const { dir, out } = args();
   const key = process.env.MISTRAL_API_KEY?.trim();
-  if (!key || !MODEL) { console.error("MISTRAL_API_KEY ou CHATBOT_RAG_EMBED_MODEL manquante (voir .env.example)."); process.exit(1); }
+  if (!key || !MODEL) { console.error("MISTRAL_API_KEY manquante (voir .env.example)."); process.exit(1); }
 
   let metas: Record<string, Meta> = {};
   try { metas = JSON.parse(await readFile(path.join(dir, "sources.json"), "utf8")); } catch { /* facultatif */ }
