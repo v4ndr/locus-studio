@@ -226,7 +226,7 @@ export function DossierLocalView({ id }: { id: string }) {
           <section ref={notesRef} className="flex scroll-mt-24 flex-col gap-2">
             <div className="flex items-center gap-3"><span className="k px-1">{t.notes}</span><span className="flex-1" /><button type="button" onClick={() => ouvrir()} className="flex min-h-10 items-center gap-2 rounded-[10px] bg-ink px-3.5 py-[8px] text-sm text-paper"><I.plus /> {t.consult}</button></div>
             {p.notes.length === 0 && <div className="rounded-[14px] border border-dashed border-line px-5 py-6 text-center text-sm text-dim-2">{t.noNotes}</div>}
-            {p.notes.map((n) => <NoteRow key={n.id} n={n} patient={pr} onModifier={() => ouvrir({ patientId: p.id, noteId: n.id } as Brouillon)} onDelete={() => { cab.removeNote(p.id, n.id); setVersion((v) => v + 1); }} />)}
+            {p.notes.map((n) => <NoteRow key={n.id} n={n} patient={pr} onModifier={() => ouvrir({ patientId: p.id, noteId: n.id } as Brouillon)} onDelete={() => { cab.removeNote(p.id, n.id); setVersion((v) => v + 1); }} onDeleteAction={(aid) => { cab.saveNote(p.id, { ...n, actions: n.actions.filter((x) => x.id !== aid) }); setVersion((v) => v + 1); }} />)}
           </section>
         )}
       </main>
