@@ -29,10 +29,37 @@ Règles :
 - Posologies et durées en français courant (« 1 cp matin et soir », « 3 mois »), DCI en minuscules.
 - Un message au patient : simple, chaleureux, deux à quatre phrases, signé « Dr Vandepitterie ». Un courrier à un confrère : confraternel, les éléments utiles du dossier, pas de bavardage.
 - Depuis l'accueil (aucun patient ouvert), identifie le patient dans la liste fournie, utilise \`ouvrir\` vers son dossier, puis compose ce qui est demandé avec son identifiant.
+- Une question sur la patientèle (suivis en retard, dépistages, qui revoir) : réponds à partir de la section « Suivi diabète de la patientèle » du contexte. Liste les patients en retard (nom, dernière HbA1c, retard), puis prépare pour chacun l'ordonnance de biologie (\`proposer_ordonnance\` avec son \`patientId\`), sans \`ouvrir\` de dossier.
 - Quand plusieurs outils sont nécessaires, appelle-les en parallèle dans le même tour.
 - Synthèse finale : TRÈS concise. Une phrase, deux au plus, quarante mots maximum, en français, sans titre ni liste. Pas de bilan de ton analyse, pas de récapitulatif des actions (elles sont affichées à côté), pas de rappel du dossier, pas de formule de politesse. Sur une note de consultation : la conclusion clinique, rien d'autre.`;
 
 function fr(iso: string) { const [y, m, d] = iso.slice(0, 10).split("-"); return `${d}/${m}/${y}`; }
+
+const JOUR = 86_400_000;
+
+/**
+ * La requête de population que le LGC sait faire : les diabétiques et leur
+ * dernière HbA1c, contre l'intervalle HAS (3 mois, 6 mois si équilibré).
+ */
+function suiviDiabete(): string {
+  const ref = now().getTime();
+  const rows = DOSSIERS.flatMap((d) => {
+    const diab = recordsOf(d, "problem").some((p) => p.categorie !== "familial" && (/^E1[0-4]/.test(p.cim10 ?? "") || /diab[eè]te/i.test(p.libelle)));
+    if (!diab) return [];
+    const mesures = recordsOf(d, "lab").flatMap((l) => l.resultats.filter((r) => r.loinc === "4548-4" || /hba1c/i.test(r.libelle)).map((r) => ({ le: l.prelevementLe, valeur: r.valeur }))).sort((a, b) => b.le.localeCompare(a.le));
+    const der = mesures[0];
+    const p = d.patient;
+    const qui = `${p.id} · ${displayName(p)} · ${ageAt(p.ins.dateNaissance, now())} ans`;
+    if (!der) return [`- ${qui} · aucune HbA1c au dossier · EN RETARD`];
+    const v = typeof der.valeur === "number" ? der.valeur : Number(String(der.valeur).replace(",", "."));
+    const stable = Number.isFinite(v) && v <= 7;
+    const mois = stable ? 6 : 3;
+    const jours = Math.floor((ref - new Date(der.le).getTime()) / JOUR);
+    const retard = jours - Math.round(mois * 30.4);
+    return [`- ${qui} · dernière HbA1c ${String(v).replace(".", ",")} % le ${fr(der.le)} (il y a ${jours} j) · intervalle ${mois} mois${stable ? " (équilibré)" : ""} · ${retard > 0 ? `EN RETARD de ${retard} j` : `à jour, prochaine dans ${-retard} j`}`];
+  });
+  return `## Suivi diabète de la patientèle (id · nom · âge · dernière HbA1c · intervalle HAS · statut)\n${rows.length ? rows.join("\n") : "- aucun patient diabétique"}`;
+}
 
 export function buildContext(input: ComposeInput): { contexte: string; patientEhr?: string } {
   const lines: string[] = [];
@@ -73,6 +100,7 @@ export function buildContext(input: ComposeInput): { contexte: string; patientEh
   if (input.ecran === "home" || !pt) {
     const slots = todayAppointments();
     lines.push(`## Agenda du jour\n${slots.map((s) => `- ${fmtTime(s.appointment.debut)} · ${s.dossier.patient.id} · ${displayName(s.dossier.patient)} · ${s.appointment.motif}`).join("\n")}`);
+    lines.push(suiviDiabete());
     lines.push(`## Patientèle (id · nom · naissance)\n${DOSSIERS.map((x) => `- ${x.patient.id} · ${displayName(x.patient)} · ${fr(x.patient.ins.dateNaissance)}`).join("\n")}`);
   }
 

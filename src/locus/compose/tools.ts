@@ -45,6 +45,7 @@ export const TOOLS: Anthropic.Tool[] = [
     name: "proposer_ordonnance",
     description: "Prépare une ordonnance à signer : médicaments, biologie, imagerie, paramédical (kiné…), transport. Une ordonnance par nature (jamais un médicament et un examen sur la même). Une ligne par item. Pour un renouvellement, reprends exactement les traitements actifs du dossier, QSP 3 mois par défaut, sans renouvellement (sauf si l'ordonnance précédente en portait un).",
     input_schema: S({
+      patientId: { type: "string", description: "Depuis l'accueil, pour une requête sur la patientèle : le patient concerné." },
       type: { type: "string", enum: ["medicament", "biologie", "imagerie", "paramedical", "transport", "dispositif"] },
       lignes: { type: "array", items: { type: "object", properties: { libelle: { type: "string", description: "DCI + dosage, ou l'examen, ou l'acte" }, posologie: { type: "string", description: "Médicaments seulement" }, duree: { type: "string", description: "Médicaments seulement, « 3 mois » par défaut pour un renouvellement" }, renouvellement: { type: "integer", description: "Nombre de renouvellements, seulement si l'ordonnance précédente en portait" }, ald: { type: "boolean" } }, required: ["libelle"] } },
       indication: { type: "string", description: "Pour un examen ou un acte : le renseignement clinique, une ligne." },
