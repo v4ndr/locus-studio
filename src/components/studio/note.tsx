@@ -292,28 +292,30 @@ export function NoteEditor({ patientId, local, nom, retour, onSaved, script, mot
 }
 
 /** Une note enregistrée, telle qu'elle s'affiche dans le dossier : ses actions s'ouvrent sur le document envoyé. */
-export function NoteRow({ n, onDelete, onModifier, modifierHref, patient }: { n: NoteLocal; onDelete?: () => void; onModifier?: () => void; modifierHref?: string; patient?: PatientRendu }) {
+export function NoteRow({ n, onDelete, onDeleteAction, onModifier, modifierHref, patient }: { n: NoteLocal; onDelete?: () => void; /** Retire un document (ordonnance, rendez-vous…) de la note, sans toucher au reste. */ onDeleteAction?: (actionId: string) => void; onModifier?: () => void; modifierHref?: string; patient?: PatientRendu }) {
   const [open, setOpen] = React.useState(false);
   const [doc, setDoc] = React.useState<ComposeAction | null>(null);
   const { t: tt, L } = useT();
   const d = new Date(n.date);
   return (
     <div className="card overflow-hidden">
-      <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-hover">
+      <div className="flex items-center hover:bg-hover">
+      <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className="flex min-w-0 flex-1 items-center gap-3 px-4 py-3 text-left">
         <span className="d w-[92px] shrink-0">{String(d.getDate()).padStart(2, "0")}/{String(d.getMonth() + 1).padStart(2, "0")} {String(d.getHours()).padStart(2, "0")}:{String(d.getMinutes()).padStart(2, "0")}</span>
         <span className="flex min-w-0 flex-1 flex-col"><span className="truncate text-[15px]">{n.origine === "commande" ? tt.note.outside(n.motif) : n.motif || n.synthese?.slice(0, 80) || tt.note.consultation}{n.modifieLe && <span className="ml-2 text-[11px] text-dim-2">{tt.note.editedOn(new Date(n.modifieLe).toLocaleDateString(tt.dateLocale))}</span>}</span><span className="truncate text-[13px] text-dim-2">{tt.actionsN(n.actions.length)}</span></span>
         <I.chevron open={open} />
       </button>
+      {onDelete && <Suppr label={tt.remove} onClick={() => { if (confirm(tt.note.confirmDelete(n.actions.length))) onDelete(); }} />}
+      </div>
       {open && (
         <div className="flex flex-col gap-3 border-t border-line-4 px-4 py-3">
           {n.synthese && <p className="m-0 text-sm leading-relaxed">{n.synthese}</p>}{n.synthese && tt.answerInFrench && <span className="d -mt-2 text-[11px]">{tt.answerInFrench}</span>}
           {n.texte && <pre className="m-0 whitespace-pre-wrap rounded-[10px] bg-bg px-3.5 py-3 font-sans text-sm leading-relaxed text-ink-2">{n.texte}</pre>}
           {n.transcript && <details className="rounded-[10px] border border-line-4 px-3.5 py-2 text-sm"><summary className="cursor-pointer text-xs text-dim-2">{tt.note.transcriptOf(n.transcript.trim().split(/\s+/).length)}</summary><p className="m-0 mt-2 whitespace-pre-wrap text-[13px] leading-relaxed text-ink-2">{n.transcript}</p></details>}
-          {n.actions.length > 0 && <div className="flex flex-col gap-0.5">{n.actions.map((a) => <button key={a.id} type="button" onClick={() => setDoc(a)} className="flex min-h-11 items-center gap-3 rounded-[8px] px-2 py-1.5 text-left text-sm hover:bg-hover" title={tt.note.seeSent}><span className="d flex h-6 min-w-6 shrink-0 items-center justify-center rounded-[6px] bg-soft px-1 text-[10px] text-ink-3">{a.code}</span><span className="min-w-0 flex-1 truncate">{a.titre}</span><span className="hidden text-[11px] text-dim-2 sm:inline">{L(a.destination)}</span>{a.renvoye && <span className="text-[11px] text-ok">{tt.sent}</span>}<I.chevron /></button>)}</div>}
+          {n.actions.length > 0 && <div className="flex flex-col gap-0.5">{n.actions.map((a) => <div key={a.id} className="flex items-center rounded-[8px] hover:bg-hover"><button type="button" onClick={() => setDoc(a)} className="flex min-h-11 min-w-0 flex-1 items-center gap-3 px-2 py-1.5 text-left text-sm" title={tt.note.seeSent}><span className="d flex h-6 min-w-6 shrink-0 items-center justify-center rounded-[6px] bg-soft px-1 text-[10px] text-ink-3">{a.code}</span><span className="min-w-0 flex-1 truncate">{a.titre}</span><span className="hidden text-[11px] text-dim-2 sm:inline">{L(a.destination)}</span>{a.renvoye && <span className="text-[11px] text-ok">{tt.sent}</span>}<I.chevron /></button>{onDeleteAction && <Suppr label={`${tt.remove} : ${a.titre}`} onClick={() => onDeleteAction(a.id)} />}</div>)}</div>}
           <div className="flex flex-wrap items-center gap-3">
             {modifierHref && <Link href={modifierHref} className="flex min-h-9 items-center rounded-[8px] border border-line bg-paper px-3 py-1.5 text-xs text-ink hover:bg-hover hover:text-ink">{tt.edit}</Link>}
             {onModifier && !modifierHref && <button type="button" onClick={onModifier} className="min-h-9 rounded-[8px] border border-line bg-paper px-3 py-1.5 text-xs text-ink hover:bg-hover">{tt.edit}</button>}
-            {onDelete && <button type="button" onClick={() => { if (confirm(tt.note.confirmDelete(n.actions.length))) onDelete(); }} className="min-h-9 text-xs text-dim-2 hover:text-rec-text">{tt.remove}</button>}
           </div>
         </div>
       )}
@@ -322,11 +324,21 @@ export function NoteRow({ n, onDelete, onModifier, modifierHref, patient }: { n:
   );
 }
 
+/** Supprimer d'un geste, sans ouvrir. */
+function Suppr({ label, onClick }: { label: string; onClick: () => void }) {
+  return (
+    <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onClick(); }} aria-label={label} title={label} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[8px] text-dim-2 hover:text-rec-text">
+      <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3" /></svg>
+    </button>
+  );
+}
+
 /** Les consultations et modifications en cours d'un patient : le rappel qui ramène à l'éditeur. */
 export function BrouillonBanner({ patientId, href, onOpen, version }: { patientId: string; /** Le lien vers l'éditeur ; `?modifie=` est ajouté pour une modification. */ href: string; /** À la place d'un lien : ouvrir en place (dossier local). */ onOpen?: (b: Brouillon) => void; /** Change pour relire. */ version?: number }) {
   const [list, setList] = React.useState<Brouillon[]>([]);
   const { t: d } = useT();
-  React.useEffect(() => { setList(listBrouillons(patientId)); }, [patientId, version]);
+  const [suppr, setSuppr] = React.useState(0);
+  React.useEffect(() => { setList(listBrouillons(patientId)); }, [patientId, version, suppr]);
   if (!list.length) return null;
   return (
     <div className="flex flex-col gap-2">
@@ -338,7 +350,8 @@ export function BrouillonBanner({ patientId, href, onOpen, version }: { patientI
           <span className="shrink-0 text-[13px]">{d.note.resume}</span>
         </>);
         const cls = "flex min-h-12 w-full items-center gap-3 rounded-[12px] border border-agent-line bg-agent-soft-2 px-4 py-3 text-left text-sm text-ink hover:text-ink";
-        return onOpen ? <button key={b.noteId ?? "nouvelle"} type="button" onClick={() => onOpen(b)} className={cls} style={{ boxShadow: "var(--shadow-accent)" }}>{inner}</button> : <Link key={b.noteId ?? "nouvelle"} href={b.noteId ? `${href}?modifie=${b.noteId}` : href} className={cls} style={{ boxShadow: "var(--shadow-accent)" }}>{inner}</Link>;
+        const jeter = <Suppr label={d.remove} onClick={() => { clearBrouillon(b.patientId, b.noteId); setSuppr((x) => x + 1); }} />;
+        return <div key={b.noteId ?? "nouvelle"} className="flex items-center gap-1">{onOpen ? <button type="button" onClick={() => onOpen(b)} className={cls} style={{ boxShadow: "var(--shadow-accent)" }}>{inner}</button> : <Link href={b.noteId ? `${href}?modifie=${b.noteId}` : href} className={cls} style={{ boxShadow: "var(--shadow-accent)" }}>{inner}</Link>}{jeter}</div>;
       })}
     </div>
   );
@@ -353,7 +366,7 @@ export function NotesSession({ patientId, patient, version }: { patientId: strin
   return (
     <section className="flex flex-col gap-2">
       <span className="k px-1">{d.note.sessionNotes(notes.length)}</span>
-      {notes.map((n) => <NoteRow key={n.id} n={n} patient={patient} modifierHref={`/p/${patientId}/rencontre?modifie=${n.id}`} onDelete={() => { const next = notes.filter((x) => x.id !== n.id); writeNotes(patientId, next); clearBrouillon(patientId, n.id); setNotes(next); }} />)}
+      {notes.map((n) => <NoteRow key={n.id} n={n} patient={patient} modifierHref={`/p/${patientId}/rencontre?modifie=${n.id}`} onDelete={() => { const next = notes.filter((x) => x.id !== n.id); writeNotes(patientId, next); clearBrouillon(patientId, n.id); setNotes(next); }} onDeleteAction={(aid) => { const next = notes.map((x) => (x.id === n.id ? { ...x, actions: x.actions.filter((a) => a.id !== aid) } : x)); writeNotes(patientId, next); setNotes(next); }} />)}
     </section>
   );
 }
@@ -363,7 +376,8 @@ export function BrouillonsAccueil() {
   const cab = useCabinet();
   const { t: d } = useT();
   const [list, setList] = React.useState<Brouillon[]>([]);
-  React.useEffect(() => { setList(listBrouillons()); }, []);
+  const relire = React.useCallback(() => setList(listBrouillons()), []);
+  React.useEffect(() => { relire(); }, [relire]);
   // Un dossier local supprimé n'a plus de consultation à reprendre.
   const rows = cab.ready ? list.filter((b) => !b.patientId.startsWith("loc_") || cab.get(b.patientId)) : list;
   if (!rows.length) return null;
@@ -371,12 +385,15 @@ export function BrouillonsAccueil() {
     <section className="flex flex-col gap-1">
       <div className="k px-3.5 pb-2" style={{ color: "var(--agent)" }}>{d.note.toValidate(rows.length)}</div>
       {rows.map((b) => { const n = nActions(b); return (
-        <Link key={`${b.patientId}-${b.noteId ?? ""}`} href={b.noteId && !b.patientId.startsWith("loc_") ? `${b.href}?modifie=${b.noteId}` : b.href} className="flex min-h-12 items-center gap-3 rounded-[10px] px-3.5 py-3 text-ink hover:bg-hover hover:text-ink sm:gap-4">
+        <div key={`${b.patientId}-${b.noteId ?? ""}`} className="flex items-center rounded-[10px] hover:bg-hover">
+        <Link href={b.noteId && !b.patientId.startsWith("loc_") ? `${b.href}?modifie=${b.noteId}` : b.href} className="flex min-h-12 min-w-0 flex-1 items-center gap-3 px-3.5 py-3 text-ink hover:text-ink sm:gap-4">
           <span className="h-2 w-2 shrink-0 rounded-full bg-brand" />
           <span className="min-w-0 flex-1 truncate text-[15px]">{b.nom}</span>
           <span className="truncate text-[13px] text-dim-2">{b.noteId ? d.note.noteEditing : b.plan ? d.toValidateN(n) : d.note.noteOngoing}{b.motif ? ` · ${b.motif}` : ""}</span>
           <I.chevron />
         </Link>
+        <Suppr label={d.remove} onClick={() => { clearBrouillon(b.patientId, b.noteId); relire(); }} />
+        </div>
       ); })}
     </section>
   );
