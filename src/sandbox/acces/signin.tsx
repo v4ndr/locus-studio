@@ -68,11 +68,11 @@ function ClerkSignin({ lang, invited, ticket, ticketStatus }: Props) {
   const [invitation, setInvitation] = React.useState<"idle" | "running" | "failed">(ticket ? "running" : "idle");
   const ticketFait = React.useRef(false);
 
-  // Session ouverte : l'URL perd le jeton d'invitation, le serveur relit la session.
+  // Session ouverte : direction la console (l'URL perd le jeton d'invitation, le proxy relit la session).
   const ouvrir = React.useCallback(() => {
-    router.replace(route(lang, "acces", invited ? "?invited=1" : ""));
+    router.replace(route(lang, "home"));
     router.refresh();
-  }, [router, lang, invited]);
+  }, [router, lang]);
 
   // Le lien d'invitation : le jeton crée le compte (ou ouvre la session s'il existe déjà), sans formulaire.
   React.useEffect(() => {

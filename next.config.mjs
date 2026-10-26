@@ -17,14 +17,15 @@ function clerkOrigin() {
   }
 }
 const clerk = clerkOrigin();
-// Clerk : le script et l'API de l'instance, les avatars, et le contrôle anti-robot (Cloudflare Turnstile).
+// Clerk : le script et l'API de l'instance, les avatars, le contrôle anti-robot (Cloudflare Turnstile)
+// et le script anti-fraude de Clerk (cdn.protect.clerk.com), refusé jusqu'ici par la CSP.
 const csp = [
   "default-src 'self'",
-  `script-src 'self' 'unsafe-inline'${clerk ? ` ${clerk} https://challenges.cloudflare.com` : ""}`,
+  `script-src 'self' 'unsafe-inline'${clerk ? ` ${clerk} https://challenges.cloudflare.com https://cdn.protect.clerk.com` : ""}`,
   "style-src 'self' 'unsafe-inline'",
   `img-src 'self' data: blob:${clerk ? " https://img.clerk.com" : ""}`,
   "font-src 'self' data:",
-  `connect-src 'self'${stt}${clerk ? ` ${clerk}` : ""}`,
+  `connect-src 'self'${stt}${clerk ? ` ${clerk} https://*.protect.clerk.com` : ""}`,
   ...(clerk ? ["frame-src https://challenges.cloudflare.com", "worker-src 'self' blob:"] : []),
   "frame-ancestors 'none'",
   "base-uri 'self'",
