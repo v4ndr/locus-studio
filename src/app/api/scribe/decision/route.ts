@@ -30,8 +30,6 @@ const Input = z.object({
   motif: z.string().trim().max(200).optional(),
 }).strict();
 
-/** Vrai pour un résultat des simulations locales (`via: "simulation"`), quand le client en produit encore. */
-const simule = (x: object) => (x as { via?: unknown }).via === "simulation";
 
 /** L'erreur d'un flux (Locus ou composeur), déjà journalisée par son client. */
 class EchecFlux extends Error {
@@ -113,14 +111,14 @@ export async function POST(req: Request) {
       if (ev.step === "done") fin = ev.payload;
     }
     // Une réponse simulée (core non configuré) n'est pas une réponse de Locus.
-    if (!fin || simule(fin)) throw new EchecFlux("indisponible");
+    if (!fin) throw new EchecFlux("indisponible");
     return fin;
   })();
   const plan = (async () => {
     let actions: ComposeAction[] | null = null;
     for await (const ev of compose({ texte: "", ecran: "note", note, motif, patientId: PATIENT_ID, patient: patientFictif(note) })) {
       if (ev.step === "error") throw new EchecFlux("echec");
-      if (ev.step === "done") { if (simule(ev.plan)) throw new EchecFlux("indisponible"); actions = ev.plan.actions; }
+      if (ev.step === "done") actions = ev.plan.actions;
     }
     if (!actions) throw new EchecFlux("echec");
     return actions;

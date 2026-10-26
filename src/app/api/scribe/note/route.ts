@@ -49,10 +49,7 @@ export async function POST(req: Request) {
   const reel = donneesReelles(`${transcript}\n${motif ?? ""}`);
   if (reel) return Response.json({ error: reel, code: "donnees_reelles" }, { status: 422 });
   try {
-    const out = await synthetiserNote({ transcript, modele, motif });
-    // Une note à règles (service non configuré) n'est pas une génération : elle ne sort pas d'ici.
-    if ((out as { via?: unknown }).via === "simulation") return erreur("indisponible");
-    const { note } = out;
+    const { note } = await synthetiserNote({ transcript, modele, motif });
     const cr = rubriques(note);
     if (!cr.length) return erreur("echec");
     const body: NoteReponse = { cr };

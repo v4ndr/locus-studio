@@ -1,7 +1,8 @@
 # locus-studio — le sandbox Locus
 
-Locus Studio est le **sandbox B2B de Locus** : quatre espaces publics, sur
-patients fictifs, en scénarios rejoués ; l'accès live est sur invitation.
+Locus Studio est le **sandbox B2B de Locus** : une entrée publique, et
+derrière un compte sur invitation, une console de quatre sandbox sur patients
+fictifs, toutes en direct.
 Identité visuelle « Noir » (console, sombre par défaut), interface en
 français et en anglais. Le backend clinique est réel :
 **[locus-core](https://github.com/v4ndr/locus-core)**.
@@ -157,13 +158,13 @@ rencontre scriptée, messages.
 
 ```bash
 pnpm install
-pnpm dev            # http://localhost:3000 — tout fonctionne à sec (mode simulation)
+pnpm dev            # http://localhost:3000 — sans Clerk : pas de mur ; sans core ni modèle : erreurs explicites
 ```
 
 Toutes les variables sont décrites dans `.env.example` : core
 (`LOCUS_CORE_URL`, `LOCUS_API_KEY`), composer (`ANTHROPIC_API_KEY`), routes
 live (`STUDIO_LIVE_TOKEN`, `STUDIO_LIVE_LOCK`, `STUDIO_RATE_LIMIT_PER_HOUR`,
-`STUDIO_REPLAY_RATE_LIMIT_PER_HOUR`, `UPSTASH_REDIS_REST_URL`,
+`STUDIO_USER_QUOTA_PER_DAY`, `STUDIO_WALL`, `UPSTASH_REDIS_REST_URL`,
 `UPSTASH_REDIS_REST_TOKEN`, `STUDIO_MKU_ALLOWLIST`) et URL publique
 (`NEXT_PUBLIC_SITE_URL`, pour les metadata et `hreflang`).
 
@@ -176,31 +177,38 @@ cp .env.example .env.local
 
 | Mode | Déclenché par | Ce qui se passe |
 |---|---|---|
-| `simulation` | pas de `LOCUS_CORE_URL` | l'agent répond depuis une base locale (6 thèmes), même forme que core |
+| `absent` | pas de `LOCUS_CORE_URL` | les appels Locus répondent une erreur explicite, rien n'est simulé |
 | `keyless` | URL sans clé | la Sandbox `/console/retrieve` de core (même retrieving, pas de trace) |
 | `core` | URL + `LOCUS_API_KEY` | `/v2/*`, la vraie API, avec traces et feedback |
 
 Scripts : `dev`, `build`, `start`, `typecheck`, `test`.
 
-### Routes live et scénarios rejoués
+### Le mur et les routes live
+
+Seules l'entrée (`/[lang]`) et l'accès (`/[lang]/acces`) sont publiques ; le
+proxy (`src/proxy.ts`) renvoie toute autre page vers l'entrée sans session
+Clerk Studio, et un compte connecté de l'entrée vers la console
+(`/[lang]/console`). Le mur suit Clerk ; `STUDIO_WALL=1|0` le force.
 
 Les routes qui peuvent dépenser un appel de modèle ou des crédits Locus
-(`/api/compose`, `/api/note`, `/api/locus/*`) passent par
-`src/lib/server/guard.ts` :
+(`/api/compose`, `/api/note`, `/api/locus/*`, `/api/chatbot/*`,
+`/api/scribe/*`, `/api/integration-lgc/*`) passent par
+`src/lib/server/guard.ts`. Il n'y a plus de scénario rejoué : tout est live.
 
-- **En production** (`VERCEL_ENV=production`, ou `NODE_ENV=production` hors
-  Vercel), elles répondent **403** sauf avec l'en-tête `x-studio-live-token`
-  égal à `STUDIO_LIVE_TOKEN`. Les previews Vercel et `next dev` restent
-  ouverts ; `STUDIO_LIVE_LOCK=1|0` force le verrou.
-- **Scénario rejoué** : sur ce 403, le navigateur (`src/lib/live.ts`) renvoie
-  la requête avec `x-studio-replay: 1` ; la route répond avec les règles et
-  Locus simulé, sans aucun appel externe.
-- **Rate limit par IP** (hors `next dev`) : 20 requêtes live par heure, 200
-  rejouées. En mémoire de l'instance, ou Upstash Redis (REST) si
+- **Compte** : un utilisateur connecté passe, avec un quota par compte et par
+  jour (`STUDIO_USER_QUOTA_PER_DAY`, 300).
+- **Sans compte** : **401** `auth_required`, et le navigateur
+  (`src/lib/live.ts`) repart vers l'entrée. Le jeton `x-studio-live-token`
+  (`STUDIO_LIVE_TOKEN`) passe toujours, pour les tests internes.
+- **Sans Clerk**, sous `next dev` ou avec `STUDIO_LIVE_LOCK=0`, les routes
+  sont ouvertes, avec un rate limit par IP hors `next dev` (20 par heure).
+  En mémoire de l'instance, ou Upstash Redis (REST) si
   `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` sont posés.
   L'adresse vient de `x-real-ip` sur Vercel (posé par la plateforme), et du
-  dernier maillon de `x-forwarded-for` ailleurs : un `next start` exposé
-  sans reverse proxy laisse le client choisir son adresse.
+  dernier maillon de `x-forwarded-for` ailleurs.
+- Un service absent ou en panne (core, modèle, dictée, index du RAG simple)
+  donne une erreur explicite avec « Réessayer », jamais une réponse écrite
+  d'avance.
 - `maxDuration` à 60 s ; `/api/locus/logic` n'accepte que des `mku_key` en
   liste blanche ; `/api/locus/status` renvoie `{ ok }` seulement en
   production ; `/api/note` refuse un NIR ou une date de naissance complète.

@@ -25,7 +25,10 @@ export function erreur(code: Exclude<CodeErreur, "donnees_reelles">): Response {
  * saturé ; pas de statut (réseau) ou 5xx : injoignable ; le reste : échec.
  */
 export function codeDe(e: unknown): Exclude<CodeErreur, "donnees_reelles"> {
-  const s = (e as { status?: unknown } | null)?.status;
+  // `SyntheseIndisponible` porte l'erreur du modèle dans `.erreur`.
+  const porte = (e as { erreur?: { status?: unknown; code?: unknown } } | null)?.erreur;
+  if (porte?.code === "modele_quota" || porte?.code === "modele_surcharge") return "sature";
+  const s = porte?.status ?? (e as { status?: unknown } | null)?.status;
   if (s === 429 || s === 529) return "sature";
   if (typeof s !== "number" || s >= 500) return "indisponible";
   return "echec";

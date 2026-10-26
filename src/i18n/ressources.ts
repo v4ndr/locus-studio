@@ -154,7 +154,7 @@ const fr = {
     ],
     formatTitle: "Format",
     formatText: "Une clé commence par `lsk_`, suivi de l'identifiant de votre organisation. Elle se transmet en jeton bearer.",
-    sandboxNote: "Sans clé, le sandbox reste ouvert en scénarios rejoués sur patients fictifs.",
+    sandboxNote: "Sans clé, Studio reste votre terrain d'essai, en direct sur patients fictifs.",
   },
 };
 
@@ -306,7 +306,7 @@ const en: typeof fr = {
     ],
     formatTitle: "Format",
     formatText: "A key starts with `lsk_`, followed by your organisation's identifier. It is sent as a bearer token.",
-    sandboxNote: "Without a key, the sandbox stays open with replayed scenarios on fictional patients.",
+    sandboxNote: "Without a key, Studio remains your testing ground, live on fictional patients.",
   },
 };
 
