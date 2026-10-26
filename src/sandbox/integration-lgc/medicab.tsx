@@ -27,7 +27,7 @@ export interface MedicabProps {
   banners: React.ReactNode[];
   panel: React.ReactNode;
   toolbarLocus: { show: boolean; open: boolean; onClick: () => void; hint: string };
-  replaced: boolean;
+  /** Une alerte bloquante de Locus est ouverte sur la ligne d'ordonnance. */
   flagged: boolean;
   blocked: boolean;
   validated: boolean;
@@ -42,7 +42,7 @@ export interface MedicabProps {
 
 export function Medicab(p: MedicabProps) {
   const d = dossier();
-  const ligne = p.replaced ? { med: "CÉFUROXIME-AXÉTIL 250 mg", posologie: "1 cp matin et soir", duree: "4 jours" } : d.ordonnance[0];
+  const ligne = d.ordonnance[0];
   const [creat, dfg, kali, ...hba] = d.biologie;
   return (
     <div className={s.win}>
@@ -138,7 +138,7 @@ export function Medicab(p: MedicabProps) {
               <table className={s.ordo}>
                 <thead><tr><th>Médicament</th><th>Posologie</th><th>Durée</th></tr></thead>
                 <tbody>
-                  <tr className={p.replaced ? s.rowOk : p.flagged ? s.rowFlag : undefined}><td>{ligne.med}</td><td>{ligne.posologie}</td><td>{ligne.duree}</td></tr>
+                  <tr className={p.flagged ? s.rowFlag : undefined}><td>{ligne.med}</td><td>{ligne.posologie}</td><td>{ligne.duree}</td></tr>
                   <tr><td>{d.ordonnance[1].med}</td><td>{d.ordonnance[1].posologie}</td><td>{d.ordonnance[1].duree}</td></tr>
                 </tbody>
               </table>

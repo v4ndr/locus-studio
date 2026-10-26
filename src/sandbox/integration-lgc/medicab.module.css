@@ -48,7 +48,6 @@
 .ordo td { padding: 6px 8px; border-top: 1px solid #eef1f5; }
 .ordo td:first-child { font-weight: 700; }
 .rowFlag td { background: #fff4e5; }
-.rowOk td { background: #e6f4ea; }
 .signBar { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; background: #e9edf2; border: 1px solid #c9d1dc; padding: 6px 8px; }
 .signStatus { flex: 1 1 auto; color: #5a6b80; }
 .legacyBtn { min-height: 30px; padding: 0 14px; border: 1px solid #9aa8ba; background: #f4f6f9; color: #1e2a38; font: 12px Tahoma, Verdana, sans-serif; cursor: pointer; }

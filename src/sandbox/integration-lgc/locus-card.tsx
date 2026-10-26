@@ -1,9 +1,8 @@
 "use client";
 import * as React from "react";
-import Link from "next/link";
-import { ArrowUp } from "lucide-react";
+import { ArrowUp, RotateCw } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { lgc, route } from "@/i18n";
+import { lgc } from "@/i18n";
 import { useLang } from "@/i18n/lang";
 import { buttonClass } from "@/components/ui/button";
 import type { LocusOut, OutAction } from "@/data/integration-lgc/blocks";
@@ -14,21 +13,34 @@ import type { Brick } from "./model";
  * Les surfaces Locus injectées dans MédiCab 7 : elles suivent l'identité
  * Noir (bordure pleine de 1 px, fond de carte), pas le style legacy.
  * Le contenu clinique reste en français ; les boutons suivent la langue.
+ * Chaque sortie est calculée par core à l'affichage : l'étiquette Locus dit
+ * où en est le calcul (en cours, fait, en échec).
  */
 
 export type CardAction = OutAction;
 export type Variant = "card" | "panel" | "widget" | "modal";
 
-export function LocusTag() {
+export type LiveState = "computing" | "done" | "error";
+
+/** L'étiquette Locus ; avec `state`, elle dit aussi l'état du calcul en direct. */
+export function LocusTag({ state }: { state?: LiveState }) {
+  const lang = useLang();
   return (
-    <span className="inline-flex items-center gap-[5px] rounded-full border border-border bg-background px-2 py-px text-[11px] font-medium text-foreground">
-      <i aria-hidden="true" className="block size-1.5 rounded-full bg-brand" />Locus
+    <span className="inline-flex shrink-0 items-center gap-[5px] rounded-full border border-border bg-background px-2 py-px text-[11px] font-medium text-foreground">
+      <i aria-hidden="true" className={cn("block size-1.5 rounded-full", state === "error" ? "bg-muted-foreground" : "bg-brand", state === "computing" && "animate-pulse")} />Locus
+      {state && <span className="font-normal text-muted-foreground">· {lgc[lang].out.state[state]}</span>}
     </span>
   );
 }
 
+/** Le bouton « Réessayer » d'une sortie en échec. */
+export function RetryButton({ onRetry }: { onRetry: () => void }) {
+  const lang = useLang();
+  return <button type="button" onClick={onRetry} className={buttonClass({ size: "sm", className: "h-8 shrink-0 px-3 text-[13px]" })}><RotateCw aria-hidden="true" />{lgc[lang].out.retry}</button>;
+}
+
 function ActionButton({ a, label, onClick }: { a: CardAction; label: string; onClick: () => void }) {
-  const primary = a === "replace" || a === "wfAction";
+  const primary = a === "wfAction";
   return <button type="button" onClick={onClick} className={buttonClass({ variant: primary ? "primary" : "default", size: "sm", className: "h-8 px-3 text-[13px]" })}>{label}</button>;
 }
 
@@ -50,6 +62,7 @@ export function AskBox({ brick, sugg = [], court = true }: { brick: Brick; sugg?
       setState({ q: text, error: errorText(e, t) });
     }
   };
+  const live: LiveState | undefined = state ? (state.busy ? "computing" : state.error ? "error" : "done") : undefined;
   return (
     <div className="grid gap-1.5">
       <form onSubmit={(e) => { e.preventDefault(); void ask(q); }} className="flex gap-1.5">
@@ -63,11 +76,10 @@ export function AskBox({ brick, sugg = [], court = true }: { brick: Brick; sugg?
       )}
       {state && (
         <div className="grid gap-1 rounded-md border border-border bg-muted px-2.5 py-2 text-[13px]" aria-live="polite">
-          <span className="font-medium">{state.q}</span>
+          <span className="flex items-start gap-2"><span className="flex-1 font-medium">{state.q}</span>{live && <LocusTag state={live} />}</span>
           {state.busy && <span className="text-muted-foreground">{t.loading}</span>}
-          {state.error && <span className="text-muted-foreground">{state.error}</span>}
-          {state.out?.locked && (
-            <span className="text-muted-foreground">{t.locked} <Link href={route(lang, "acces")} className="font-medium text-foreground underline underline-offset-2">{lgc[lang].bar.access}</Link></span>
+          {state.error && (
+            <span className="flex flex-wrap items-center gap-2"><span className="flex-1 text-muted-foreground" role="alert">{state.error}</span><RetryButton onRetry={() => void ask(state.q)} /></span>
           )}
           {state.out?.lines.map((l, i) => <p key={i} className="m-0 leading-[1.45]">{l}</p>)}
           {state.out?.source && <Source s={state.out.source} />}
@@ -89,16 +101,6 @@ export function LocusBody({ brick, out, variant, onAction }: { brick: Brick; out
     <>
       {variant !== "modal" && variant !== "card" && <span className="text-[13px] font-semibold">{out.title}</span>}
       {out.lines.map((l, i) => <p key={i} className={cn("m-0 leading-[1.45]", variant === "widget" || variant === "modal" ? "text-muted-foreground" : "")}>{l}</p>)}
-      {!!out.alts?.length && (
-        <div className="grid gap-1.5">
-          {out.alts.map((a) => (
-            <div key={a.name} className="grid gap-0.5 rounded-md border border-border bg-muted px-2.5 py-2">
-              <span className="font-medium">{a.name}</span>
-              <span className="text-xs text-muted-foreground">{a.note}</span>
-            </div>
-          ))}
-        </div>
-      )}
       {out.question && <AskBox brick={brick} sugg={out.sugg} court={brick.settings.court !== false} />}
       {(out.source || out.actions?.length) && (
         <div className="flex flex-wrap items-center gap-2">
@@ -115,7 +117,7 @@ export function LocusBody({ brick, out, variant, onAction }: { brick: Brick; out
 export function LocusCard({ brick, out, onAction, className }: { brick: Brick; out: LocusOut; onAction: (a: CardAction) => void; className?: string }) {
   return (
     <div className={cn("grid gap-2 rounded-xl border border-border bg-card px-4 py-3.5 font-sans text-[13px] text-card-foreground shadow-sm", className)}>
-      <div className="flex items-center gap-2"><LocusTag /><span className="font-semibold">{out.title}</span></div>
+      <div className="flex flex-wrap items-center gap-2"><LocusTag state="done" /><span className="font-semibold">{out.title}</span></div>
       <LocusBody brick={brick} out={out} variant="card" onAction={onAction} />
     </div>
   );
@@ -125,8 +127,17 @@ export function LocusCard({ brick, out, onAction, className }: { brick: Brick; o
 export function LocusLoading({ className }: { className?: string }) {
   const lang = useLang();
   return (
-    <div className={cn("flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-3 font-sans text-[13px] text-muted-foreground shadow-sm", className)}>
-      <LocusTag />{lgc[lang].out.loading}
+    <div aria-live="polite" className={cn("flex flex-wrap items-center gap-2 rounded-xl border border-border bg-card px-4 py-3 font-sans text-[13px] text-muted-foreground shadow-sm", className)}>
+      <LocusTag state="computing" />{lgc[lang].out.loading}
+    </div>
+  );
+}
+
+/** Une brique dont le calcul a échoué : le message, et « Réessayer ». Jamais de sortie de remplacement. */
+export function LocusFailed({ message, onRetry, className }: { message: string; onRetry: () => void; className?: string }) {
+  return (
+    <div role="alert" className={cn("flex flex-wrap items-center gap-2 rounded-xl border border-border bg-card px-4 py-3 font-sans text-[13px] text-card-foreground shadow-sm", className)}>
+      <LocusTag state="error" /><span className="min-w-[min(100%,200px)] flex-1">{message}</span><RetryButton onRetry={onRetry} />
     </div>
   );
 }
