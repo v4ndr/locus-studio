@@ -1,5 +1,6 @@
 import { guardLive, donneesReelles } from "@/lib/server/guard";
-import { SUGGESTIONS, cleanSettings, questionFor, toolByApi, type LocusOut, type ToolId } from "@/data/integration-lgc/blocks";
+import { SUGGESTIONS, TOOLS, cleanSettings, controleAlerte, questionControle, toolByApi, type LocusOut, type ToolId } from "@/data/integration-lgc/blocks";
+import { syntheseDossier } from "@/data/integration-lgc/fournier";
 import { askLocus, coreErrorResponse } from "../../_lib/locus";
 import { BlockBody, fieldsOf, json, parse } from "../../_lib/request";
 
@@ -8,22 +9,23 @@ export const maxDuration = 60;
 
 /**
  * Une brique Locus de MédiCab 7 : `POST /api/integration-lgc/blocks/<brique>`
- * (`prescription-check`, `clinical-question`, `record-summary`,
- * `referral-letter`, `lab-interpretation`).
+ * (`prescription-check`, `clinical-question`, `record-summary`).
  *
- * Une route de Studio, pas de core : core n'a pas d'endpoint de brique.
- * Chaque appel part vers core `POST /v2/retrieve/stream` avec le dossier
- * transmis et `app_surface:"studio-ehr"`, et c'est cet appel que le panneau
- * « Appel API » de la brique affiche. Pas de sortie précalculée : si
- * core manque ou ne répond pas, la route répond 502/503 et la carte le dit.
+ * Une route de Studio, pas de core : core n'a pas d'endpoint de brique. Un
+ * chemin par outil, et c'est lui que le panneau « Appel API » affiche :
+ * - contrôle d'ordonnance et question : core `POST /v2/retrieve/stream` avec le dossier
+ *   transmis ; sous la réponse, seulement les documents qu'elle cite ;
+ * - synthèse du dossier : les données transmises remises en lignes, sans
+ *   appel à core ni source (un résumé de dossier n'est pas une question de
+ *   recommandation).
+ * Pas de sortie précalculée : si core manque ou ne répond pas, la route
+ * répond 502/503 et la carte le dit.
  */
 
 const TITRES: Record<ToolId, string> = {
   controle: "Contrôle d'ordonnance",
   question: "Question à Locus",
   synthese: "Synthèse du dossier",
-  courrier: "Courrier d'adressage",
-  bio: "Interprétation de biologie",
 };
 
 export async function POST(req: Request, { params }: { params: Promise<{ brick: string }> }) {
@@ -35,12 +37,17 @@ export async function POST(req: Request, { params }: { params: Promise<{ brick: 
   const p = await parse(req, BlockBody);
   if (!p.ok) return p.response;
   const b = p.data;
-  const fields = fieldsOf(b.fields, b.anchor);
+  const fields = fieldsOf(b.fields, b.anchor, TOOLS[tool].required);
   const settings = cleanSettings(tool, b.settings);
   const question = (b.question ?? "").trim();
   if (question) {
     const refus = donneesReelles(question);
     if (refus) return json({ error: refus }, 422);
+  }
+  // La synthèse : le dossier transmis, rien d'autre.
+  if (tool === "synthese" && !question) {
+    const lines = syntheseDossier(fields);
+    return json({ output: { title: TITRES.synthese, lines: lines.length ? lines : ["Aucune donnée transmise."], fromRecord: true } satisfies LocusOut });
   }
   // Le champ « Question à Locus » : rien à calculer avant que le médecin écrive.
   if (tool === "question" && !question) {
@@ -50,14 +57,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ brick: 
     // Une question posée à Locus depuis une carte ou le widget.
     if (question) {
       const r = await askLocus(question, fields);
-      const out: LocusOut = { title: question, lines: settings.court === false ? r.lines : [r.short], source: r.source };
+      const out: LocusOut = { title: question, lines: settings.court === false ? r.lines : [r.short], sources: r.sources };
       return json({ output: out });
     }
-    const r = await askLocus(questionFor(tool, settings), fields);
-    const out: LocusOut =
-      tool === "courrier"
-        ? { title: TITRES.courrier, lines: [r.short], letter: r.lines, actions: ["openLetter"] }
-        : { title: TITRES[tool], lines: tool === "synthese" && settings.longueur !== "detail" ? r.lines.slice(0, 3) : r.lines, source: r.source, ...(tool === "controle" ? { actions: ["ignore" as const] } : {}) };
+    const r = await askLocus(questionControle(), fields);
+    const alert = controleAlerte(r.short, r.answer);
+    const out: LocusOut = { title: TITRES.controle, lines: r.lines, sources: r.sources, alert, ...(alert ? { actions: ["ignore" as const] } : {}) };
     return json({ output: out });
   } catch (e) {
     return coreErrorResponse(e);

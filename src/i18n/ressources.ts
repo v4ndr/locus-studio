@@ -369,13 +369,13 @@ const fr = {
     },
     examples: { curl: "cURL", ts: "TypeScript", question: "Kétoprofène chez un patient de 74 ans sous IEC et furosémide ?", ehr: "Homme, 74 ans. HTA sous ramipril 5 mg et furosémide 40 mg. DFG 52 mL/min.", progress: "avancée", logicKey: "<elicitations[].mku_key>", logicQuestion: "<intitulé de question>", logicChoice: "<modalité choisie>", account: "<identifiant du poste>" },
     workflows: {
-      p1: "L'API n'a pas d'endpoint dédié aux workflows. Ceux que montre Studio sont composés côté logiciel, sur les endpoints ci-dessus.",
+      p1: "L'API n'a pas d'endpoint dédié aux workflows. Ce que montre Studio est composé côté logiciel, sur les endpoints ci-dessus.",
       p2: "Chaque question posée ainsi est une réponse tracée et décomptée comme les autres.",
       workflow: "Workflow",
       call: "Appels",
       rows: [
-        { name: "Synthèse de dossier, contrôle d'ordonnance, interprétation de biologie, courrier d'adressage", call: "`POST /v2/retrieve/stream`, avec une question rédigée par le logiciel et le dossier transmis en `patient_ehr`." },
-        { name: "Suivi de dépistage", call: "`POST /v2/retrieve/stream` sur l'échéance et les antécédents du patient en `patient_ehr`." },
+        { name: "Contrôle d'ordonnance, question clinique depuis le dossier", call: "`POST /v2/retrieve/stream`, avec une question rédigée par le logiciel et les données transmises en `patient_ehr`." },
+        { name: "Synthèse du dossier", call: "Aucun appel : les données transmises sont remises en lignes par le logiciel, sans recommandation à citer." },
         { name: "Score ou arbre dans un formulaire", call: "`POST /v2/retrieve/stream` pour la question, puis `POST /v2/logic/compute` à chaque réponse du formulaire." },
         { name: "Compte rendu dicté, puis aide à la décision", call: "La transcription et la note restent dans votre logiciel ; l'aide à la décision est `POST /v2/retrieve/stream`, avec la note relue en `patient_ehr`." },
         { name: "Ordonnance préparée depuis une demande, dont le transport", call: "Votre logiciel rédige l'ordonnance ; la vérification clinique passe par `POST /v2/retrieve/stream`." },
@@ -770,13 +770,13 @@ const en: typeof fr = {
     },
     examples: { curl: "cURL", ts: "TypeScript", question: "Kétoprofène chez un patient de 74 ans sous IEC et furosémide ?", ehr: "Homme, 74 ans. HTA sous ramipril 5 mg et furosémide 40 mg. DFG 52 mL/min.", progress: "progress", logicKey: "<elicitations[].mku_key>", logicQuestion: "<question label>", logicChoice: "<chosen option>", account: "<workstation id>" },
     workflows: {
-      p1: "The API has no endpoint dedicated to workflows. The ones Studio shows are composed in the software, on the endpoints above.",
+      p1: "The API has no endpoint dedicated to workflows. What Studio shows is composed in the software, on the endpoints above.",
       p2: "Each question asked this way is an answer traced and metered like any other.",
       workflow: "Workflow",
       call: "Calls",
       rows: [
-        { name: "Record summary, prescription check, lab interpretation, referral letter", call: "`POST /v2/retrieve/stream`, with a question written by the software and the shared record in `patient_ehr`." },
-        { name: "Screening follow-up", call: "`POST /v2/retrieve/stream` on the patient's due date and history in `patient_ehr`." },
+        { name: "Prescription check, clinical question from the record", call: "`POST /v2/retrieve/stream`, with a question written by the software and the shared data in `patient_ehr`." },
+        { name: "Record summary", call: "No call: the software lays out the shared data, with no guideline to cite." },
         { name: "Score or tree in a form", call: "`POST /v2/retrieve/stream` for the question, then `POST /v2/logic/compute` for each form answer." },
         { name: "Dictated report, then decision support", call: "Transcription and the note stay in your software; decision support is `POST /v2/retrieve/stream`, with the reviewed note in `patient_ehr`." },
         { name: "Prescription prepared from a request, transport included", call: "Your software drafts the prescription; the clinical check goes through `POST /v2/retrieve/stream`." },

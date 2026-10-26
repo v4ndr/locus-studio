@@ -4,7 +4,6 @@ import type { Dict } from "./config";
 const fr = {
   meta: { title: "Locus Studio", description: "Le sandbox Locus : quatre espaces sur patients fictifs." },
   title: "Locus Studio",
-  build: "Construire une intégration",
   docs: "Documentation",
   sandbox: { title: "Sandbox", note: "En direct, sur patients fictifs" },
   cards: {
@@ -31,7 +30,6 @@ const fr = {
 const en: typeof fr = {
   meta: { title: "Locus Studio", description: "The Locus sandbox: four spaces on fictional patients." },
   title: "Locus Studio",
-  build: "Build an integration",
   docs: "Documentation",
   sandbox: { title: "Sandbox", note: "Live, on fictional patients" },
   cards: {
