@@ -1,6 +1,6 @@
 "use client";
 import * as React from "react";
-import { AlertTriangle, Check, ChevronRight, Pause, Play } from "lucide-react";
+import { AlertTriangle, Check, ChevronRight, FileAudio, Mic, Pause, Play } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { Button } from "@/components/ui/button";
 import { Badge, StatusDot } from "@/components/ui/badge";
@@ -52,6 +52,43 @@ export function Stepper({ t, step, unlocked, onPick }: { t: ScribeDict; step: nu
         );
       })}
     </nav>
+  );
+}
+
+/* ---------- Provenance : l'entrée enregistrée, la génération en direct ---------- */
+
+export type EtatGen = "attente" | "encours" | "pret" | "erreur";
+
+function EtatLigne({ t, etat }: { t: ScribeDict; etat: EtatGen }) {
+  return (
+    <span className={cn("inline-flex items-center gap-1.5", etat === "pret" ? "text-foreground" : etat === "erreur" ? "text-destructive" : "text-muted-foreground")}>
+      {etat === "pret" ? <Check size={14} strokeWidth={2.5} aria-hidden="true" className="text-ok" />
+        : etat === "erreur" ? <AlertTriangle size={14} aria-hidden="true" />
+        : <StatusDot active={etat === "encours"} className={cn(etat === "encours" && "animate-pulse")} />}
+      {t.run.etat[etat]}
+    </span>
+  );
+}
+
+/**
+ * Le bandeau qui dit d'où vient chaque chose : la dictée (enregistrée ou au
+ * micro), puis ce qui est généré en direct depuis elle, avec son état.
+ */
+export function Provenance({ t, source, note, aide }: { t: ScribeDict; source: "enregistree" | "micro"; note: EtatGen; aide: EtatGen }) {
+  const cellule = "flex items-center justify-between gap-3 px-4 py-2.5 min-[821px]:flex-col min-[821px]:items-start min-[821px]:justify-start min-[821px]:gap-1";
+  const titre = "text-xs font-medium text-muted-foreground";
+  return (
+    <Box aria-label={t.run.label} aria-live="polite" className="grid grid-cols-3 divide-x divide-border text-[13px] max-[820px]:grid-cols-1 max-[820px]:divide-x-0 max-[820px]:divide-y">
+      <div className={cellule}>
+        <span className={titre}>{t.run.input}</span>
+        <span className="inline-flex items-center gap-1.5">
+          {source === "enregistree" ? <FileAudio size={14} aria-hidden="true" /> : <Mic size={14} aria-hidden="true" />}
+          {source === "enregistree" ? t.run.recorded : t.run.mic}
+        </span>
+      </div>
+      <div className={cellule}><span className={titre}>{t.run.note}</span><EtatLigne t={t} etat={note} /></div>
+      <div className={cellule}><span className={titre}>{t.run.aide}</span><EtatLigne t={t} etat={aide} /></div>
+    </Box>
   );
 }
 
@@ -107,7 +144,7 @@ export function NoteTable({ t, cr, vals, onEdit }: { t: ScribeDict; cr: Rubrique
               rows={(vals[i] ?? "").length > 90 ? 2 : 1}
               value={vals[i] ?? ""}
               onChange={(e) => onEdit(i, e.target.value)}
-              className="-mx-2 -my-[5px] w-[calc(100%+16px)] resize-y rounded-md border border-transparent bg-transparent px-2 py-[5px] leading-normal hover:border-border focus:border-ring focus:bg-background focus:outline-none"
+              className="-mx-2 -my-[5px] w-[calc(100%+16px)] resize-y field-sizing-content rounded-md border border-transparent bg-transparent px-2 py-[5px] leading-normal hover:border-border focus:border-ring focus:bg-background focus:outline-none"
             />
           )}
         </div>

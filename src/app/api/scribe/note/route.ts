@@ -3,18 +3,25 @@ import { synthetiserNote } from "@/locus/compose/synthese";
 import { donneesReelles, guardLive } from "@/lib/server/guard";
 import type { NoteReponse } from "@/data/scribe/live";
 import type { RubriqueCr } from "@/data/scribe/consultations";
+import { codeDe, erreur } from "../erreur";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 /**
- * Le compte rendu de la consultation en direct : la même passe de synthèse
- * que `/api/note` (transcript → note courte par rubriques), avec le modèle
- * de note choisi, puis découpée en rubriques éditables.
+ * Le compte rendu, généré en direct à chaque appel : la même passe de
+ * synthèse que `/api/note` (transcript → note courte par rubriques), avec le
+ * modèle de note choisi, puis découpée en rubriques éditables. La dictée
+ * vient du micro ou d'une consultation enregistrée ; le traitement est le
+ * même.
+ *
+ * Sans service de génération configuré ou joignable, 503 : pas de note à
+ * règles en remplacement, la page dit que rien n'a été généré.
  */
 const Input = z.object({
   transcript: z.string().trim().min(1).max(30_000),
   modele: z.enum(["mg", "ped", "gyn"]).default("mg"),
+  motif: z.string().trim().max(200).optional(),
 }).strict();
 
 /** « Motif : … » ligne à ligne → rubriques ; une ligne sans étiquette prolonge la précédente. */
@@ -38,14 +45,20 @@ export async function POST(req: Request) {
   try { raw = await req.json(); } catch { return Response.json({ error: "Corps illisible : JSON attendu." }, { status: 400 }); }
   const parsed = Input.safeParse(raw);
   if (!parsed.success) return Response.json({ error: "Transcription manquante ou trop longue." }, { status: 400 });
-  const reel = donneesReelles(parsed.data.transcript);
+  const { transcript, modele, motif } = parsed.data;
+  const reel = donneesReelles(`${transcript}\n${motif ?? ""}`);
   if (reel) return Response.json({ error: reel, code: "donnees_reelles" }, { status: 422 });
   try {
-    const { note } = await synthetiserNote({ transcript: parsed.data.transcript, modele: parsed.data.modele }, { replay: g.replay });
-    const body: NoteReponse = { cr: rubriques(note) };
+    const out = await synthetiserNote({ transcript, modele, motif });
+    // Une note à règles (service non configuré) n'est pas une génération : elle ne sort pas d'ici.
+    if ((out as { via?: unknown }).via === "simulation") return erreur("indisponible");
+    const { note } = out;
+    const cr = rubriques(note);
+    if (!cr.length) return erreur("echec");
+    const body: NoteReponse = { cr };
     return Response.json(body, { headers: { "Cache-Control": "no-store" } });
   } catch (e) {
-    console.error("[scribe/note]", e);
-    return Response.json({ error: "La synthèse n'a pas abouti. Réessayez." }, { status: 502 });
+    console.error("[scribe/note]", e instanceof Error ? e.message : e);
+    return erreur(codeDe(e));
   }
 }
