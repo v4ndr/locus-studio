@@ -26,7 +26,7 @@ function Inner({ v, praticien }: { v: PatientView; praticien: { initials: string
   const [lu, setLu] = React.useState(false);
   const [version, setVersion] = React.useState(0);
   React.useEffect(() => { setBase(modifie ? readNotes(v.ref.id).find((n) => n.id === modifie) : undefined); setLu(true); }, [modifie, v.ref.id]);
-  const patient = { nom: v.ref.nom, naissance: v.ref.naissance, age: v.ref.age, sexe: (v.meta.endsWith("F") ? "F" : "M") as "F" | "M", allergies: v.dossier.allergies.map((a) => a.k).filter((k) => !/^aucune/i.test(k)) };
+  const patient = { nom: v.ref.nom, naissance: v.ref.naissance, age: v.ref.age, sexe: (v.meta.endsWith("F") ? "F" : "M") as "F" | "M", allergies: v.dossier.allergies.map((a) => a.k).filter((k) => !/^aucune/i.test(k)), ...v.administratif };
   const script = v.rencontre.paragraphes.filter((p) => !p.muted).map((p) => p.texte).join("\n\n");
   const scripte = v.rencontre.actions.length > 0 && !/non scriptée/.test(v.rencontre.paragraphes[1]?.texte ?? "");
   return (

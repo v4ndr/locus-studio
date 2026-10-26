@@ -1,5 +1,6 @@
 "use client";
 import * as React from "react";
+import { useSearchParams } from "next/navigation";
 import { useRouter } from "./nav";
 import Link from "./nav";
 import type { HomeData, PatientRef } from "@/studio/types";
@@ -47,6 +48,9 @@ export function Home({ data }: { data: HomeData }) {
   const hrefOf = (id: string) => (id.startsWith("loc_") ? `/d/${id}` : `/p/${id}`);
   const items: { href?: string; ask?: boolean }[] = open ? (q ? [...hits.map((h) => ({ href: hrefOf(h.id) })), ...(askRow ? [{ ask: true }] : [])] : EXEMPLES.map((e) => ({ href: e.href }))) : rows.map((r) => ({ href: r.libre ? undefined : `/p/${r.patientId}` }));
   const demander = React.useCallback((texte: string) => { setOpen(false); setQ(""); inputRef.current?.blur(); composer.run({ texte, ecran: "home" }); }, [composer]);
+  // Une question posée depuis la palette ⌘K globale : toute la patientèle pour contexte, aucun dossier ouvert.
+  const run = composer.run;
+  const depuisPalette = React.useCallback((texte: string) => run({ texte, ecran: "home", portee: "patientele" }), [run]);
   const exempleItems = EXEMPLES.map((e) => (e.demande ? { ask: true, texte: e.t } : { href: e.href }));
   const itemsAll: { href?: string; ask?: boolean; texte?: string }[] = open ? (q ? items : exempleItems) : items;
 
@@ -77,6 +81,7 @@ export function Home({ data }: { data: HomeData }) {
   return (
     <div className="flex min-h-dvh flex-col">
       <Header praticien={data.praticien} />
+      <React.Suspense fallback={null}><DemandeDepuisUrl onDemande={depuisPalette} /></React.Suspense>
       <main className="flex flex-1 flex-col items-center px-4 pb-12 pt-[8vh] sm:px-6 sm:pt-[14vh]">
         <div className="flex w-full max-w-[680px] flex-col gap-7">
           {!open && <h1 className="m-0 text-[26px] font-medium tracking-[-.02em] sm:text-[28px]">{t.home.title}</h1>}
@@ -161,6 +166,21 @@ export function Home({ data }: { data: HomeData }) {
   );
 }
 
+/** `?demande=` : la question arrive de la palette globale ; on la compose une fois, puis l'URL redevient celle de l'accueil (un rechargement ne la relance pas). */
+function DemandeDepuisUrl({ onDemande }: { onDemande: (texte: string) => void }) {
+  const sp = useSearchParams();
+  const router = useRouter();
+  const demande = sp.get("demande")?.trim();
+  const vue = React.useRef<string | null>(null);
+  React.useEffect(() => {
+    if (!demande || vue.current === demande) return;
+    vue.current = demande;
+    onDemande(demande.slice(0, 500));
+    router.replace("/", { scroll: false });
+  }, [demande, onDemande, router]);
+  return null;
+}
+
 /** Les trois boîtes, en pastilles : le compte des non-lus, triés par Locus. */
 function Pill({ href, label, n }: { href: string; label: string; n: number }) {
   return <Link href={href} className="flex items-center gap-2 rounded-lg border border-line bg-paper px-2.5 py-1.5 text-xs text-ink hover:bg-hover hover:text-ink"><span>{label}</span>{n > 0 ? <span className="d rounded-[5px] bg-agent-soft px-1.5 text-[11px]" style={{ color: "var(--agent)" }}>{n}</span> : <span className="d text-[11px]">0</span>}</Link>;
@@ -171,6 +191,7 @@ function Pill({ href, label, n }: { href: string; label: string; n: number }) {
 const exemples = (t: StudioDict): { k: keyof StudioDict["keys"]; t: string; href: string; /** Composé par Locus (une demande), plutôt qu'un simple lien. */ demande?: boolean }[] => [
   { k: "ordo", t: "Renouvelle l'ordonnance de Claire Moreau pour 3 mois", href: "/p/pat_cmoreau", demande: true },
   { k: "rdv", t: "Rendez-vous Lucas Petit, rappel vaccin, dans un mois", href: "/p/pat_petit", demande: true },
+  { k: "question", t: "Des dépistages en retard sur ma patientèle ?", href: "/", demande: true },
   { k: "courriers", t: t.home.exLetters, href: "/inbox/courriers" },
   { k: "bio", t: t.home.exLabs, href: "/inbox/bio" },
   { k: "message", t: t.home.exMessage, href: "/inbox/messages" },

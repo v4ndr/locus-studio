@@ -9,9 +9,11 @@ export interface HomeData { praticien: { initials: string; nom: string }; agenda
 /** Ce qu'un clic sur une ligne « à noter » déclenche : ouvrir le document source, lancer un raccourci préparé, poser la question à Locus, ou dérouler une fiche du dossier. */
 export type NoteAction = { type: "doc"; href: string } | { type: "cmd"; chipId: string } | { type: "ask"; texte: string } | { type: "fiche"; section: "antecedents" | "allergies" | "traitements" | "suivis" | "depistages" };
 export interface Note { dot: "accent" | "warn" | "gray"; texte: string; tag: string; action: NoteAction }
-export interface Fiche { k: string; v?: string; muted?: boolean }
+export interface Fiche { k: string; v?: string; muted?: boolean; /** Une échéance dépassée ou proche : en couleur. */ warn?: boolean }
 export interface PatientView {
   ref: PatientRef;
+  /** Identité administrative fictive, pour les formulaires qui la demandent (bon de transport). */
+  administratif?: { matricule: string; adresse?: string };
   meta: string; // "46 a · F"
   rdv?: { heure: string; motif: string };
   prose: string; // avec **gras** et ==surligné==
