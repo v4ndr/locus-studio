@@ -13,6 +13,17 @@ export interface LocusSettings {
   ansm: boolean;
 }
 
+/** Les réglages de l'écran : ceux de core, plus trois réglages d'affichage (raisonnement, renvois, format court). */
+export interface Settings extends LocusSettings {
+  reason: boolean;
+  inline: boolean;
+  court: boolean;
+}
+
+export const DEFAULT_SETTINGS: Settings = { elic: false, desamb: false, deep: false, reason: true, inline: false, has: true, ansm: true, court: true };
+
+export const locusOf = (s: Settings): LocusSettings => ({ elic: s.elic, desamb: s.desamb, deep: s.deep, has: s.has, ansm: s.ansm });
+
 /** Les éditeurs HAS de `GET /v2/sources` (corpus de référence des évals : HAS et ANSM, sans autre éditeur). */
 export const HAS_SOURCES = ["HAS", "HAS (ALD)", "HAS (SP)", "HAS (VAC)"];
 /** L'éditeur ANSM de `GET /v2/sources` (documents de l'agence, distincts des RCP de la lane médicament). */

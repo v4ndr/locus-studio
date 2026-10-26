@@ -3,24 +3,41 @@ import { fetchLive } from "@/lib/live";
 import { readNdjson } from "@/locus/ndjson";
 import type { ChatEvent } from "./events";
 
-/** Appelle une route `/api/chatbot/*` et lit son flux NDJSON ; retombe en rejoué si le live est fermé. */
-export async function* chatStream(url: string, body: unknown, signal: AbortSignal, erreur: string): AsyncGenerator<ChatEvent> {
+/** Les messages d'erreur côté navigateur, dans la langue de l'interface. */
+export interface StreamErrors {
+  error: string;
+  quota: string;
+  rateLimited: string;
+  auth: string;
+}
+
+/**
+ * Appelle une route `/api/chatbot/*` et lit son flux NDJSON. Tout échec
+ * (réseau, garde, flux coupé) devient une ligne `error` : la colonne
+ * l'affiche telle quelle, sans réponse de repli.
+ */
+export async function* chatStream(url: string, body: unknown, signal: AbortSignal, msg: StreamErrors): AsyncGenerator<ChatEvent> {
   let r: Response;
   try {
     r = await fetchLive(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body), signal });
   } catch {
-    if (!signal.aborted) yield { t: "error", detail: erreur };
+    if (!signal.aborted) yield { t: "error", detail: msg.error };
     return;
   }
   if (!r.ok || !r.body) {
-    const j = (await r.json().catch(() => null)) as { error?: string } | null;
-    yield { t: "error", detail: j?.error ?? erreur };
+    const j = (await r.json().catch(() => null)) as { error?: string; code?: string } | null;
+    // Les refus de la garde (quota, rate limit, session) sont rédigés en français côté serveur : traduits ici.
+    const detail = j?.code === "quota_exceeded" ? msg.quota
+      : j?.code === "rate_limited" ? msg.rateLimited
+      : r.status === 401 ? msg.auth
+      : j?.error ?? msg.error;
+    yield { t: "error", detail, code: j?.code };
     return;
   }
   try {
     yield* readNdjson<ChatEvent>(r.body);
   } catch {
-    if (!signal.aborted) yield { t: "error", detail: erreur };
+    if (!signal.aborted) yield { t: "error", detail: msg.error };
   }
 }
 
