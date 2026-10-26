@@ -15,8 +15,6 @@ import { ouvrir, scellable, sceller } from "./scelle";
  * identifiants de règles, les sondes de délibération, le contexte de reprise.
  */
 
-
-
 interface Reprise {
   query: string;
   settings: LocusSettings;
@@ -134,7 +132,7 @@ export async function* locusStream(input: LocusInput): AsyncGenerator<ChatEvent>
   const cfg = coreConfig();
   const { lang } = input;
   const t = chatbot[lang];
-  if (cfg.mode !== "core") { yield { t: "replay" }; return; }
+  if (cfg.mode !== "core") { yield { t: "error", detail: t.live.locusOff, code: "unconfigured" }; return; }
 
   let query: string;
   let settings: LocusSettings;

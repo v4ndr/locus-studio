@@ -15,7 +15,8 @@ import type { ChatEvent, ChatSource } from "@/sandbox/chatbot/events";
  * modèle ni de fournisseur ne sort de ce fichier.
  */
 
-const API = "https://api.mistral.ai/v1";
+// `CHATBOT_RAG_API_URL` : une autre base compatible (bouchon de test local) ; par défaut, l'API du fournisseur.
+const api = () => process.env.CHATBOT_RAG_API_URL?.trim().replace(/\/$/, "") || "https://api.mistral.ai/v1";
 // Défauts serveur (spec §4), surchargeables par l'environnement. Ce fichier est `server-only` : rien n'atteint le navigateur.
 const embedModel = () => process.env.CHATBOT_RAG_EMBED_MODEL?.trim() || "mistral-embed";
 const chatModel = () => process.env.CHATBOT_RAG_CHAT_MODEL?.trim() || "mistral-small-latest";
@@ -72,7 +73,7 @@ function charger(): Promise<Loaded | null> {
 }
 
 async function plonger(texte: string, key: string): Promise<Float32Array> {
-  const r = await fetch(`${API}/embeddings`, {
+  const r = await fetch(`${api()}/embeddings`, {
     method: "POST",
     headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
     body: JSON.stringify({ model: embedModel(), input: [texte] }),
@@ -110,7 +111,7 @@ export async function* ragStream(query: string, lang: Lang): AsyncGenerator<Chat
     blocs = topK(await plonger(query, key), idx, TOP_K);
   } catch (e) {
     console.error("[chatbot/rag] recherche", e);
-    yield { t: "error", detail: t.live.error };
+    yield e instanceof Error && e.message === "embeddings 429" ? { t: "error", detail: t.live.ragBusy, code: "quota" } : { t: "error", detail: t.live.ragDown };
     return;
   }
 
@@ -122,7 +123,7 @@ export async function* ragStream(query: string, lang: Lang): AsyncGenerator<Chat
 
   let res: Response;
   try {
-    res = await fetch(`${API}/chat/completions`, {
+    res = await fetch(`${api()}/chat/completions`, {
       method: "POST",
       headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json", Accept: "text/event-stream" },
       body: JSON.stringify({
@@ -139,12 +140,13 @@ export async function* ragStream(query: string, lang: Lang): AsyncGenerator<Chat
     });
   } catch (e) {
     console.error("[chatbot/rag] génération", e);
-    yield { t: "error", detail: t.live.error };
+    yield { t: "error", detail: t.live.ragDown };
     return;
   }
   if (!res.ok || !res.body) {
     console.error("[chatbot/rag] génération", res.status, (await res.text().catch(() => "")).slice(0, 300));
-    yield { t: "error", detail: t.live.error };
+    // 429 : le quota du fournisseur, pas une panne ; le dire tel quel.
+    yield res.status === 429 ? { t: "error", detail: t.live.ragBusy, code: "quota" } : { t: "error", detail: t.live.ragDown };
     return;
   }
 
@@ -176,7 +178,7 @@ export async function* ragStream(query: string, lang: Lang): AsyncGenerator<Chat
     console.error("[chatbot/rag] flux interrompu", e);
   }
   // Un flux coupé avant « [DONE] » (délai dépassé, connexion perdue) ne se présente pas comme une réponse complète.
-  if (!texte.trim() || !fini) { yield { t: "error", detail: t.live.error }; return; }
+  if (!texte.trim() || !fini) { yield { t: "error", detail: t.live.ragDown }; return; }
   // Les sources citées si le texte en cite, sinon tout ce qui a été retrouvé.
   const cites = new Set([...texte.matchAll(/\[(\d+)\]/g)].map((m) => Number(m[1])));
   yield { t: "answer", markdown: texte.trim(), sources: cites.size ? sources.filter((x) => cites.has(x.n)) : sources };

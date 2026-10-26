@@ -12,7 +12,8 @@ export const maxDuration = 60;
  * Colonne Locus du chatbot sourcé. Corps : `{ lang, query, settings }`, ou
  * `{ lang, reprise: { token, answers } }` pour répondre au formulaire
  * d'élicitation. Réponse : NDJSON (`src/sandbox/chatbot/events.ts`).
- * En scénario rejoué (garde), ou sans core configuré : `{ t: "replay" }`.
+ * Sans core configuré, ou core en panne : une ligne `error`, jamais de
+ * réponse de repli.
  */
 export async function POST(req: Request) {
   const g = await guardLive(req);
@@ -21,7 +22,6 @@ export async function POST(req: Request) {
   if (lu === TROP_GROS) return Response.json({ error: chatbot.fr.live.tooLong }, { status: 413 });
   const body = (lu ?? {}) as { lang?: string; query?: unknown; settings?: Partial<LocusSettings>; reprise?: { token?: unknown; answers?: unknown } };
   const lang = langOf(body.lang);
-  if (g.replay) return ndjson(une({ t: "replay" }), lang);
 
   if (body.reprise && typeof body.reprise.token === "string" && Array.isArray(body.reprise.answers)) {
     const answers = (body.reprise.answers as FormAnswer[]).slice(0, 20).map((a) => ({ i: Number(a?.i), values: Array.isArray(a?.values) ? a.values.slice(0, 20).map(String) : [], skipped: !!a?.skipped }));
