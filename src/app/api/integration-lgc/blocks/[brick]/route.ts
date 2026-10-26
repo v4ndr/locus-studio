@@ -1,6 +1,6 @@
 import { guardLive, donneesReelles } from "@/lib/server/guard";
-import { cleanSettings, questionFor, replayAnswer, replayOutput, toolByApi, type LocusOut, type ToolId } from "@/data/integration-lgc/blocks";
-import { askLocus, coreDisponible } from "../../_lib/locus";
+import { SUGGESTIONS, cleanSettings, questionFor, toolByApi, type LocusOut, type ToolId } from "@/data/integration-lgc/blocks";
+import { askLocus, coreErrorResponse } from "../../_lib/locus";
 import { BlockBody, fieldsOf, json, parse } from "../../_lib/request";
 
 export const dynamic = "force-dynamic";
@@ -13,9 +13,9 @@ export const maxDuration = 60;
  *
  * C'est la route BFF qui porte, pour l'instant, la façade proposée
  * « API Briques (aperçu) » `POST /v2/blocks/<brique>` : elle n'existe pas
- * dans core. En direct, la brique appelle core `/v2/retrieve` avec le
- * dossier transmis et `app_surface:"studio-ehr"` ; en scénario rejoué (ou
- * sans core configuré), elle renvoie la sortie précalculée pour M. Fournier.
+ * dans core. Chaque appel part vers core `/v2/retrieve` avec le dossier
+ * transmis et `app_surface:"studio-ehr"`. Pas de sortie précalculée : si
+ * core manque ou ne répond pas, la route répond 502/503 et la carte le dit.
  */
 
 const TITRES: Record<ToolId, string> = {
@@ -42,25 +42,24 @@ export async function POST(req: Request, { params }: { params: Promise<{ brick: 
     const refus = donneesReelles(question);
     if (refus) return json({ error: refus }, 422);
   }
-  const live = !g.replay && coreDisponible();
-
-  // Une question posée à Locus depuis une carte ou le widget.
-  if (question) {
-    const rejouee = replayAnswer(question, settings.court !== false);
-    if (!live) return json({ output: rejouee, via: "replay" });
-    const r = await askLocus(question, fields);
-    if (!r) return json({ output: rejouee, via: "replay" });
-    const out: LocusOut = { title: question, lines: settings.court === false ? r.lines : [r.short], source: r.source };
-    return json({ output: out, via: "live" });
+  // Le champ « Question à Locus » : rien à calculer avant que le médecin écrive.
+  if (tool === "question" && !question) {
+    return json({ output: { title: TITRES.question, lines: [], question: true, sugg: settings.suggest ? SUGGESTIONS : [] } satisfies LocusOut });
   }
-
-  const rejouee = replayOutput(tool, settings);
-  if (!live || tool === "question") return json({ output: rejouee, via: live ? "live" : "replay" });
-  const r = await askLocus(questionFor(tool, settings), fields);
-  if (!r) return json({ output: rejouee, via: "replay" });
-  const out: LocusOut =
-    tool === "courrier"
-      ? { title: TITRES.courrier, lines: [r.short], letter: r.lines, actions: ["openLetter"] }
-      : { title: TITRES[tool], lines: tool === "synthese" && settings.longueur !== "detail" ? r.lines.slice(0, 3) : r.lines, source: r.source, ...(tool === "controle" ? { actions: ["ignore" as const] } : {}) };
-  return json({ output: out, via: "live" });
+  try {
+    // Une question posée à Locus depuis une carte ou le widget.
+    if (question) {
+      const r = await askLocus(question, fields);
+      const out: LocusOut = { title: question, lines: settings.court === false ? r.lines : [r.short], source: r.source };
+      return json({ output: out });
+    }
+    const r = await askLocus(questionFor(tool, settings), fields);
+    const out: LocusOut =
+      tool === "courrier"
+        ? { title: TITRES.courrier, lines: [r.short], letter: r.lines, actions: ["openLetter"] }
+        : { title: TITRES[tool], lines: tool === "synthese" && settings.longueur !== "detail" ? r.lines.slice(0, 3) : r.lines, source: r.source, ...(tool === "controle" ? { actions: ["ignore" as const] } : {}) };
+    return json({ output: out });
+  } catch (e) {
+    return coreErrorResponse(e);
+  }
 }

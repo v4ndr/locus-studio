@@ -12,6 +12,7 @@ import { INSERTABLE, WF_EXAMPLE, type RunResult } from "@/data/integration-lgc/w
 import { errorText, runWorkflow, structureWorkflow } from "./api";
 import type { Draft } from "./model";
 import { useDialogFocus } from "./use-dialog";
+import { LocusTag } from "./locus-card";
 
 /**
  * L'assistant de brique, à la Zapier : 4 étapes, chacune repliée en une
@@ -190,7 +191,8 @@ function ToolStep({ draft, setDraft }: { draft: Draft; setDraft: (p: Partial<Dra
   );
 }
 
-type Test = { result: RunResult; idx: number; running: boolean; nonDiab: boolean } | null;
+/** Un test sur le dossier : `result` est nul tant que core calcule. */
+type Test = { result: RunResult | null; running: boolean; nonDiab: boolean } | null;
 
 function WorkflowEditor({ draft, setDraft }: { draft: Draft; setDraft: (p: Partial<Draft>) => void }) {
   const lang = useLang();
@@ -203,11 +205,11 @@ function WorkflowEditor({ draft, setDraft }: { draft: Draft; setDraft: (p: Parti
   const [insertIdx, setInsertIdx] = React.useState<number | null>(null);
   const [nonDiab, setNonDiab] = React.useState(false);
   const [test, setTest] = React.useState<Test>(null);
-  const timer = React.useRef<ReturnType<typeof setInterval> | null>(null);
-  const stop = () => { if (timer.current) clearInterval(timer.current); timer.current = null; };
-  React.useEffect(() => stop, []);
+  /** Le test en cours : un résultat arrivé après une modification du plan est ignoré. */
+  const runId = React.useRef(0);
+  const reset = () => { runId.current += 1; setTest(null); };
 
-  const setSteps = (s: typeof steps, previews = draft.previews) => { stop(); setTest(null); setDraft({ steps: s, previews }); };
+  const setSteps = (s: typeof steps, previews = draft.previews) => { reset(); setDraft({ steps: s, previews }); };
 
   const structure = async () => {
     setBusy(true); setError(""); setEditIdx(null); setInsertIdx(null);
@@ -215,34 +217,29 @@ function WorkflowEditor({ draft, setDraft }: { draft: Draft; setDraft: (p: Parti
       const r = await structureWorkflow(draft.instruction ?? "", lang);
       setSteps(r.steps, r.preview);
     } catch (e) {
-      setError(errorText(e, { realData: t.out.realData, error: wf.error }));
+      setError(errorText(e, { ...t.out, error: wf.error, unconfigured: wf.unconfigured }));
     } finally { setBusy(false); }
   };
 
+  // Le test appelle core pour chaque Question Locus ; les valeurs s'affichent quand la réponse arrive, toutes ensemble.
   const run = async () => {
-    stop(); setError("");
+    const id = ++runId.current;
+    setError("");
+    setTest({ result: null, running: true, nonDiab });
     try {
       const result = await runWorkflow(steps, { anchor: draft.anchor ?? "pv", fields: draft.fields }, nonDiab ? "non-diabetique" : "fournier");
-      const last = result.halted ? result.steps.findIndex((s) => s.status === "stopped") : steps.length;
-      setTest({ result, idx: 0, running: true, nonDiab });
-      let i = 0;
-      timer.current = setInterval(() => {
-        i += 1;
-        if (i > last) {
-          stop();
-          setTest({ result, idx: steps.length, running: false, nonDiab });
-          if (!nonDiab) setDraft({ previews: result.steps.map((s) => ({ value: s.value, source: s.source, status: s.status })) });
-          return;
-        }
-        setTest({ result, idx: i, running: true, nonDiab });
-      }, 600);
+      if (id !== runId.current) return;
+      setTest({ result, running: false, nonDiab });
+      if (!nonDiab) setDraft({ previews: result.steps.map((s) => ({ value: s.value, source: s.source, status: s.status })) });
     } catch (e) {
+      if (id !== runId.current) return;
+      setTest(null);
       setError(errorText(e, t.out));
     }
   };
 
-  const finished = test && !test.running;
-  const out = test?.result.output;
+  const finished = test && !test.running && test.result ? test.result : null;
+  const out = finished?.output;
 
   return (
     <div className="flex flex-col gap-2.5">
@@ -255,16 +252,16 @@ function WorkflowEditor({ draft, setDraft }: { draft: Draft; setDraft: (p: Parti
         <>
           <div className="flex flex-col pt-1.5">
             {steps.map((st, i) => {
-              const r = test?.result.steps[i];
-              const status = !test ? "idle" : r?.status === "stopped" && test.idx >= i ? "stopped" : r?.status === "skipped" && !test.running ? "skipped" : i < test.idx ? "done" : i === test.idx && test.running ? "running" : "pending";
+              const r = test?.result?.steps[i];
+              const status = !test ? "idle" : test.running ? "running" : r?.status ?? "skipped";
               const prev = draft.previews?.[i];
-              const value = status === "done" || status === "stopped" || status === "skipped" ? r?.value ?? "" : status === "idle" ? prev?.value ?? wf.pending : prev?.value ?? wf.pending;
+              const value = status === "idle" ? prev?.value ?? wf.pending : r?.value ?? "";
               const source = status === "done" ? r?.source : status === "idle" ? prev?.source : undefined;
               const notLast = i < steps.length - 1;
               return (
                 <div key={i} className="flex gap-2.5">
                   <div className="flex w-7 shrink-0 flex-col items-center">
-                    <span className={cn("grid size-[26px] place-items-center rounded-full text-xs font-semibold", status === "done" && "border border-border bg-secondary text-foreground", status === "running" && "border border-brand bg-brand-soft text-brand", status === "stopped" && "border border-dashed border-ring bg-background text-foreground", (status === "skipped" || status === "pending") && "border border-border bg-muted text-muted-foreground", status === "idle" && "bg-primary text-primary-foreground")}>
+                    <span className={cn("grid size-[26px] place-items-center rounded-full text-xs font-semibold", status === "done" && "border border-border bg-secondary text-foreground", status === "running" && "animate-pulse border border-border bg-muted text-foreground", status === "stopped" && "border border-dashed border-ring bg-background text-foreground", status === "skipped" && "border border-border bg-muted text-muted-foreground", status === "idle" && "bg-primary text-primary-foreground")}>
                       {status === "done" ? <Check size={14} aria-hidden="true" /> : i + 1}
                     </span>
                     {notLast && <span aria-hidden="true" className="min-h-[18px] w-px flex-1 bg-border" />}
@@ -281,7 +278,7 @@ function WorkflowEditor({ draft, setDraft }: { draft: Draft; setDraft: (p: Parti
                         <Button type="submit" variant="primary">{wf.ok}</Button>
                       </form>
                     ) : <span className="text-sm font-medium leading-[1.35]">{st.config}</span>}
-                    <div className={cn("flex gap-2 rounded-lg px-2.5 py-[7px] text-[13px] leading-[1.4]", status === "stopped" ? "border border-dashed border-ring bg-background" : status === "skipped" ? "border border-border text-muted-foreground" : "border border-border bg-muted", (status === "pending" || (status === "idle" && !prev)) && "text-muted-foreground")}>
+                    <div className={cn("flex gap-2 rounded-lg px-2.5 py-[7px] text-[13px] leading-[1.4]", status === "stopped" ? "border border-dashed border-ring bg-background" : status === "skipped" ? "border border-border text-muted-foreground" : "border border-border bg-muted", (status === "running" || (status === "idle" && !prev)) && "text-muted-foreground")}>
                       <ArrowRight size={12} aria-hidden="true" className="mt-[3px] shrink-0 opacity-60" />
                       <span className="min-w-0 flex-1">{status === "running" ? wf.testing : value}</span>
                     </div>
@@ -304,16 +301,16 @@ function WorkflowEditor({ draft, setDraft }: { draft: Draft; setDraft: (p: Parti
           </div>
           <div className="flex flex-wrap items-center gap-2 border-t border-border pt-3">
             <label className="flex min-h-10 flex-1 cursor-pointer items-center gap-2 text-[13px]">
-              <Switch checked={nonDiab} onCheckedChange={(v) => { stop(); setTest(null); setNonDiab(v); }} aria-label={wf.nonDiab} />
+              <Switch checked={nonDiab} onCheckedChange={(v) => { reset(); setNonDiab(v); }} aria-label={wf.nonDiab} />
               {wf.nonDiab}
             </label>
             <Button variant="primary" onClick={run} disabled={!!test?.running}><Play aria-hidden="true" />{test?.running ? wf.testing : wf.test}</Button>
           </div>
           {finished && (
-            <div className={cn("flex flex-col gap-1.5 rounded-[10px] px-3.5 py-3", test!.result.halted ? "border border-dashed border-ring bg-background" : "border border-border bg-muted")} aria-live="polite">
-              <span className="text-xs font-medium text-muted-foreground">{wf.result}</span>
-              <span className="text-sm leading-[1.45]">{test!.result.halted || !out ? wf.halted : out.lines[0]}</span>
-              {!test!.result.halted && out?.actionLabel && <span className="self-start rounded-md bg-primary px-2.5 py-[5px] text-xs font-medium text-primary-foreground">{out.actionLabel}</span>}
+            <div className={cn("flex flex-col gap-1.5 rounded-[10px] px-3.5 py-3", finished.halted ? "border border-dashed border-ring bg-background" : "border border-border bg-muted")} aria-live="polite">
+              <span className="flex items-center gap-2"><span className="flex-1 text-xs font-medium text-muted-foreground">{wf.result}</span><LocusTag state="done" /></span>
+              <span className="text-sm leading-[1.45]">{finished.halted || !out ? wf.halted : out.lines[0]}</span>
+              {!finished.halted && out?.actionLabel && <span className="self-start rounded-md bg-primary px-2.5 py-[5px] text-xs font-medium text-primary-foreground">{out.actionLabel}</span>}
             </div>
           )}
         </>
