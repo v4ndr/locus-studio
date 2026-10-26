@@ -1,7 +1,7 @@
 "use client";
 import * as React from "react";
-import { defaultFields, fieldsFor, patientEhr, FIELDS, ANCHOR_IDS, type AnchorId, type FieldKey } from "@/data/integration-lgc/fournier";
-import { DISPLAY_API, DISPLAY_IDS, HOOKS, TOOLS, cleanSettings, defaultSettings, isToolId, questionFor, type DisplayId, type Settings, type ToolId } from "@/data/integration-lgc/blocks";
+import { defaultFields, fieldsFor, patientEhr, ANCHOR_IDS, type AnchorId, type FieldKey } from "@/data/integration-lgc/fournier";
+import { DISPLAY_IDS, cleanSettings, defaultSettings, isToolId, questionFor, type DisplayId, type Settings, type ToolId } from "@/data/integration-lgc/blocks";
 import { STEP_TYPES, cleanSteps, type StepResult, type WfStep } from "@/data/integration-lgc/workflow";
 
 /** Une brique posée dans MédiCab 7 : déclencheur, données, outil ou workflow, affichage. */
@@ -103,46 +103,27 @@ export function useBricks() {
 
 export const nextId = (bricks: Brick[]) => `b${bricks.reduce((m, b) => Math.max(m, Number(b.id.slice(1)) || 0), 0) + 1}`;
 
-/* ---------- L'appel « API Briques (aperçu) » ---------- */
+/* ---------- L'appel à l'API Locus ---------- */
 
-const head = (path: string) => `POST ${path}\nAuthorization: Bearer lsk_…\nX-Locus-User-Ref: <compte sandbox>\nContent-Type: application/json\n\n`;
-
-/**
- * La requête équivalente sur la façade proposée `POST /v2/blocks` : elle
- * n'existe pas dans core. `comment` (« API Briques (aperçu) ») ouvre le
- * code, pour qu'un copier-coller ne la fasse pas passer pour une route réelle.
- */
-export function apiCall(b: Brick, comment: string): string {
-  const data: Record<string, string> = {};
-  for (const k of b.fields) data[FIELDS[k].api] = FIELDS[k].value;
-  const context = { patient: "sandbox-gilles-fournier", data };
-  if (b.kind === "workflow") {
-    const body = { hook: HOOKS[b.anchor], context, instruction: b.instruction ?? "", steps: (b.steps ?? []).map((s) => ({ type: s.type, config: s.config, ...(s.action ? { action: s.action } : {}) })), display: DISPLAY_API[b.display] };
-    return `${comment}\n${head("/v2/blocks")}${JSON.stringify(body, null, 2)}`;
-  }
-  const t = b.tool ?? "controle";
-  const body = { hook: HOOKS[b.anchor], context, settings: b.settings, display: DISPLAY_API[b.display] };
-  return `${comment}\n${head(`/v2/blocks/${TOOLS[t].api}`)}${JSON.stringify(body, null, 2)}`;
-}
+const head = (path: string) => `POST ${path}\nAuthorization: Bearer lsk_…\nX-Locus-User-Ref: <compte sandbox>\nContent-Type: application/json\nAccept: application/x-ndjson\n\n`;
 
 /**
- * L'appel que la route Studio fait vraiment aujourd'hui : `POST /v2/retrieve/stream`
- * de core, avec les paramètres de `RetrieveRequest` qu'elle remplit (`query`,
- * `patient_ehr` pseudonymisé, `mode`, `app_platform`, `app_surface`).
- * `null` quand la brique n'appelle pas core (workflow sans Question Locus).
+ * Les appels que la route Studio fait vraiment pour cette brique : `POST
+ * /v2/retrieve/stream` de core, avec les paramètres de `RetrieveRequest`
+ * qu'elle remplit (`query`, `patient_ehr` pseudonymisé, `mode`,
+ * `app_platform`, `app_surface`). Un appel par étape Question Locus d'un
+ * workflow ; `null` quand la brique n'appelle pas core. Déclencheur et
+ * affichage restent dans le logiciel : core n'a pas d'endpoint de brique.
  */
 export function coreCall(b: Brick, placeholder: string): string | null {
-  let query: string;
-  if (b.kind === "workflow") {
-    const q = (b.steps ?? []).find((s) => s.type === "locus_question");
-    if (!q) return null;
-    query = q.config;
-  } else {
-    const t = b.tool ?? "controle";
-    query = t === "question" ? placeholder : questionFor(t, b.settings);
-  }
-  const body = { query, patient_ehr: patientEhr(b.fields), mode: "rapide", app_platform: "web", app_surface: "studio-ehr" };
-  return head("/v2/retrieve/stream").replace("Content-Type: application/json", "Content-Type: application/json\nAccept: application/x-ndjson") + JSON.stringify(body, null, 2);
+  const queries = b.kind === "workflow"
+    ? (b.steps ?? []).filter((s) => s.type === "locus_question").map((s) => s.config)
+    : [(b.tool ?? "controle") === "question" ? placeholder : questionFor(b.tool ?? "controle", b.settings)];
+  if (!queries.length) return null;
+  const ehr = patientEhr(b.fields);
+  return queries
+    .map((query) => head("/v2/retrieve/stream") + JSON.stringify({ query, patient_ehr: ehr, mode: "rapide", app_platform: "web", app_surface: "studio-ehr" }, null, 2))
+    .join("\n\n");
 }
 
 export { STEP_TYPES };

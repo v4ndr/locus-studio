@@ -8,7 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { Segmented } from "@/components/ui/segmented";
 import { FIELDS } from "@/data/integration-lgc/fournier";
 import { HOOKS, TOOLS } from "@/data/integration-lgc/blocks";
-import { apiCall, coreCall, type Brick } from "./model";
+import { coreCall, type Brick } from "./model";
 
 /** « Mes briques » : déclencheur, outil, affichage, interrupteur, Modifier, flux et appel API. */
 export function MyBricks({ bricks, onToggle, onEdit, onRemove, onReset, onClose }: {
@@ -57,9 +57,9 @@ function Details({ b }: { b: Brick }) {
   const t = lgc[lang];
   const [tab, setTab] = React.useState<"flow" | "api">("api");
   const [copied, setCopied] = React.useState(false);
-  const code = apiCall(b, t.list.apiComment);
-  const core = coreCall(b, t.list.coreQuestion);
+  const code = coreCall(b, t.list.coreQuestion);
   const copy = async () => {
+    if (!code) return;
     try { await navigator.clipboard.writeText(code); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch {}
   };
   const row = (k: string, v: React.ReactNode) => (
@@ -73,18 +73,14 @@ function Details({ b }: { b: Brick }) {
       <div className="flex items-center gap-2">
         <Segmented<"flow" | "api"> label={t.list.details} value={tab} onChange={setTab} options={[{ value: "flow", label: t.list.flow }, { value: "api", label: t.list.api }]} />
         <span className="flex-1" />
-        {tab === "api" && <Button size="sm" onClick={copy} className="h-7 text-xs">{copied ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}{copied ? t.out.copied : t.out.copy}</Button>}
+        {tab === "api" && code && <Button size="sm" onClick={copy} className="h-7 text-xs">{copied ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}{copied ? t.out.copied : t.out.copy}</Button>}
       </div>
       {tab === "api" ? (
         <>
-          <span className="text-xs font-medium">{t.list.apiPreview}</span>
-          <span className="text-xs text-muted-foreground">{t.list.apiNote}</span>
-          <pre className="m-0 max-h-72 overflow-auto whitespace-pre-wrap break-words font-mono text-xs leading-[1.55] text-foreground">{code}</pre>
-          <div className="mt-1 grid gap-1 border-t border-border pt-2.5">
-            <span className="text-xs font-medium">{t.list.coreTitle}</span>
-            <span className="text-xs text-muted-foreground">{b.kind === "workflow" ? (core ? t.list.coreWorkflow : t.list.coreNone) : t.list.coreNote}</span>
-          </div>
-          {core && <pre className="m-0 max-h-72 overflow-auto whitespace-pre-wrap break-words font-mono text-xs leading-[1.55] text-foreground">{core}</pre>}
+          <span className="font-mono text-xs font-medium">{t.list.coreTitle}</span>
+          <span className="text-xs text-muted-foreground">{b.kind === "workflow" ? (code ? t.list.coreWorkflow : t.list.coreNone) : t.list.coreNote}</span>
+          {code && <pre className="m-0 max-h-72 overflow-auto whitespace-pre-wrap break-words font-mono text-xs leading-[1.55] text-foreground">{code}</pre>}
+          <span className="mt-1 border-t border-border pt-2.5 text-xs text-muted-foreground">{t.list.apiNote}</span>
         </>
       ) : (
         <div className="grid gap-2.5 py-1">

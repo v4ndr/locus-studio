@@ -3,8 +3,8 @@ import type { AnchorId } from "./fournier";
 /**
  * Le catalogue des briques Locus de MédiCab 7 (ancrages, outils, affichages)
  * et la question que chaque outil pose à core. Les libellés d'UI sont dans
- * `src/i18n/lgc.ts` ; ici, seulement les identifiants, les noms de l'API
- * Briques (aperçu) et les gabarits de question, en français. Aucune sortie
+ * `src/i18n/lgc.ts` ; ici, seulement les identifiants, les noms des routes
+ * Studio de chaque brique et les gabarits de question, en français. Aucune sortie
  * n'est écrite ici : elles viennent toutes de core, à chaque exécution.
  */
 
@@ -55,7 +55,6 @@ export function cleanSettings(t: ToolId, raw: unknown): Settings {
 
 export const DISPLAY_IDS = ["inline", "banner", "panel", "modal", "widget"] as const;
 export type DisplayId = (typeof DISPLAY_IDS)[number];
-export const DISPLAY_API: Record<DisplayId, string> = { inline: "inline-card", banner: "banner", panel: "side-panel", modal: "modal", widget: "widget" };
 
 /** Les gestes proposés par une sortie ; le navigateur les exécute dans MédiCab (jamais sans clic). */
 export type OutAction = "ignore" | "openLetter" | "wfAction" | "cancel";

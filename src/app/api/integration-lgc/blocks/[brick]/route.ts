@@ -11,10 +11,10 @@ export const maxDuration = 60;
  * (`prescription-check`, `clinical-question`, `record-summary`,
  * `referral-letter`, `lab-interpretation`).
  *
- * C'est la route BFF qui porte, pour l'instant, la façade proposée
- * « API Briques (aperçu) » `POST /v2/blocks/<brique>` : elle n'existe pas
- * dans core. Chaque appel part vers core `/v2/retrieve` avec le dossier
- * transmis et `app_surface:"studio-ehr"`. Pas de sortie précalculée : si
+ * Une route de Studio, pas de core : core n'a pas d'endpoint de brique.
+ * Chaque appel part vers core `POST /v2/retrieve/stream` avec le dossier
+ * transmis et `app_surface:"studio-ehr"`, et c'est cet appel que le panneau
+ * « Appel API » de la brique affiche. Pas de sortie précalculée : si
  * core manque ou ne répond pas, la route répond 502/503 et la carte le dit.
  */
 
