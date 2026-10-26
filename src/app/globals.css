@@ -231,9 +231,7 @@ mark { background: var(--accent); color: var(--ink); border-radius: 3px; padding
 .tr { display: grid; grid-template-columns: 96px 120px minmax(0, 1fr) 200px 24px; gap: 16px; align-items: center; padding: 12px 16px; font-size: 14px; }
 @media (max-width: 720px) { .tr { grid-template-columns: 72px minmax(0, 1fr) 20px; grid-template-areas: "date titre chev" "type de chev"; row-gap: 2px; column-gap: 12px; padding: 10px 12px; } .tr > :nth-child(1) { grid-area: date; } .tr > :nth-child(2) { grid-area: type; } .tr > :nth-child(3) { grid-area: titre; } .tr > :nth-child(4) { grid-area: de; } .tr > :nth-child(5) { grid-area: chev; } .tr.tr-head { display: none; } }
 
-/* L'entrée : la marque Locus s'allume du centre vers le bout des branches. */
-.locus-motion { animation: locus-tourne 140s linear infinite; }
-.locus-motion > * { transform-box: fill-box; transform-origin: center; opacity: .3; animation: locus-onde 4.8s cubic-bezier(.4, 0, .2, 1) infinite; animation-delay: calc(var(--rang) * .32s); }
-@keyframes locus-onde { 0%, 100% { opacity: .3; transform: scale(.85); } 32% { opacity: 1; transform: scale(1); } 64% { opacity: .3; transform: scale(.85); } }
-@keyframes locus-tourne { to { rotate: 360deg; } }
-@media (prefers-reduced-motion: reduce) { .locus-motion, .locus-motion > * { animation: none; opacity: 1; transform: none; } }
+/* La même boucle que le loader de la bêta (locus-app, `.locus-build`) : chaque disque naît (0 → plein) sur la première moitié du cycle, tient, puis repart de zéro. */
+.locus-motion > * { transform-box: fill-box; transform-origin: center; animation: locus-build 2.6s ease-in-out infinite backwards; }
+@keyframes locus-build { 0% { opacity: 0; transform: scale(0); } 50%, 100% { opacity: 1; transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) { .locus-motion > * { animation: none; opacity: 1; transform: none; } }
