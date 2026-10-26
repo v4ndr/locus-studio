@@ -65,7 +65,7 @@ export function useCompose() {
   const ajoute = React.useCallback((a: ComposeAction, input?: ComposeInput) => {
     setS((p) => {
       const actions = [...p.actions, a];
-      const plan: ComposePlan = p.plan ? { ...p.plan, actions } : { synthese: "", actions, references: [], via: "simulation", locus: 0 };
+      const plan: ComposePlan = p.plan ? { ...p.plan, actions } : { synthese: "", actions, references: [], locus: 0 };
       return { ...p, input: p.input ?? input ?? { texte: "", ecran: "note" }, actions, plan, busy: false };
     });
   }, []);
@@ -152,8 +152,6 @@ export function ComposeCard({ state, onClose, onRetry, suivreSeul = true, onVali
   }, [valider, valide, docs.length, done, onClose]);
 
   const last = state.steps[state.steps.length - 1];
-  // Ni modèle, ni compteur d'appels : seulement le scénario rejoué quand c'en est un.
-  const via = state.plan?.via === "simulation" ? d.replay : null;
 
   // Une re-signature : le plan venait d'une note déjà signée (ses actions portaient déjà un envoi).
   const resignature = !!state.plan?.actions.some((a) => a.envoyeLe);
@@ -176,7 +174,7 @@ export function ComposeCard({ state, onClose, onRetry, suivreSeul = true, onVali
   }
 
   return (
-    <div className="flex flex-col gap-3 rounded-[14px] border border-agent-line bg-paper px-[18px] py-4" style={{ boxShadow: "var(--shadow-accent)" }}>
+    <div className="flex flex-col gap-3 rounded-[14px] border border-line bg-paper px-[18px] py-4" style={{ boxShadow: "var(--shadow-accent)" }}>
       <div className="flex items-center gap-2.5">
         <span className="k whitespace-nowrap" style={{ color: "var(--agent)" }}>{done ? (gardes.length ? d.toValidateN(gardes.length) : docs.length ? t.nothing : state.plan?.references.length || state.plan?.locus ? t.answer : t.composer) : t.composer}</span>
         {state.input && !done && <span className="truncate text-[13px] text-dim-2">« {state.input.texte || state.input.note?.replace(/\s+/g, " ").slice(0, 80)} »</span>}
@@ -190,6 +188,7 @@ export function ComposeCard({ state, onClose, onRetry, suivreSeul = true, onVali
       {state.error && <div className="flex flex-wrap items-center gap-3 text-sm text-rec-text"><span className="flex-1">{state.error}</span>{state.input && onRetry && <button type="button" onClick={() => onRetry(state.input!)} className="rounded-[8px] border border-line bg-paper px-3 py-1.5 text-xs text-ink hover:bg-hover">{t.retry}</button>}</div>}
 
       {(state.plan?.synthese || state.texte) && <div className="max-h-[32vh] overflow-y-auto text-[15px] leading-relaxed"><Md text={state.plan?.synthese ?? state.texte ?? ""} /></div>}
+      {state.plan?.locusEnPanne && <div className="flex flex-wrap items-center gap-3 text-sm text-warn"><span className="flex-1">{t.locusDown}</span>{state.input && onRetry && <button type="button" onClick={() => onRetry(state.input!)} className="rounded-[8px] border border-line bg-paper px-3 py-1.5 text-xs text-ink hover:bg-hover">{t.retry}</button>}</div>}
       {(state.plan?.synthese || state.texte) && d.answerInFrench && <span className="d -mt-1 text-[11px]">{d.answerInFrench}</span>}
 
       {docs.length > 0 && (
@@ -229,8 +228,6 @@ export function ComposeCard({ state, onClose, onRetry, suivreSeul = true, onVali
         <div className="flex flex-wrap items-center gap-2">
           {gardes.length > 0 && !masquerValider && <button type="button" onClick={valider} className="flex min-h-11 items-center gap-2 rounded-[10px] bg-ink px-4 py-[9px] text-sm text-paper">{libelleValider ?? t.validateN(gardes.length)} <Kbd dark>⌘⏎</Kbd></button>}
           {!masquerValider && <button type="button" onClick={onClose} className="flex min-h-11 items-center gap-2 rounded-[10px] px-3 py-[9px] text-sm text-dim-2 hover:bg-hover hover:text-ink">{gardes.length > 0 || docs.length > 0 ? d.cancel : d.close} <Kbd>esc</Kbd></button>}
-          <span className="flex-1" />
-          {via && <span className="d text-[11px]">{via}</span>}
         </div>
       )}
     </div>

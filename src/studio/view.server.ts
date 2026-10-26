@@ -87,8 +87,8 @@ export function patientView(id: string): PatientView | undefined {
   for (const x of proposals) { const c = chipOf(x); if (c) chips.push(c); }
 
   const rows: DocRow[] = [
-    ...docs.map((x) => ({ id: x.id, date: fr(x.dateDocument), type: (x.type === "cr-imagerie" ? "Imagerie" : x.type === "certificat-recu" || x.type === "formulaire" ? "Arrêt · certif" : "Courrier") as DocRow["type"], titre: x.titre, de: x.auteur?.split(",")[0] ?? x.canal, texte: `${x.texte} ${x.lecture?.resume ?? ""}` })),
-    ...labs.map((x) => ({ id: x.id, date: fr(x.prelevementLe), type: "Biologie" as const, titre: x.resultats.map((r) => r.libelle).slice(0, 4).join(", ") + (x.resultats.length > 4 ? "…" : ""), de: "Laboratoire", texte: `${x.resultats.map((r) => `${r.libelle} ${r.valeur}`).join(" ")} ${x.lecture?.resume ?? ""}` })),
+    ...docs.map((x) => ({ id: x.id, date: fr(x.dateDocument), type: (x.type === "cr-imagerie" ? "Imagerie" : x.type === "certificat-recu" || x.type === "formulaire" ? "Arrêt · certif" : "Courrier") as DocRow["type"], titre: x.titre, de: x.auteur?.split(",")[0] ?? x.canal, texte: x.texte })),
+    ...labs.map((x) => ({ id: x.id, date: fr(x.prelevementLe), type: "Biologie" as const, titre: x.resultats.map((r) => r.libelle).slice(0, 4).join(", ") + (x.resultats.length > 4 ? "…" : ""), de: "Laboratoire", texte: `${x.resultats.map((r) => `${r.libelle} ${r.valeur}`).join(" ")}` })),
     ...rx.map((x) => ({ id: x.id, date: fr(x.date), type: "Ordonnance" as const, titre: x.lignes.map((l) => l.libelle).join(" · "), de: PRATICIEN.nom, texte: x.lignes.map((l) => `${l.libelle} ${l.posologie ?? ""}`).join(" ") })),
     ...sl.map((x) => ({ id: x.id, date: fr(x.du), type: "Arrêt · certif" as const, titre: x.prolongation ? "Prolongation d'arrêt de travail" : "Arrêt de travail initial", de: PRATICIEN.nom, texte: x.motif ?? "" })),
     ...letters.map((x) => ({ id: x.id, date: fr(x.date), type: "Courrier" as const, titre: x.titre, de: PRATICIEN.nom, texte: x.corps ?? "" })),
@@ -157,10 +157,6 @@ const DOC_TYPE: Record<string, string> = { "cr-imagerie": "Compte rendu d'imager
 const RX_TYPE: Record<string, string> = { medicament: "Ordonnance", biologie: "Ordonnance de biologie", imagerie: "Ordonnance d'imagerie", paramedical: "Ordonnance paramédicale", transport: "Prescription de transport", dispositif: "Dispositif médical" };
 const CANAL: Record<string, string> = { mssante: "MSSanté", dmp: "Mon espace santé · DMP", scan: "scan", patient: "apporté par le patient", papier: "papier", fax: "fax", hprim: "HPRIM" };
 
-function lectureOf(l?: { resume: string; pointsAttention: string[]; urgence: "aucune" | "semaine" | "jour" | "immediate"; confidence: number }) {
-  return l ? { resume: l.resume, points: l.pointsAttention, urgence: l.urgence, confidence: l.confidence } : undefined;
-}
-
 /** Le contenu d'un document du dossier, quel que soit son type d'enregistrement. */
 export function documentView(id: string, docId: string): DocView | undefined {
   const d = getDossier(id);
@@ -179,12 +175,12 @@ export function documentView(id: string, docId: string): DocView | undefined {
   switch (rec.kind) {
     case "document": {
       const x = rec as ClinicalDocument;
-      return { ...base, titre: x.titre, de: x.auteur ?? CANAL[x.canal] ?? x.canal, meta: [{ k: "Type", v: DOC_TYPE[x.type] ?? x.type }, { k: "Daté du", v: fr(x.dateDocument) }, { k: "Reçu le", v: `${fr(x.recuLe)} · ${CANAL[x.canal] ?? x.canal}` }, { k: "Format", v: `${x.format.toUpperCase()}${x.pages ? ` · ${x.pages} p.` : ""}` }, { k: "Lu", v: x.vuLe ? fr(x.vuLe) : "pas encore" }], lecture: lectureOf(x.lecture), corps: x.texte };
+      return { ...base, titre: x.titre, de: x.auteur ?? CANAL[x.canal] ?? x.canal, meta: [{ k: "Type", v: DOC_TYPE[x.type] ?? x.type }, { k: "Daté du", v: fr(x.dateDocument) }, { k: "Reçu le", v: `${fr(x.recuLe)} · ${CANAL[x.canal] ?? x.canal}` }, { k: "Format", v: `${x.format.toUpperCase()}${x.pages ? ` · ${x.pages} p.` : ""}` }, { k: "Lu", v: x.vuLe ? fr(x.vuLe) : "pas encore" }], corps: x.texte };
     }
     case "lab": {
       const x = rec as LabReport;
       const lignes: DocLine[] = x.resultats.map((r) => ({ k: r.libelle, v: `${typeof r.valeur === "number" ? String(r.valeur).replace(".", ",") : r.valeur}${r.unite ? ` ${r.unite}` : ""}`, flag: r.flag, ref: r.refMin !== undefined || r.refMax !== undefined ? `${r.refMin ?? "<"}${r.refMin !== undefined && r.refMax !== undefined ? " – " : " "}${r.refMax ?? ""}`.trim() : undefined, precedent: r.precedent ? `${String(r.precedent.valeur).replace(".", ",")} (${fr(r.precedent.date).slice(3)})` : undefined }));
-      return { ...base, titre: `Biologie · ${x.laboratoire}`, de: x.laboratoire, meta: [{ k: "Prélevé le", v: fr(x.prelevementLe) }, { k: "Reçu le", v: `${fr(x.recuLe)} · HPRIM` }, { k: "Lu", v: x.vuLe ? fr(x.vuLe) : "pas encore" }, { k: "Résultats", v: `${x.resultats.length} · ${x.resultats.filter((r) => r.flag !== "normal").length} hors norme` }], lecture: lectureOf(x.lecture), lignes, lignesTitre: "Résultats" };
+      return { ...base, titre: `Biologie · ${x.laboratoire}`, de: x.laboratoire, meta: [{ k: "Prélevé le", v: fr(x.prelevementLe) }, { k: "Reçu le", v: `${fr(x.recuLe)} · HPRIM` }, { k: "Lu", v: x.vuLe ? fr(x.vuLe) : "pas encore" }, { k: "Résultats", v: `${x.resultats.length} · ${x.resultats.filter((r) => r.flag !== "normal").length} hors norme` }], lignes, lignesTitre: "Résultats" };
     }
     case "prescription": {
       const x = rec as Prescription;
@@ -223,18 +219,15 @@ function inboxRows(kind: InboxKind): InboxRow[] {
   for (const d of DOSSIERS) {
     const r = ref(d);
     if (kind === "courriers") {
-      for (const x of recordsOf(d, "document")) if (x.recuLe >= horizon) out.push({ id: x.id, href: `/p/${d.patient.id}/documents/${x.id}`, patient: r, de: x.auteur?.split(",")[0] ?? CANAL[x.canal] ?? x.canal, deType: /\b(Dr|Pr|Docteur)\b/.test(x.auteur ?? "") ? "confrere" : /labo/i.test(x.auteur ?? "") ? "labo" : /secr[ée]tariat/i.test(x.auteur ?? "") ? "secretariat" : "autre", titre: x.titre, resume: x.lecture?.resume ?? x.texte.slice(0, 160), urgence: x.lecture?.urgence ?? "aucune", quand: fmtRelative(x.recuLe), at: x.recuLe, nonLu: !x.vuLe });
+      for (const x of recordsOf(d, "document")) if (x.recuLe >= horizon) out.push({ id: x.id, href: `/p/${d.patient.id}/documents/${x.id}`, patient: r, de: x.auteur?.split(",")[0] ?? CANAL[x.canal] ?? x.canal, deType: /\b(Dr|Pr|Docteur)\b/.test(x.auteur ?? "") ? "confrere" : /labo/i.test(x.auteur ?? "") ? "labo" : /secr[ée]tariat/i.test(x.auteur ?? "") ? "secretariat" : "autre", titre: x.titre, resume: x.texte.slice(0, 160), urgence: "aucune", quand: fmtRelative(x.recuLe), at: x.recuLe, nonLu: !x.vuLe });
     } else if (kind === "bio") {
-      for (const x of recordsOf(d, "lab")) if (x.recuLe >= horizon) { const ab = x.resultats.filter((y) => y.flag !== "normal"); out.push({ id: x.id, href: `/p/${d.patient.id}/documents/${x.id}`, patient: r, de: x.laboratoire, deType: "labo", titre: ab.length ? ab.map((y) => `${y.libelle} ${typeof y.valeur === "number" ? String(y.valeur).replace(".", ",") : y.valeur}${y.unite ? " " + y.unite : ""}`).slice(0, 3).join(" · ") : `${x.resultats.length} résultats, tous normaux`, resume: x.lecture?.resume, urgence: x.lecture?.urgence ?? (ab.some((y) => y.flag === "critique") ? "jour" : ab.length ? "semaine" : "aucune"), quand: fmtRelative(x.recuLe), at: x.recuLe, nonLu: !x.vuLe }); }
+      for (const x of recordsOf(d, "lab")) if (x.recuLe >= horizon) { const ab = x.resultats.filter((y) => y.flag !== "normal"); out.push({ id: x.id, href: `/p/${d.patient.id}/documents/${x.id}`, patient: r, de: x.laboratoire, deType: "labo", titre: ab.length ? ab.map((y) => `${y.libelle} ${typeof y.valeur === "number" ? String(y.valeur).replace(".", ",") : y.valeur}${y.unite ? " " + y.unite : ""}`).slice(0, 3).join(" · ") : `${x.resultats.length} résultats, tous normaux`, urgence: ab.some((y) => y.flag === "critique") ? "jour" : ab.length ? "semaine" : "aucune", quand: fmtRelative(x.recuLe), at: x.recuLe, nonLu: !x.vuLe }); }
     } else {
       const msgs = recordsOf(d, "message");
       for (const x of msgs) {
         if (x.de.type === "agent" || x.de.type === "praticien" || x.de.type === "systeme" || x.date < horizon) continue;
-        const rep = x.triage?.reponseProposeeId ? msgs.find((m) => m.id === x.triage!.reponseProposeeId) : undefined;
-        // Sans réponse rédigée dans le fil : la proposition de message en attente, s'il y en a une pour ce dossier.
-        const prop = rep ? undefined : recordsOf(d, "proposal").find((p) => p.etat === "a-valider" && p.declencheur.type === "message" && (!p.declencheur.recordId || p.declencheur.recordId === x.id) && (x.de.type === "confrere" ? p.action === "message-confrere" : p.action === "message-patient"));
-        const corpsProp = prop && prop.charge && "corps" in prop.charge ? String(prop.charge.corps) : undefined;
-        out.push({ id: x.id, patient: r, de: x.de.nom, deType: x.de.type === "labo" ? "labo" : x.de.type === "patient" || x.de.type === "confrere" || x.de.type === "secretariat" || x.de.type === "pharmacie" ? x.de.type : "autre", titre: x.objet ?? x.corps.slice(0, 60), resume: x.triage?.resume, corps: x.corps, reponse: rep?.corps ?? corpsProp, urgence: x.triage?.urgence ?? "aucune", intention: x.triage?.intention, quand: fmtRelative(x.date), at: x.date, nonLu: !x.luLe });
+        // Ni résumé ni réponse pré-écrits : la réponse, Locus la rédige à la demande (live).
+        out.push({ id: x.id, patient: r, de: x.de.nom, deType: x.de.type === "labo" ? "labo" : x.de.type === "patient" || x.de.type === "confrere" || x.de.type === "secretariat" || x.de.type === "pharmacie" ? x.de.type : "autre", titre: x.objet ?? x.corps.slice(0, 60), resume: x.corps.slice(0, 160), corps: x.corps, urgence: "aucune", quand: fmtRelative(x.date), at: x.date, nonLu: !x.luLe });
       }
     }
   }

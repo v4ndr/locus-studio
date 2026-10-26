@@ -27,7 +27,7 @@ export interface PatientView {
 export interface Chip { id: string; label: string; tool: string; title: string; body: string; cta: string; proposal?: Proposal }
 export interface DocRow { date: string; type: "Ordonnance" | "Courrier" | "Biologie" | "Imagerie" | "Arrêt · certif" | "Consultation"; titre: string; de: string; id: string; /** Le contenu, pour la recherche plein texte de la table. */ texte?: string }
 
-/** Un document ouvert : son contenu, sa lecture par Locus, ses métadonnées. */
+/** Un document ouvert : son contenu et ses métadonnées. Sa lecture par Locus se demande, live. */
 export interface DocLine { k: string; v?: string; flag?: "normal" | "bas" | "haut" | "critique"; ref?: string; precedent?: string; alerte?: string }
 export interface DocView {
   id: string;
@@ -39,7 +39,6 @@ export interface DocView {
   date: string;
   de: string;
   meta: { k: string; v: string }[];
-  lecture?: { resume: string; points: string[]; urgence: "aucune" | "semaine" | "jour" | "immediate"; confidence: number };
   /** Texte libre ou markdown (courriers, CR, synthèse de consultation). */
   corps?: string;
   /** Lignes structurées : résultats de biologie, lignes d'ordonnance. */
@@ -61,11 +60,11 @@ export interface InboxRow {
   de: string;
   deType?: "patient" | "confrere" | "secretariat" | "pharmacie" | "labo" | "autre";
   titre: string;
+  /** Le début du document ou du message, tel quel : pas de résumé pré-écrit. */
   resume?: string;
   corps?: string;
-  reponse?: string;
+  /** Hors norme pour la biologie (règle sur les drapeaux du labo) ; « aucune » ailleurs, faute de tri live. */
   urgence: Urgence;
-  intention?: string;
   quand: string;
   at: string;
   nonLu: boolean;

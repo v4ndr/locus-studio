@@ -2,7 +2,7 @@
 import * as React from "react";
 import Link from "./nav";
 import type { InboxView as IV, InboxRow, InboxKind, Urgence } from "@/studio/types";
-import { Header, Omni, Avatar, Kbd, I, useT } from "./chrome";
+import { Header, Omni, Avatar, I, useT } from "./chrome";
 import { ComposeCard, useCompose } from "./compose";
 import { dialogOuvert } from "./rendu";
 import { cn } from "@/lib/cn";
@@ -38,16 +38,19 @@ export function InboxView({ v, praticien }: { v: IV; praticien: { initials: stri
   const ouverte = open ? v.rows.find((r) => r.id === open) : undefined;
   const faitsIci = Object.values(faits).filter((f) => f.box === v.kind);
 
-  // esc ferme le message ouvert avant de remonter d'un cran ; ⌘⏎ envoie la réponse du message ouvert.
+  // esc ferme le message ouvert avant de remonter d'un cran.
   React.useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (dialogOuvert()) return;
-      if (e.key === "Escape" && open) { e.preventDefault(); e.stopPropagation(); setOpen(null); return; }
-      if ((e.metaKey || e.ctrlKey) && e.key === "Enter" && ouverte?.reponse && !composer.open) { e.preventDefault(); e.stopPropagation(); const ta = document.getElementById(`rep-${ouverte.id}`) as HTMLTextAreaElement | null; fait(ouverte.id, "envoyé", ta?.value ?? ouverte.reponse); }
+      if (e.key === "Escape" && open) { e.preventDefault(); e.stopPropagation(); setOpen(null); }
     };
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);
-  }, [open, ouverte, fait, composer.open]);
+  }, [open]);
+  /* La réponse se rédige à la demande, live : le composer reçoit le message ouvert en contexte. */
+  const rediger = (r: InboxRow) => composer.run({ texte: `Propose une réponse à ce message de ${r.de}.`, ecran: "inbox", boite: v.kind, patientId: r.patient.id, docId: r.id });
+  // Sans tri live, pas de groupes d'urgence inventés : seule la biologie se trie (sur les drapeaux du laboratoire).
+  const trie = nonLus.some((r) => r.urgence !== "aucune");
 
   return (
     <div className="flex min-h-dvh flex-col">
@@ -71,20 +74,26 @@ export function InboxView({ v, praticien }: { v: IV; praticien: { initials: stri
         )}
 
         {nonLus.length === 0 && <div className="rounded-[14px] border border-dashed border-line px-5 py-8 text-center text-sm text-dim-2">{t.vide}</div>}
-        {GROUPES.map((g) => {
+        {!trie && nonLus.length > 0 && (
+          <section className="flex flex-col gap-1">
+            <span className="k px-1 pb-1.5">{d.inbox.unreadHead} · {nonLus.length}</span>
+            {nonLus.map((r) => <Row key={r.id} r={r} kind={v.kind} open={open === r.id} onOpen={() => setOpen(open === r.id ? null : r.id)} onDone={(what) => fait(r.id, what)} onDraft={() => rediger(r)} busy={composer.state.busy} />)}
+          </section>
+        )}
+        {trie && GROUPES.map((g) => {
           const rs = nonLus.filter((r) => g.urg.includes(r.urgence));
           if (!rs.length) return null;
           return (
             <section key={g.id} className="flex flex-col gap-1">
               <span className="k px-1 pb-1.5" style={g.id === "today" ? { color: "var(--warn)" } : undefined}>{d.inbox.groups[g.id]} · {rs.length}</span>
-              {rs.map((r) => <Row key={r.id} r={r} kind={v.kind} open={open === r.id} onOpen={() => setOpen(open === r.id ? null : r.id)} onDone={(what, texte) => fait(r.id, what, texte)} />)}
+              {rs.map((r) => <Row key={r.id} r={r} kind={v.kind} open={open === r.id} onOpen={() => setOpen(open === r.id ? null : r.id)} onDone={(what) => fait(r.id, what)} onDraft={() => rediger(r)} busy={composer.state.busy} />)}
             </section>
           );
         })}
         {vus.length > 0 && (
           <section className="flex flex-col gap-1">
             <span className="k px-1 pb-1.5">{d.inbox.seen} · {vus.length}</span>
-            {(tousVus ? vus : vus.slice(0, 8)).map((r) => <Row key={r.id} r={r} kind={v.kind} open={open === r.id} onOpen={() => setOpen(open === r.id ? null : r.id)} onDone={(what, texte) => fait(r.id, what, texte)} muted />)}
+            {(tousVus ? vus : vus.slice(0, 8)).map((r) => <Row key={r.id} r={r} kind={v.kind} open={open === r.id} onOpen={() => setOpen(open === r.id ? null : r.id)} onDone={(what) => fait(r.id, what)} onDraft={() => rediger(r)} busy={composer.state.busy} muted />)}
             {vus.length > 8 && <button type="button" onClick={() => setTousVus((x) => !x)} className="mt-1 min-h-10 self-start rounded-[10px] px-3 py-2 text-sm text-ink-3 hover:bg-hover">{tousVus ? d.collapse : d.inbox.seeMore(vus.length - 8)}</button>}
           </section>
         )}
@@ -95,13 +104,10 @@ export function InboxView({ v, praticien }: { v: IV; praticien: { initials: stri
   );
 }
 
-function Row({ r, kind, open, onOpen, onDone, muted }: { r: InboxRow; kind: InboxKind; open: boolean; onOpen: () => void; onDone: (what: "envoyé" | "classé", texte?: string) => void; muted?: boolean }) {
+function Row({ r, kind, open, onOpen, onDone, onDraft, busy, muted }: { r: InboxRow; kind: InboxKind; open: boolean; onOpen: () => void; onDone: (what: "classé") => void; /** Demander la réponse au composer. */ onDraft: () => void; busy?: boolean; muted?: boolean }) {
   const { t: d, L } = useT();
   const DE = d.inbox.from;
-  const INTENTION = d.inbox.intent;
   const dot = r.urgence === "immediate" ? "var(--rec)" : r.urgence === "jour" ? "var(--warn-dot)" : r.urgence === "semaine" ? "var(--agent)" : "var(--gray-dot)";
-  const [rep, setRep] = React.useState(r.reponse ?? "");
-  React.useEffect(() => { setRep(r.reponse ?? ""); }, [r.reponse, open]);
   const head = (
     <>
       <span className="mt-[7px] h-2 w-2 shrink-0 rounded-full" style={{ background: r.nonLu ? dot : "transparent", boxShadow: r.nonLu ? undefined : `inset 0 0 0 1.5px ${dot}` }} />
@@ -122,14 +128,8 @@ function Row({ r, kind, open, onOpen, onDone, muted }: { r: InboxRow; kind: Inbo
       {open && (
         <div className="flex flex-col gap-3 px-3 pb-3 sm:pl-[68px]">
           <p className="m-0 whitespace-pre-line text-sm leading-relaxed">{r.corps}</p>
-          {r.resume && <div className="flex flex-col gap-1 rounded-[10px] bg-agent-soft-2 px-3.5 py-2.5 text-sm"><span className="k" style={{ color: "var(--agent)" }}>Locus{r.intention && INTENTION[r.intention] ? ` · ${INTENTION[r.intention]}` : ""}</span>{r.resume}{d.answerInFrench && <span className="d text-[11px]">{d.answerInFrench}</span>}</div>}
-          {r.reponse ? (
-            <label className="flex flex-col gap-1 rounded-[10px] border border-line px-3.5 py-2.5 text-sm"><span className="k">{d.inbox.prepared}</span><textarea autoComplete="off" autoCorrect="off" spellCheck={false} id={`rep-${r.id}`} value={rep} onChange={(e) => setRep(e.target.value)} rows={Math.min(12, Math.max(4, rep.split("\n").length + 1))} className="w-full resize-y bg-transparent text-base leading-relaxed text-ink sm:text-sm" /></label>
-          ) : (
-            <p className="m-0 text-xs text-dim-2">{d.inbox.noPrepared}</p>
-          )}
           <div className="flex flex-wrap items-center gap-2">
-            {r.reponse && <button type="button" disabled={!rep.trim()} onClick={() => onDone("envoyé", rep)} className="flex min-h-11 items-center rounded-[10px] bg-ink px-3.5 py-2 text-sm text-paper disabled:opacity-40">{d.inbox.send}{r.deType === "patient" ? d.inbox.viaPatient : r.deType === "secretariat" ? d.inbox.viaInternal : d.inbox.viaMss} <Kbd dark className="ml-2">⌘⏎</Kbd></button>}
+            <button type="button" onClick={onDraft} disabled={busy} className="flex min-h-11 items-center rounded-[10px] bg-ink px-3.5 py-2 text-sm text-paper disabled:opacity-40">{d.inbox.draft}</button>
             <Link href={`/p/${r.patient.id}`} className="flex min-h-11 items-center rounded-[10px] border border-line bg-paper px-3.5 py-2 text-sm text-ink hover:bg-hover hover:text-ink">{d.openRecord}</Link>
             <button type="button" onClick={() => onDone("classé")} className="min-h-11 rounded-[10px] px-3 py-2 text-sm text-dim-2 hover:bg-hover">{d.inbox.file}</button>
           </div>

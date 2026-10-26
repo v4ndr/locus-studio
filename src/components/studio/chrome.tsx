@@ -159,47 +159,6 @@ export function CtaLink({ href, children, blue, onClick }: { href?: string; chil
   return <button type="button" onClick={onClick} className={cls}>{children}</button>;
 }
 
-/** La carte de résultat au-dessus de l'omni : ce que Locus a composé, prêt à valider. */
-export function ResultCard({ tool, title, body, cta, onCta, onClose, secondary, onSecondary, busy, children }: { tool: string; title: string; body?: React.ReactNode; cta: string; onCta: () => void; onClose: () => void; secondary?: string; onSecondary?: () => void; busy?: boolean; children?: React.ReactNode }) {
-  const { t } = useT();
-  // esc ferme la carte avant que l'en-tête ne remonte d'un cran.
-  React.useEffect(() => {
-    const k = (e: KeyboardEvent) => { if (e.key === "Escape" && !document.querySelector("[role=dialog][aria-modal=true]") && !(e.target as HTMLElement | null)?.closest("input, textarea")) { e.preventDefault(); e.stopPropagation(); onClose(); } };
-    window.addEventListener("keydown", k, true);
-    return () => window.removeEventListener("keydown", k, true);
-  }, [onClose]);
-  return (
-    <div className="flex flex-col gap-3 rounded-[14px] border border-agent-line bg-paper px-[18px] py-4" style={{ boxShadow: "var(--shadow-accent)" }}>
-      <div className="flex items-center gap-2.5"><span className="k text-agent" style={{ color: "var(--agent)" }}>{tool}</span><span className="flex-1" /><button type="button" onClick={onClose} aria-label={t.close} className="px-1 text-base text-dim-3">×</button></div>
-      {title && <span className="text-base font-medium">{title}</span>}
-      {body && <div className="text-sm leading-relaxed text-ink-3">{body}</div>}
-      {children}
-      <div className="flex flex-wrap gap-2">
-        <button type="button" onClick={onCta} disabled={busy} className="min-h-11 rounded-[10px] bg-ink px-4 py-[9px] text-sm text-paper disabled:opacity-50">{cta}</button>
-        {secondary && onSecondary && <button type="button" onClick={onSecondary} className="min-h-11 rounded-[10px] border border-line bg-paper px-4 py-[9px] text-sm text-ink">{secondary}</button>}
-      </div>
-    </div>
-  );
-}
-
-/** Raccourcis ⌘⏎ et ⌥ espace — jamais depuis un champ qui a quelque chose à envoyer, ni sous un dialogue. */
-export function useShortcuts(map: { cmdEnter?: () => void; altSpace?: () => void }) {
-  const ref = React.useRef(map);
-  ref.current = map;
-  React.useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.defaultPrevented || document.querySelector("[role=dialog][aria-modal=true]")) return;
-      const el = e.target as HTMLElement | null;
-      const champ = el?.closest("input, textarea, select, [contenteditable=true]") as HTMLInputElement | null;
-      if (champ && (champ.value?.trim() || champ.tagName === "TEXTAREA" || champ.tagName === "SELECT")) return;
-      if ((e.metaKey || e.ctrlKey) && e.key === "Enter" && ref.current.cmdEnter) { e.preventDefault(); ref.current.cmdEnter(); }
-      if (e.altKey && e.code === "Space" && ref.current.altSpace) { e.preventDefault(); ref.current.altSpace(); }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, []);
-}
-
 /** Texte avec **gras** et ==surligné==. */
 export function Rich({ text, className }: { text: string; className?: string }) {
   const parts = text.split(/(\*\*[^*]+\*\*|==[^=]+==)/g);

@@ -2,7 +2,7 @@ import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
 import { SYSTEM, buildContext } from "./context";
 import { TOOLS, executeTool, type ToolCtx } from "./tools";
-import { simulateCompose } from "./simulation";
+import { MODELE_ABSENT, erreurModele, modeleConfigure } from "./erreurs";
 import { resolvePatient } from "./patient";
 import type { ComposeEvent, ComposeInput, ComposePlan } from "./contract";
 
@@ -12,21 +12,15 @@ import type { ComposeEvent, ComposeInput, ComposePlan } from "./contract";
  * termine par une synthèse courte. Le navigateur reçoit les étapes, les
  * actions au fil de l'eau, puis le plan complet.
  *
- * Sans ANTHROPIC_API_KEY : un composeur à règles produit le même plan, pour
- * que le produit soit entier à sec.
+ * Tout est live : sans ANTHROPIC_API_KEY, ou le modèle en panne, le flux
+ * s'arrête sur une erreur lisible. Pas de plan à règles en remplacement.
  */
 
 export const MODEL = "claude-sonnet-5-5";
 const MAX_TOURS = 6;
 
-export function composeMode(): "claude" | "simulation" {
-  return process.env.ANTHROPIC_API_KEY ? "claude" : "simulation";
-}
-
-/** `replay` : le scénario rejoué, règles et Locus simulé, aucun appel externe. */
-export async function* compose(input: ComposeInput, opts: { replay?: boolean } = {}): AsyncGenerator<ComposeEvent> {
-  if (opts.replay) { yield* simulateCompose(input, { mode: "simulation", url: "" }); return; }
-  if (composeMode() === "simulation") { yield* simulateCompose(input); return; }
+export async function* compose(input: ComposeInput): AsyncGenerator<ComposeEvent> {
+  if (!modeleConfigure()) { console.error("[compose] ANTHROPIC_API_KEY absente"); yield { step: "error", detail: MODELE_ABSENT.message }; return; }
 
   const client = new Anthropic();
   const { contexte } = buildContext(input);
@@ -53,7 +47,7 @@ export async function* compose(input: ComposeInput, opts: { replay?: boolean } =
       message = await stream.finalMessage();
     } catch (e) {
       console.error("[compose]", e);
-      yield { step: "error", detail: "Le composer ne répond pas pour l'instant. Réessayez." };
+      yield { step: "error", detail: erreurModele(e).message };
       return;
     }
     const texts = message.content.filter((b): b is Anthropic.Beta.BetaTextBlock => b.type === "text").map((b) => b.text).join("\n").trim();
@@ -77,7 +71,7 @@ export async function* compose(input: ComposeInput, opts: { replay?: boolean } =
   }
 
   const pt = ctx.patient;
-  const plan: ComposePlan = { synthese: (synthese || (ctx.actions.length ? "Prêt à valider." : "Je n'ai rien trouvé à faire avec cette demande.")).slice(0, 600), actions: ctx.actions, references: ctx.references, via: "live", locus: ctx.locus, patient: pt ? { nom: pt.nom, sexe: pt.sexe, age: pt.age, naissance: pt.naissance, allergies: pt.allergies } : undefined };
+  const plan: ComposePlan = { synthese: (synthese || (ctx.actions.length ? "Prêt à valider." : "Je n'ai rien trouvé à faire avec cette demande.")).slice(0, 600), actions: ctx.actions, references: ctx.references, locus: ctx.locus, locusEnPanne: ctx.locusEnPanne || undefined, patient: pt ? { nom: pt.nom, sexe: pt.sexe, age: pt.age, naissance: pt.naissance, allergies: pt.allergies } : undefined };
   yield { step: "done", plan };
 }
 

@@ -4,7 +4,6 @@ import { getDossier, displayName } from "@/data";
 import { at } from "@/data/clock";
 import { documentView } from "@/studio/view.server";
 import { retrieveStream } from "@/locus/client.server";
-import type { CoreConfig } from "@/locus/config";
 import { fromDataset, type PatientCtx } from "./patient";
 import { chargeOf, materialize, alerteAllergie } from "./materialize";
 import type { ComposeAction, ComposeRef, ComposeInput } from "./contract";
@@ -23,8 +22,8 @@ export interface ToolCtx {
   locus: number;
   /** Le patient résolu pendant la composition (depuis l'accueil, `ouvrir` le fixe). */
   patient?: PatientCtx;
-  /** Forcer une configuration de core (le scénario rejoué force la simulation). */
-  core?: CoreConfig;
+  /** Vrai dès qu'un appel à Locus a échoué pendant la composition. */
+  locusEnPanne?: boolean;
   emit: (ev: { step: "outil"; nom: string; detail: string } | { step: "action"; action: ComposeAction }) => void;
 }
 
@@ -104,13 +103,13 @@ export async function executeTool(name: string, input: Record<string, unknown>, 
       ctx.locus += 1;
       ctx.emit({ step: "outil", nom: "locus", detail: s(input.question) });
       let answer = ""; let docs: { title?: string; source_name?: string; year?: number; url?: string }[] = []; let err = "";
-      for await (const ev of retrieveStream({ query: s(input.question), patient_ehr: pt?.ehr, mode: "rapide" }, ctx.core)) {
+      for await (const ev of retrieveStream({ query: s(input.question), patient_ehr: pt?.ehr, mode: "rapide" })) {
         if (ev.step === "reflexion") ctx.emit({ step: "outil", nom: "locus", detail: ev.titre });
         else if (ev.step === "done") { answer = ev.payload.answer; docs = ev.payload.docs; }
         else if (ev.step === "answer" && !answer) answer = ev.answer;
         else if (ev.step === "error") err = ev.detail;
       }
-      if (err && !answer) return `Locus indisponible : ${err}`;
+      if (err && !answer) { ctx.locusEnPanne = true; return `Locus n'a pas répondu (${err}). Ne réponds pas à la question clinique de mémoire : dis en une phrase au médecin que Locus est indisponible et qu'il peut réessayer.`; }
       const base = ctx.references.length;
       const refs: ComposeRef[] = docs.slice(0, 6).map((x) => ({ titre: x.title ?? "Document", editeur: x.source_name ?? "—", annee: x.year, url: x.url }));
       ctx.references.push(...refs);
@@ -123,7 +122,7 @@ export async function executeTool(name: string, input: Record<string, unknown>, 
       const doc = documentView(pid, s(input.docId));
       if (!doc) return "Document introuvable.";
       ctx.emit({ step: "outil", nom: "dossier", detail: `Je lis « ${doc.titre} »` });
-      return [`${doc.type} · ${doc.date} · ${doc.titre} · ${doc.de}`, doc.lecture ? `Lecture Locus : ${doc.lecture.resume}` : "", doc.lignes?.map((l) => `- ${l.k} : ${l.v ?? ""}${l.flag && l.flag !== "normal" ? ` (${l.flag})` : ""}`).join("\n") ?? "", doc.note?.map((n) => `${n.k} : ${n.v}`).join("\n") ?? "", doc.corps ?? ""].filter(Boolean).join("\n");
+      return [`${doc.type} · ${doc.date} · ${doc.titre} · ${doc.de}`, doc.lignes?.map((l) => `- ${l.k} : ${l.v ?? ""}${l.flag && l.flag !== "normal" ? ` (${l.flag})` : ""}`).join("\n") ?? "", doc.note?.map((n) => `${n.k} : ${n.v}`).join("\n") ?? "", doc.corps ?? ""].filter(Boolean).join("\n");
     }
     case "proposer_ordonnance": {
       const c = chargeOf("ordonnance", input);

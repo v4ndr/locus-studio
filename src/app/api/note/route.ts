@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { synthetiserNote } from "@/locus/compose/synthese";
+import { SyntheseIndisponible, synthetiserNote } from "@/locus/compose/synthese";
 import { donneesReelles, guardLive } from "@/lib/server/guard";
 
 export const dynamic = "force-dynamic";
@@ -28,9 +28,11 @@ export async function POST(req: Request) {
   const reel = donneesReelles(`${parsed.data.transcript}\n${parsed.data.motif ?? ""}`);
   if (reel) return Response.json({ error: reel, code: "donnees_reelles" }, { status: 422 });
   try {
-    const out = await synthetiserNote(parsed.data, { replay: g.replay });
+    const out = await synthetiserNote(parsed.data);
     return Response.json(out, { headers: { "Cache-Control": "no-store" } });
   } catch (e) {
+    // Une panne du modèle se dit telle quelle (non branché, quota, surcharge) : jamais de note de repli.
+    if (e instanceof SyntheseIndisponible) return Response.json({ error: e.erreur.message, code: e.erreur.code }, { status: e.erreur.status, headers: { "Cache-Control": "no-store" } });
     console.error("[note]", e);
     return Response.json({ error: "La synthèse n'a pas abouti. Réessayez, ou écrivez la note directement." }, { status: 502 });
   }

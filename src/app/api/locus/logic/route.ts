@@ -1,5 +1,4 @@
-import { logicCompute } from "@/locus/client.server";
-import { simulateLogic } from "@/locus/simulation";
+import { CoreIndisponible, logicCompute } from "@/locus/client.server";
 import type { LogicComputeRequest } from "@/locus/contract";
 import { guardLive, mkuAutorisee } from "@/lib/server/guard";
 
@@ -21,6 +20,11 @@ export async function POST(req: Request) {
   const level = typeof body.level === "string" ? body.level : undefined;
   const req2: LogicComputeRequest = { mku_key: body.mku_key, answers, checked, level };
   // L'identifiant interne de l'unité logique (PI Locus) ne sort pas : la clé publique suffit.
-  const { mku_id: _id, ...res } = g.replay ? simulateLogic(req2) : await logicCompute(req2);
-  return Response.json(res);
+  try {
+    const { mku_id: _id, ...res } = await logicCompute(req2);
+    return Response.json(res);
+  } catch (e) {
+    if (e instanceof CoreIndisponible) return Response.json({ error: e.message, code: "locus_indisponible" }, { status: 503 });
+    throw e;
+  }
 }

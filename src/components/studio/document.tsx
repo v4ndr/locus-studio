@@ -10,12 +10,14 @@ import { ComposeCard, useCompose } from "./compose";
 import { Md } from "../md";
 import { cn } from "@/lib/cn";
 
-const URG_CLS: Record<string, string> = { immediate: "text-rec-text", jour: "text-warn", semaine: "text-ink-3", aucune: "text-dim-2" };
 const TYPES: (DocRow["type"] | "Tous")[] = ["Tous", "Ordonnance", "Courrier", "Biologie", "Imagerie", "Arrêt · certif", "Consultation"];
 const PLURAL: Record<string, string> = { Ordonnance: "Ordonnances", Courrier: "Courriers", Consultation: "Consultations" };
 const URG_PILLS: { id: "tous" | "jour" | "semaine" | "info"; urg: Urgence[] }[] = [{ id: "tous", urg: ["immediate", "jour", "semaine", "aucune"] }, { id: "jour", urg: ["immediate", "jour"] }, { id: "semaine", urg: ["semaine"] }, { id: "info", urg: ["aucune"] }];
 
-/** Un document ouvert : à gauche ses voisins (du dossier ou de la boîte d'où l'on vient), à droite la lecture de Locus, le document, sa provenance. */
+/* La demande part en français : le contexte de soins est français. */
+const LIRE = "Lis ce document : résumé en deux phrases, points d'attention, et l'urgence (immédiat, aujourd'hui, cette semaine, pour info). Ne propose aucune action.";
+
+/** Un document ouvert : à gauche ses voisins (du dossier ou de la boîte d'où l'on vient), à droite le document, sa provenance, et sa lecture par Locus à la demande (live, jamais pré-écrite). */
 export function DocumentView(props: { v: PatientView; doc: DocView; boite?: InboxRow[]; boiteKind?: InboxKind; praticien: { initials: string } }) {
   return <React.Suspense fallback={null}><Inner {...props} /></React.Suspense>;
 }
@@ -104,14 +106,7 @@ function Inner({ v, doc, boite, boiteKind, praticien }: { v: PatientView; doc: D
             <h1 className="m-0 text-[22px] font-medium leading-[1.3] tracking-[-.02em] sm:text-2xl">{doc.titre}</h1>
           </div>
 
-          {doc.lecture && (
-            <section className="flex flex-col gap-2 rounded-[14px] border border-agent-line bg-agent-soft-2 px-5 py-4">
-              <div className="flex items-center gap-2.5"><span className="k" style={{ color: "var(--agent)" }}>{d.doc.reading}</span><span className="flex-1" /><span className={cn("text-xs", URG_CLS[doc.lecture.urgence])}>{d.doc.urg[doc.lecture.urgence]}</span></div>
-              <p className="m-0 text-[15px] leading-relaxed">{doc.lecture.resume}</p>
-              {doc.lecture.points.length > 0 && <ul className="m-0 flex list-disc flex-col gap-1 pl-5 text-sm text-ink-2">{doc.lecture.points.map((p, i) => <li key={i}>{p}</li>)}</ul>}
-              <span className="d text-[11px]">{d.doc.confidence(Math.round(doc.lecture.confidence * 100))}{d.answerInFrench ? ` · ${d.answerInFrench}` : ""}</span>
-            </section>
-          )}
+          <div><button type="button" onClick={() => composer.run({ texte: LIRE, patientId: v.ref.id, ecran: "document", docId: doc.id })} disabled={composer.state.busy} className="flex min-h-10 items-center gap-2 rounded-full border border-line bg-paper px-3.5 py-[8px] text-sm text-ink hover:bg-hover disabled:opacity-40"><span className="h-2 w-2 rounded-full" style={{ background: "var(--agent)" }} />{d.doc.read}</button></div>
 
           {doc.lignes && (
             <section className="card overflow-hidden">
@@ -152,7 +147,7 @@ function Inner({ v, doc, boite, boiteKind, praticien }: { v: PatientView; doc: D
           </nav>
         </main>
       </div>
-      <Omni placeholder={d.doc.placeholder} maxWidth={1180 - 48} onSubmit={(t) => composer.run({ texte: t, patientId: v.ref.id, ecran: "document", docId: doc.id })} suggestions={[{ k: d.keys.fiche, t: "Ajoute à la fiche ce que ce document révèle (allergie, antécédent)" }, { k: d.keys.courrier, t: "Transmets ce document au spécialiste avec un mot" }, { k: d.keys.mail, t: `Explique ce résultat à ${v.ref.prenom} en termes simples` }, { k: d.keys.comparer, t: "Compare avec le précédent, en tableau" }]}>{composer.open && <ComposeCard state={composer.state} onClose={composer.reset} />}</Omni>
+      <Omni placeholder={d.doc.placeholder} maxWidth={1180 - 48} onSubmit={(t) => composer.run({ texte: t, patientId: v.ref.id, ecran: "document", docId: doc.id })} suggestions={[{ k: d.keys.fiche, t: "Ajoute à la fiche ce que ce document révèle (allergie, antécédent)" }, { k: d.keys.courrier, t: "Transmets ce document au spécialiste avec un mot" }, { k: d.keys.mail, t: `Explique ce résultat à ${v.ref.prenom} en termes simples` }, { k: d.keys.comparer, t: "Compare avec le précédent, en tableau" }]}>{composer.open && <ComposeCard state={composer.state} onClose={composer.reset} onRetry={(i) => composer.run(i)} />}</Omni>
     </div>
   );
 }
