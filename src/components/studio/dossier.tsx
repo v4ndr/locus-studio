@@ -2,39 +2,36 @@
 import * as React from "react";
 import { useRouter } from "./nav";
 import Link from "./nav";
-import type { PatientView, Chip, NoteAction } from "@/studio/types";
-import { Header, Omni, ResultCard, CtaLink, I, Rich, useT } from "./chrome";
+import type { PatientView, NoteAction } from "@/studio/types";
+import { Header, Omni, CtaLink, I, Rich, useT } from "./chrome";
 import type { StudioDict } from "@/i18n/studio";
 import { ComposeCard, useCompose } from "./compose";
 import { NotesSession, BrouillonBanner } from "./note";
-import { useRencontre } from "@/store/rencontre";
 import { cn } from "@/lib/cn";
 
 /** L'overview du dossier : une phrase, trois choses à noter, et tout le reste à un clic. */
 export function DossierView({ v, praticien }: { v: PatientView; praticien: { initials: string } }) {
   const router = useRouter();
   const { t, L } = useT();
-  const { me, dispatch } = useRencontre(v.ref.id);
   const [open, setOpen] = React.useState(false);
-  const [done, setDone] = React.useState<string | null>(null);
-  const chip = v.chips.find((c) => c.id === me.cmd);
   const composer = useCompose();
+  /** Un raccourci n'est qu'une demande toute écrite : il part au composer, live, comme une frappe dans ⌘K. */
+  const lancer = (texte: string) => composer.run({ texte, patientId: v.ref.id, ecran: "dossier" });
 
-  /** Un clic sur « à noter » : le document source, le raccourci préparé, la question à Locus, ou la fiche. */
+  /** Un clic sur « à noter » : le document source, le raccourci, la question à Locus, ou la fiche. */
   function act(a: NoteAction) {
     switch (a.type) {
       case "doc": router.push(a.href); return;
-      case "cmd": dispatch({ type: "cmd", patientId: v.ref.id, cmd: a.chipId }); return;
-      case "ask": dispatch({ type: "cmd", patientId: v.ref.id, cmd: null }); composer.run({ texte: a.texte, patientId: v.ref.id, ecran: "dossier" }); return;
+      case "cmd": { const c = v.chips.find((x) => x.id === a.chipId); if (c) lancer(c.label); return; }
+      case "ask": lancer(a.texte); return;
       case "fiche": setOpen(true); setTimeout(() => document.getElementById(`fiche-${a.section}`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 50); return;
     }
   }
 
-  /** Tout ce qu'on tape dans ⌘K part au composer : un plan d'actions revient. Un raccourci déjà préparé prend le pas s'il correspond mot pour mot. */
+  /** Tout ce qu'on tape dans ⌘K part au composer : un plan d'actions revient. */
   function ask(text: string) {
     if (/^(consult|rencontre)/i.test(text.trim())) { router.push(`/p/${v.ref.id}/rencontre`); return; }
-    dispatch({ type: "cmd", patientId: v.ref.id, cmd: null });
-    composer.run({ texte: text, patientId: v.ref.id, ecran: "dossier" });
+    lancer(text);
   }
 
   return (
@@ -42,7 +39,6 @@ export function DossierView({ v, praticien }: { v: PatientView; praticien: { ini
       <Header praticien={praticien} patient={{ id: v.ref.id, nom: v.ref.nom, initials: v.ref.initials, meta: v.meta }} />
       <main className="mx-auto flex w-full max-w-[720px] flex-1 flex-col gap-7 px-4 pb-8 pt-10 sm:px-6 sm:pt-16">
         <BrouillonBanner patientId={v.ref.id} href={`/p/${v.ref.id}/rencontre`} />
-        {me.signed && <div className="flex items-center gap-3 rounded-[12px] border border-line bg-paper px-4 py-3 text-sm"><I.check size={14} color="var(--ok)" w={2.5} /><span className="flex-1">{t.dossier.closed(v.rdv?.heure)}</span><button type="button" onClick={() => dispatch({ type: "reopen", patientId: v.ref.id })} className="min-h-9 text-xs text-dim-2 hover:text-ink">{t.dossier.reopen}</button></div>}
         <div className="flex flex-col gap-3">
           <span className="k px-px">{t.dossier.overview}{v.rdv ? ` · ${v.rdv.heure} · ${v.rdv.motif}` : ""}</span>
           <p className="m-0 text-[21px] leading-[1.45] tracking-[-.01em] sm:text-2xl"><Rich text={v.prose} /></p>
@@ -87,10 +83,8 @@ export function DossierView({ v, praticien }: { v: PatientView; praticien: { ini
         )}
         <NotesSession patientId={v.ref.id} patient={{ nom: v.ref.nom, naissance: v.ref.naissance, age: v.ref.age, sexe: v.meta.endsWith("F") ? "F" : "M" }} />
       </main>
-      <Omni placeholder={t.dossier.placeholder} onSubmit={ask} suggestions={exemples(v, t)} chips={v.chips.slice(0, 3).map((c) => ({ id: c.id, label: c.label, onClick: () => { composer.reset(); dispatch({ type: "cmd", patientId: v.ref.id, cmd: c.id }); } }))} cta={<CtaLink href={`/p/${v.ref.id}/rencontre`}>{t.dossier.consult}</CtaLink>}>
-        {chip && !done && <ResultCard tool={L(chip.tool)} title={chip.title} body={chip.body.replace(/\[\d+\]/g, "")} cta={L(chip.cta)} onCta={() => { setDone(chip.id); setTimeout(() => { dispatch({ type: "cmd", patientId: v.ref.id, cmd: null }); setDone(null); }, 1400); }} onClose={() => dispatch({ type: "cmd", patientId: v.ref.id, cmd: null })} />}
-        {chip && done === chip.id && <div className="flex items-center gap-2.5 rounded-[14px] border border-line bg-paper px-[18px] py-3.5 text-sm text-ok"><I.check />{chip.cta === "Envoyer" ? t.dossier.doneSent : chip.cta === "Réserver" ? t.dossier.doneBooked : t.dossier.doneSigned}</div>}
-        {composer.open && <ComposeCard state={composer.state} onClose={composer.reset} />}
+      <Omni placeholder={t.dossier.placeholder} onSubmit={ask} suggestions={exemples(v, t)} chips={v.chips.slice(0, 3).map((c) => ({ id: c.id, label: c.label, onClick: () => lancer(c.label) }))} cta={<CtaLink href={`/p/${v.ref.id}/rencontre`}>{t.dossier.consult}</CtaLink>}>
+        {composer.open && <ComposeCard state={composer.state} onClose={composer.reset} onRetry={(i) => composer.run(i)} />}
       </Omni>
     </div>
   );

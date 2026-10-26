@@ -126,7 +126,9 @@ export function Home({ data }: { data: HomeData }) {
                 <Pill href="/inbox/courriers" label={t.home.letters} n={data.courriersNonLus} />
                 <Pill href="/inbox/bio" label={t.home.labs} n={data.bioNonLues} />
                 <Pill href="/inbox/messages" label={t.home.messages} n={data.messagesNonLus} />
-                {/* Cabinet local et création de dossier : outils de test, masqués du sandbox public (réservés aux comptes connectés, PR Accès). */}
+                {/* Tout utilisateur est connecté : le cabinet local et la création de dossier sont ouverts à tous. */}
+                <Pill href="/d" label={t.local.cabinet} n={cab.patients.length} />
+                <Link href="/nouveau" className="flex items-center gap-1.5 rounded-lg border border-dashed border-line px-2.5 py-1.5 text-xs text-ink-2 hover:bg-hover hover:text-ink"><I.plus /> {t.local.newPatient}</Link>
               </div>
               <BrouillonsAccueil />
               <section className="flex flex-col gap-1">

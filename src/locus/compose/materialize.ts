@@ -3,7 +3,7 @@ import type { ComposeAction, ComposeKind } from "./contract";
 /**
  * De la charge d'une action (ce que l'outil a reçu, ce que le formulaire
  * modifie) à sa ligne dans le plan : code, titre, sous-titre, destination,
- * champs. Partagé serveur / navigateur : le serveur s'en sert quand Claude
+ * champs. Partagé serveur / navigateur : le serveur s'en sert quand le modèle
  * appelle un outil, le navigateur quand le médecin corrige une action en
  * place — le même rendu, forcément.
  */

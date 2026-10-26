@@ -92,7 +92,8 @@ export function buildContext(input: ComposeInput): { contexte: string; patientEh
   if (input.ecran === "document" && input.patientId && input.docId) {
     const doc = documentView(input.patientId, input.docId);
     if (doc) {
-      const body = [doc.lecture ? `Lecture de Locus : ${doc.lecture.resume}${doc.lecture.points.length ? " Points : " + doc.lecture.points.join(" ; ") : ""}` : "", doc.lignes ? doc.lignes.map((l) => `- ${l.k} : ${l.v ?? ""}${l.flag && l.flag !== "normal" ? ` (${l.flag})` : ""}${l.ref ? ` [norme ${l.ref}]` : ""}${l.precedent ? ` [précédent ${l.precedent}]` : ""}`).join("\n") : "", doc.note ? doc.note.map((n) => `${n.k} : ${n.v}`).join("\n") : "", doc.corps ?? ""].filter(Boolean).join("\n");
+      // Le document brut seulement : la lecture, c'est le modèle qui la fait, ici et maintenant.
+      const body = [doc.lignes ? doc.lignes.map((l) => `- ${l.k} : ${l.v ?? ""}${l.flag && l.flag !== "normal" ? ` (${l.flag})` : ""}${l.ref ? ` [norme ${l.ref}]` : ""}${l.precedent ? ` [précédent ${l.precedent}]` : ""}`).join("\n") : "", doc.note ? doc.note.map((n) => `${n.k} : ${n.v}`).join("\n") : "", doc.corps ?? ""].filter(Boolean).join("\n");
       lines.push(`## Document ouvert\nid: ${doc.id} · ${doc.type} · ${doc.date} · ${doc.titre} · ${doc.de}\n${body}`);
     }
   }
@@ -107,6 +108,9 @@ export function buildContext(input: ComposeInput): { contexte: string; patientEh
   if (input.ecran === "inbox" && input.boite) {
     const box = inboxView(input.boite);
     lines.push(`## Boîte « ${input.boite} » (non lus d'abord ; patientId · de · objet · urgence · résumé)\n${box.rows.slice(0, 14).map((r) => `- ${r.id} · ${r.patient.id} · ${r.patient.nom} · ${r.de} · ${r.titre} · ${r.urgence}${r.nonLu ? " · non lu" : ""}${r.resume ? ` · ${r.resume}` : ""}`).join("\n")}`);
+    // Le message ouvert, en entier : c'est à lui qu'une réponse répond.
+    const ouvert = input.docId ? box.rows.find((r) => r.id === input.docId) : undefined;
+    if (ouvert?.corps) lines.push(`## Message ouvert\nid: ${ouvert.id} · de ${ouvert.de} · patient ${ouvert.patient.id}\n${ouvert.corps}`);
   }
 
   lines.push(`## Écran\n${input.ecran === "note" ? "note de consultation (le médecin vient de la saisir ; décline-la en actions)" : input.ecran}`);

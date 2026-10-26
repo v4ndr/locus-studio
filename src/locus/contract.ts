@@ -179,8 +179,8 @@ export interface PublicRetrieve {
   chunks: RetrieveChunk[];
   rcp: RetrieveRcp[];
   drugs: { dci: string; atc?: string[]; reference?: { cis: string; label: string } }[];
-  /** Mode de production : vrai backend, ou simulation locale. */
-  via: "locus-core" | "simulation";
+  /** Toujours le vrai backend : Studio n'a plus de réponse simulée. */
+  via: "locus-core";
 }
 
 export type StudioStreamEvent =

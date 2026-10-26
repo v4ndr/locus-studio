@@ -56,7 +56,7 @@ function Inner({ v, praticien }: { v: PatientView; praticien: { initials: string
           {rows.length === 0 && <div className="px-4 py-3 text-sm text-dim-2">{d.docs.none}</div>}
         </div>
       </main>
-      <Omni placeholder={d.docs.omni} onSubmit={(t) => composer.run({ texte: t, patientId: v.ref.id, ecran: "documents" })} suggestions={[{ k: d.keys.chercher, t: "Toutes les TSH depuis 2020, en courbe" }, { k: d.keys.envoyer, t: "Renvoie le compte rendu du scanner au kiné" }, { k: d.keys.resumer, t: "Résume les courriers du cardiologue en trois lignes" }, { k: d.keys.dmp, t: "Partage la dernière ordonnance sur Mon espace santé" }]}>{composer.open && <ComposeCard state={composer.state} onClose={composer.reset} />}</Omni>
+      <Omni placeholder={d.docs.omni} onSubmit={(t) => composer.run({ texte: t, patientId: v.ref.id, ecran: "documents" })} suggestions={[{ k: d.keys.chercher, t: "Toutes les TSH depuis 2020, en courbe" }, { k: d.keys.envoyer, t: "Renvoie le compte rendu du scanner au kiné" }, { k: d.keys.resumer, t: "Résume les courriers du cardiologue en trois lignes" }, { k: d.keys.dmp, t: "Partage la dernière ordonnance sur Mon espace santé" }]}>{composer.open && <ComposeCard state={composer.state} onClose={composer.reset} onRetry={(i) => composer.run(i)} />}</Omni>
     </div>
   );
 }

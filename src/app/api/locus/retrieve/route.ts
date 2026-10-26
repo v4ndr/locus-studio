@@ -12,7 +12,7 @@ export const maxDuration = 60;
 /**
  * Le BFF du studio vers locus-core. Le navigateur envoie une question et un
  * identifiant de patient ; le serveur projette le dossier en `patient_ehr`,
- * interroge core (ou la simulation) et rediffuse les étapes. Les règles
+ * interroge core et rediffuse les étapes. Les règles
  * (MKU) sont retirées avant le navigateur.
  */
 export async function POST(req: Request) {
@@ -27,5 +27,5 @@ export async function POST(req: Request) {
   const history = Array.isArray(body.history) ? body.history.slice(-10) : undefined;
   const sources = Array.isArray(body.sources) ? body.sources.filter((s): s is string => typeof s === "string").slice(0, 20) : undefined;
   const mode = body.mode === "approfondi" ? "approfondi" : "rapide";
-  return ndjsonResponse(retrieveStream({ query, patient_ehr, history, mode, sources }, g.replay ? { mode: "simulation", url: "" } : undefined));
+  return ndjsonResponse(retrieveStream({ query, patient_ehr, history, mode, sources }));
 }

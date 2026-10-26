@@ -2,21 +2,26 @@ import "server-only";
 import { userAuthHeaders, coreConfig, paths, type CoreConfig } from "./config";
 import { readNdjson } from "./ndjson";
 import { toPublic, type LogicComputeRequest, type LogicComputeResponse, type RetrieveRequest, type RetrieveSpecialite, type RetrieveRubric, type StreamEvent, type StudioStreamEvent, type RetrieveSource } from "./contract";
-import { simulateRetrieve, simulateSpecialite, simulateLogic } from "./simulation";
 
 /**
  * Le client locus-core du studio. Toujours côté serveur : la clé `lsk_` ne
- * franchit jamais le navigateur. En l'absence de backend, chaque appel a
- * son équivalent simulé — le produit n'a pas de mode « cassé ».
+ * franchit jamais le navigateur. Pas de réponse de repli : sans core, ou
+ * core en panne, l'appel échoue et l'écran le dit, avec de quoi réessayer.
  */
 
 const STUDIO_VERSION = "0.1.0";
 /** Le seul message d'erreur qui sort : ni URL de core, ni flag, ni détail de pipeline. */
-const INDISPONIBLE = "Locus est momentanément indisponible. Réessayez.";
+export const INDISPONIBLE = "Locus est momentanément indisponible. Réessayez.";
+
+/** Core n'a pas répondu (absent, injoignable, en erreur) : les routes en font un 503 lisible. */
+export class CoreIndisponible extends Error {
+  constructor(detail = INDISPONIBLE) { super(detail); this.name = "CoreIndisponible"; }
+}
 
 export async function* retrieveStream(req: RetrieveRequest, cfg: CoreConfig = coreConfig()): AsyncGenerator<StudioStreamEvent> {
-  if (cfg.mode === "simulation") {
-    yield* simulateRetrieve(req);
+  if (cfg.mode === "absent") {
+    console.error("[locus] LOCUS_CORE_URL absent : aucun core configuré");
+    yield { step: "error", detail: INDISPONIBLE };
     return;
   }
   const p = paths(cfg);
@@ -79,36 +84,42 @@ export async function* retrieveStream(req: RetrieveRequest, cfg: CoreConfig = co
   }
 }
 
+/** La fiche d'une spécialité ; `null` si core ne la connaît pas (404). Toute autre défaillance lève `CoreIndisponible`. */
 export async function specialite(cis: string, cfg: CoreConfig = coreConfig()): Promise<RetrieveSpecialite | null> {
-  if (cfg.mode === "simulation") return simulateSpecialite(cis);
-  const res = await fetch(cfg.url + paths(cfg).specialite(cis), { headers: await userAuthHeaders(cfg), redirect: "manual" }).catch(() => null);
-  if (!res || !res.ok) return simulateSpecialite(cis);
+  if (cfg.mode === "absent") throw new CoreIndisponible();
+  const res = await fetch(cfg.url + paths(cfg).specialite(cis), { headers: await userAuthHeaders(cfg), redirect: "manual", signal: AbortSignal.timeout(15_000) }).catch((e) => { console.error("[locus] spécialité injoignable", e); return null; });
+  if (res?.status === 404) return null;
+  if (!res || !res.ok) { if (res) console.error("[locus] spécialité", res.status); throw new CoreIndisponible(); }
   return (await res.json()) as RetrieveSpecialite;
 }
 
 export async function rubric(id: string, cfg: CoreConfig = coreConfig()): Promise<RetrieveRubric | null> {
-  if (cfg.mode === "simulation") return null;
-  const res = await fetch(cfg.url + paths(cfg).rubric(id), { headers: await userAuthHeaders(cfg), redirect: "manual" }).catch(() => null);
-  if (!res || !res.ok) return null;
+  if (cfg.mode === "absent") throw new CoreIndisponible();
+  const res = await fetch(cfg.url + paths(cfg).rubric(id), { headers: await userAuthHeaders(cfg), redirect: "manual", signal: AbortSignal.timeout(15_000) }).catch(() => null);
+  if (res?.status === 404) return null;
+  if (!res || !res.ok) throw new CoreIndisponible();
   return (await res.json()) as RetrieveRubric;
 }
 
+/** Les scores et arbres de core : déterministes, sans modèle, mais servis par `/v2/logic/compute` seulement (clé requise). */
 export async function logicCompute(req: LogicComputeRequest, cfg: CoreConfig = coreConfig()): Promise<LogicComputeResponse> {
-  if (cfg.mode !== "core") return simulateLogic(req);
-  const res = await fetch(cfg.url + paths(cfg).logic, { method: "POST", headers: { "Content-Type": "application/json", ...(await userAuthHeaders(cfg)) }, body: JSON.stringify(req) }).catch(() => null);
-  if (!res || !res.ok) return simulateLogic(req);
+  if (cfg.mode !== "core") { console.error("[locus] logic : LOCUS_API_KEY requise"); throw new CoreIndisponible(); }
+  const res = await fetch(cfg.url + paths(cfg).logic, { method: "POST", headers: { "Content-Type": "application/json", ...(await userAuthHeaders(cfg)) }, body: JSON.stringify(req), signal: AbortSignal.timeout(20_000) }).catch((e) => { console.error("[locus] logic injoignable", e); return null; });
+  if (!res || !res.ok) { if (res) console.error("[locus] logic", res.status, (await res.text().catch(() => "")).slice(0, 300)); throw new CoreIndisponible(); }
   return (await res.json()) as LogicComputeResponse;
 }
 
+/** Les sources indexées par core ; vide sans clé (la Sandbox keyless ne les expose pas) ou si core ne répond pas. */
 export async function sources(cfg: CoreConfig = coreConfig()): Promise<RetrieveSource[]> {
-  if (cfg.mode !== "core") return [{ id: "HAS", name: "Haute Autorité de Santé", docs: 0 }, { id: "ANSM", name: "ANSM", docs: 0 }, { id: "SPF", name: "Santé publique France", docs: 0 }];
-  const res = await fetch(cfg.url + paths(cfg).sources, { headers: await userAuthHeaders(cfg) }).catch(() => null);
+  if (cfg.mode !== "core") return [];
+  const res = await fetch(cfg.url + paths(cfg).sources, { headers: await userAuthHeaders(cfg), signal: AbortSignal.timeout(4000) }).catch(() => null);
   if (!res || !res.ok) return [];
   return (await res.json()) as RetrieveSource[];
 }
 
+/** Vrai seulement si core a pris le vote en compte. */
 export async function feedback(traceId: string, vote: -1 | 0 | 1, note?: string, cfg: CoreConfig = coreConfig()): Promise<boolean> {
-  if (cfg.mode !== "core" || !traceId) return true;
+  if (cfg.mode !== "core" || !traceId) return false;
   const res = await fetch(cfg.url + paths(cfg).feedback, { method: "POST", headers: { "Content-Type": "application/json", ...(await userAuthHeaders(cfg)) }, body: JSON.stringify({ trace_id: traceId, vote, note }) }).catch(() => null);
   return !!res && res.ok;
 }
