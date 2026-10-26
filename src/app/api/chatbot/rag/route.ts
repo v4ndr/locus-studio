@@ -4,7 +4,8 @@ import { langOf, lireCorps, MAX_QUESTION, ndjson, TROP_GROS, une } from "../_lib
 import { ragStream } from "../_lib/rag";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
+// Chargement de l'index au premier appel d'une instance, plus la génération.
+export const maxDuration = 120;
 
 /**
  * Colonne « RAG simple » du chatbot sourcé : index HAS, top-5, génération

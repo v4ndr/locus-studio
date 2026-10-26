@@ -39,7 +39,8 @@ async function lireIndex(): Promise<IndexFile | null> {
   const url = process.env.CHATBOT_INDEX_URL?.trim();
   if (url) {
     try {
-      const r = await fetch(url, { cache: "no-store", signal: AbortSignal.timeout(15_000) });
+      // L'index des RBP HAS pèse ~100 Mo (~45 Mo compressé) : le premier appel d'une instance le télécharge.
+      const r = await fetch(url, { cache: "no-store", signal: AbortSignal.timeout(45_000) });
       if (r.ok) return (await r.json()) as IndexFile;
       console.error("[chatbot/rag] index distant", r.status);
     } catch (e) { console.error("[chatbot/rag] index distant", e); }
