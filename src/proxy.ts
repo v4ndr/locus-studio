@@ -74,6 +74,6 @@ export function proxy(req: NextRequest, ev: NextFetchEvent) {
 }
 
 export const config = {
-  // Les pages (ni les fichiers de Next, ni les fichiers statiques avec une extension), et l'API pour la session Clerk.
-  matcher: ["/((?!api|_next|.*\\..*).*)", "/api/(.*)"],
+  // Les pages (ni les fichiers de Next, ni les fichiers statiques avec une extension, ni le relais PostHog `/ingest`), et l'API pour la session Clerk.
+  matcher: ["/((?!api|_next|ingest|.*\\..*).*)", "/api/(.*)"],
 };

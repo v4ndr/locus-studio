@@ -1,6 +1,7 @@
 import "server-only";
 import { createHash, timingSafeEqual } from "node:crypto";
 import { clerkEnabled, getStudioUserId } from "./user";
+import { captureServer } from "./analytics";
 
 /**
  * Le garde des routes live (`/api/compose`, `/api/note`, `/api/locus/*`,
@@ -146,30 +147,48 @@ export async function hit(bucket: string, id: string, windowS = WINDOW_S): Promi
 const json = (body: unknown, status: number, headers: Record<string, string> = {}) =>
   Response.json(body, { status, headers: { "Cache-Control": "no-store", ...headers } });
 
+/** L'outil appelé, lu dans le chemin : `/api/chatbot/rag` → `chatbot/rag`. Les segments dynamiques (`[brick]`, `[cis]`) restent tels quels. */
+export function outilDe(req: Request): string {
+  try { return new URL(req.url).pathname.replace(/^\/api\//, ""); } catch { return "inconnu"; }
+}
+
 /** À appeler en tête de chaque route live. `ok: false` → renvoyer `response` tel quel. */
 export async function guardLive(req: Request): Promise<GuardResult> {
   if (hasLiveToken(req)) return { ok: true };
   // La session (cookie Clerk) ne compte que pour une requête de ce site : une page tierce ne dépense pas le quota d'un compte.
   const userId = sameOrigin(req) ? await getStudioUserId() : null;
+  const res = await decider(req, userId);
+  // Chaque appel live, admis ou refusé, est compté (PostHog), sous le compte quand il y en a un.
+  const issue = res.ok ? "ok" : res.code;
+  captureServer("studio_live_call", userId ? `studio:${userId}` : "studio:visiteur", {
+    outil: outilDe(req),
+    issue,
+    connecte: !!userId,
+    ...(userId ? {} : { $process_person_profile: false }),
+  });
+  return res.ok ? { ok: true } : { ok: false, response: res.response };
+}
+
+async function decider(req: Request, userId: string | null): Promise<{ ok: true } | { ok: false; code: string; response: Response }> {
   if (userId) {
     const max = intEnv("STUDIO_USER_QUOTA_PER_DAY", 300);
     if (rateLimited() && max > 0) {
       const { n, resetS } = await hit("user", userId, 86_400);
       if (n > max) {
-        return { ok: false, response: json({ error: "Quota du jour atteint pour ce compte. Il se renouvelle demain ; pour l'augmenter, écrivez à l'équipe Locus.", code: "quota_exceeded" }, 429, { "Retry-After": String(resetS) }) };
+        return { ok: false, code: "quota_exceeded", response: json({ error: "Quota du jour atteint pour ce compte. Il se renouvelle demain ; pour l'augmenter, écrivez à l'équipe Locus.", code: "quota_exceeded" }, 429, { "Retry-After": String(resetS) }) };
       }
     }
     return { ok: true };
   }
   if (liveLocked()) {
-    return { ok: false, response: json({ error: "Connectez-vous pour utiliser Studio.", code: AUTH_REQUIRED }, 401) };
+    return { ok: false, code: AUTH_REQUIRED, response: json({ error: "Connectez-vous pour utiliser Studio.", code: AUTH_REQUIRED }, 401) };
   }
   if (rateLimited()) {
     const max = intEnv("STUDIO_RATE_LIMIT_PER_HOUR", 20);
     if (max > 0) {
       const { n, resetS } = await hit("live", clientIp(req));
       if (n > max) {
-        return { ok: false, response: json({ error: "Trop de demandes depuis cette adresse. Réessayez dans une heure.", code: "rate_limited" }, 429, { "Retry-After": String(resetS) }) };
+        return { ok: false, code: "rate_limited", response: json({ error: "Trop de demandes depuis cette adresse. Réessayez dans une heure.", code: "rate_limited" }, 429, { "Retry-After": String(resetS) }) };
       }
     }
   }

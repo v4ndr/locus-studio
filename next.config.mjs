@@ -39,6 +39,14 @@ const nextConfig = {
   poweredByHeader: false,
   // L'index du RAG simple du chatbot, lu depuis le disque par la route (s'il est dans le dépôt).
   outputFileTracingIncludes: { "/api/chatbot/rag": ["./src/data/chatbot/*.json"] },
+  // PostHog par le même domaine (`/ingest`) : la CSP reste sur 'self', et les bloqueurs ne coupent pas la mesure.
+  skipTrailingSlashRedirect: true,
+  async rewrites() {
+    return [
+      { source: "/ingest/static/:path*", destination: "https://eu-assets.i.posthog.com/static/:path*" },
+      { source: "/ingest/:path*", destination: "https://eu.i.posthog.com/:path*" },
+    ];
+  },
   async headers() {
     return [{
       source: "/(.*)",
