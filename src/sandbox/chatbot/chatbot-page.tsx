@@ -1,6 +1,6 @@
 "use client";
 import * as React from "react";
-import { ArrowUp, Code, RotateCw, SlidersHorizontal } from "lucide-react";
+import { ArrowUp, Code, RotateCw } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { chatbot, type Lang } from "@/i18n";
 import { TOOL_ICONS } from "@/components/shell/tool-icons";
@@ -8,16 +8,21 @@ import { PageHead, PageInner } from "@/components/shell/page-inner";
 import { Button } from "@/components/ui/button";
 import { Md } from "@/components/md";
 import { SUGGESTIONS } from "@/data/chatbot/suggestions";
-import type { ChatEvent, ChatSource, FormQuestion } from "./events";
+import type { ChatEvent, ChatSource, Confiance, FormQuestion } from "./events";
 import { APP_SURFACE, APP_VERSION, coreParams, DEFAULT_SETTINGS, locusOf, type LocusSettings, type Settings } from "./request";
 import { chatStream, formatCourt, sansRenvois, type StreamErrors } from "./stream";
-import { AskChips, Attente, ColumnHead, ErrorNote, Panel, SettingsPanel, SourceList, StatusPill, Steps, type Phase } from "./parts";
+import { AskChips, Attente, ColumnHead, ConfidenceBar, ErrorNote, Panel, SettingsPanel, SourceList, StatusPill, Steps, type Phase } from "./parts";
 
 /**
  * L'écran « Chatbot sourcé » : la question en haut, une fois ; dessous, deux
  * colonnes de même largeur (RAG simple, Locus), en onglets sur mobile ; le
- * composeur fixé en bas, hors des réponses. Les réglages Locus et le panneau
- * « Appel API » s'ouvrent depuis l'en-tête.
+ * composeur fixé en bas, hors des réponses. Les réglages Locus sont en
+ * évidence au-dessus de la question ; le panneau « Appel API » s'ouvre
+ * depuis l'en-tête.
+ *
+ * Le contraste est le propos de l'écran : le RAG simple lit un seul corpus et
+ * ne dit rien de sa fiabilité ; Locus répond comme l'app B2Pro, avec le degré
+ * de confiance et toutes les sources de tous les éditeurs de son périmètre.
  *
  * Tout part en direct : une question, suggérée ou libre, appelle
  * `/api/chatbot/rag` et `/api/chatbot/locus` en parallèle. Chaque colonne
@@ -27,6 +32,9 @@ import { AskChips, Attente, ColumnHead, ErrorNote, Panel, SettingsPanel, SourceL
 
 interface ColState { phase: Phase; text: string; sources: ChatSource[]; error?: string }
 interface LocusState extends ColState {
+  confidence?: Confiance;
+  /** Ce sur quoi la réponse reste conditionnelle (une question passée du formulaire). */
+  conditional: string[];
   steps: string[];
   form?: { token: string; questions: FormQuestion[] };
   answers: Record<number, string[] | "skip">;
@@ -36,7 +44,7 @@ interface LocusState extends ColState {
 }
 
 const ragInit = (): ColState => ({ phase: "waiting", text: "", sources: [] });
-const locusInit = (s: LocusSettings): LocusState => ({ phase: "waiting", text: "", sources: [], steps: [], answers: {}, round: 0, ranWith: s });
+const locusInit = (s: LocusSettings): LocusState => ({ phase: "waiting", text: "", sources: [], conditional: [], steps: [], answers: {}, round: 0, ranWith: s });
 const same = (a: LocusSettings, b: LocusSettings) => (Object.keys(a) as (keyof LocusSettings)[]).every((k) => a[k] === b[k]);
 /** Un flux fini sans réponse ni erreur (connexion coupée) : une erreur, pas un silence. */
 const inacheve = (p: Phase) => p === "waiting" || p === "streaming";
@@ -47,7 +55,7 @@ export function ChatbotPage({ lang }: { lang: Lang }) {
   const msg: StreamErrors = { error: t.live.error, quota: t.live.quota, rateLimited: t.live.rateLimited, auth: t.live.auth };
 
   const [settings, setSettings] = React.useState<Settings>(DEFAULT_SETTINGS);
-  const [panel, setPanel] = React.useState<"settings" | "api" | null>(null);
+  const [api, setApi] = React.useState(false);
   const [draft, setDraft] = React.useState("");
   const [question, setQuestion] = React.useState<string | null>(null);
   const [rag, setRag] = React.useState<ColState>({ phase: "idle", text: "", sources: [] });
@@ -84,7 +92,7 @@ export function ChatbotPage({ lang }: { lang: Lang }) {
         switch (ev.t) {
           case "step": return { ...loc, phase: "streaming", steps: [...loc.steps, ev.text] };
           case "form": return { ...loc, phase: "form", form: { token: ev.token, questions: ev.questions }, answers: {} };
-          case "answer": return { ...loc, phase: "done", form: undefined, text: ev.markdown, sources: ev.sources };
+          case "answer": return { ...loc, phase: "done", form: undefined, text: ev.markdown, sources: ev.sources, confidence: ev.confidence, conditional: ev.conditional ?? [] };
           case "error": return { ...loc, phase: "error", error: ev.detail };
           default: return loc;
         }
@@ -127,18 +135,18 @@ export function ChatbotPage({ lang }: { lang: Lang }) {
   /* ---------- Rendu ---------- */
 
   const mode = settings.deep ? t.locus.deep : t.locus.fast;
-  const locusMeta = [mode, [settings.has && "HAS", settings.ansm && "ANSM"].filter(Boolean).join(", ")].join(" · ");
+  const locusMeta = `${t.locus.meta} · ${mode}`;
+  const ragMd = settings.court ? formatCourt(rag.text) : rag.text;
   const changed = !!question && !same(locus.ranWith, locusOf(settings)) && !inacheve(locus.phase);
 
   return (
     <PageInner className="gap-5 pb-0 min-[821px]:pb-0">
       <PageHead title={<span className="flex items-center gap-2.5"><span className="grid size-8 shrink-0 place-items-center rounded-md border border-border bg-muted"><Icon size={16} aria-hidden="true" /></span>{t.meta.title}</span>}>
-        <Button aria-expanded={panel === "settings"} aria-controls="chatbot-reglages" onClick={() => setPanel((p) => (p === "settings" ? null : "settings"))} title={t.head.settings} className={cn("max-[820px]:w-9 max-[820px]:px-0", panel === "settings" && "bg-accent")}><SlidersHorizontal aria-hidden="true" /><span className="max-[820px]:sr-only">{t.head.settings}</span></Button>
-        <Button aria-pressed={panel === "api"} onClick={() => setPanel((p) => (p === "api" ? null : "api"))} title={t.head.api} className={cn("max-[820px]:w-9 max-[820px]:px-0", panel === "api" && "bg-accent")}><Code aria-hidden="true" /><span className="max-[820px]:sr-only">{t.head.api}</span></Button>
+        <Button aria-pressed={api} onClick={() => setApi((v) => !v)} title={t.head.api} className={cn("max-[820px]:w-9 max-[820px]:px-0", api && "bg-accent")}><Code aria-hidden="true" /><span className="max-[820px]:sr-only">{t.head.api}</span></Button>
       </PageHead>
 
-      {panel === "settings" && <SettingsPanel id="chatbot-reglages" lang={lang} s={settings} onChange={(patch) => setSettings((s) => ({ ...s, ...patch }))} onClose={() => setPanel(null)} />}
-      {panel === "api" && <ApiPanel lang={lang} question={question ?? t.dock.placeholder} settings={settings} round={locus.round} />}
+      <SettingsPanel id="chatbot-reglages" lang={lang} s={settings} onChange={(patch) => setSettings((s) => ({ ...s, ...patch }))} />
+      {api && <ApiPanel lang={lang} question={question ?? t.dock.placeholder} settings={settings} round={locus.round} />}
 
       <div className="flex min-h-[calc(100dvh-180px)] min-w-0 flex-col gap-4 min-[821px]:min-h-[calc(100dvh-112px)]">
         {/* La question, une seule fois, et les questions suggérées. */}
@@ -169,9 +177,10 @@ export function ChatbotPage({ lang }: { lang: Lang }) {
           <Column kind="rag" lang={lang} meta={t.rag.meta} phase={rag.phase} hidden={tab !== "rag"}>
             {rag.phase === "idle" ? <Idle text={t.rag.idle} />
               : rag.phase === "error" ? <ErrorNote detail={rag.error ?? t.live.error} retry={t.retry} onRetry={question ? () => void lancerRag(question) : undefined} />
-              : rag.text ? <Md text={settings.inline ? rag.text : sansRenvois(rag.text)} />
+              : rag.text ? <Md text={settings.inline ? ragMd : sansRenvois(ragMd)} />
               : <Attente />}
-            {rag.phase === "done" && <SourceList title={t.locus.sources} sources={rag.sources} numbered={settings.inline} />}
+            {rag.phase === "done" && <SourceList lang={lang} sources={rag.sources} numbered={settings.inline} />}
+            {rag.phase === "done" && <p className="m-0 text-xs leading-relaxed text-muted-foreground">{t.rag.corpus}</p>}
           </Column>
 
           <Column kind="locus" lang={lang} meta={locusMeta} phase={locus.phase} hidden={tab !== "locus"}>
@@ -245,19 +254,25 @@ function Idle({ text }: { text: string }) {
 
 function LocusBody({ lang, st, settings, onAnswer, onSubmit, onRetry }: { lang: Lang; st: LocusState; settings: Settings; onAnswer: (i: number, v: string[] | "skip") => void; onSubmit: (token: string, answers: LocusState["answers"]) => void; onRetry?: () => void }) {
   const t = chatbot[lang];
-  const visibles = (st.form?.questions ?? []).filter((q) => {
-    if (!q.dependsOn) return true;
-    const dep = st.answers[q.dependsOn.i];
-    return Array.isArray(dep) && dep.some((v) => q.dependsOn!.values.includes(v));
-  });
+  const questions = st.form?.questions ?? [];
+  // Une question dépendante est posée si l'une de ses branches est prise, et que la question dont elle dépend est elle-même posée.
+  const visible = (q: FormQuestion, prof = 0): boolean => !q.dependsOn || (prof < 10 && q.dependsOn.some((d) => {
+    const dep = st.answers[d.i];
+    const parent = questions.find((x) => x.i === d.i);
+    return Array.isArray(dep) && dep.some((v) => d.values.includes(v)) && !!parent && visible(parent, prof + 1);
+  }));
+  const visibles = questions.filter((q) => visible(q));
   const complet = !!st.form && visibles.every((q) => st.answers[q.i] !== undefined);
+  // Une question à cases peut recevoir plusieurs réponses : le formulaire attend alors qu'on le valide.
+  const aCases = visibles.some((q) => q.multiple);
+  const envoyer = () => {
+    if (!st.form) return;
+    onSubmit(st.form.token, Object.fromEntries(visibles.map((q) => [q.i, st.answers[q.i]])));
+  };
 
-  // Toutes les questions visibles ont une réponse : la reprise part d'elle-même.
+  // Toutes les questions visibles ont une réponse, et aucune n'est à cases : la reprise part d'elle-même.
   React.useEffect(() => {
-    if (complet && st.phase === "form" && st.form) {
-      const ans = Object.fromEntries(visibles.map((q) => [q.i, st.answers[q.i]]));
-      onSubmit(st.form.token, ans);
-    }
+    if (complet && !aCases && st.phase === "form") envoyer();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [complet]);
 
@@ -286,6 +301,7 @@ function LocusBody({ lang, st, settings, onAnswer, onSubmit, onRetry }: { lang: 
               />
             );
           })}
+          {aCases && st.phase === "form" && <Button size="sm" variant="primary" className="self-start" disabled={!complet} onClick={envoyer}>{t.locus.submit}</Button>}
         </Panel>
       )}
       {settings.reason && st.steps.length > 0 && <Steps title={t.locus.reasoning} steps={st.steps} folded={st.phase === "done"} />}
@@ -298,12 +314,19 @@ function LocusBody({ lang, st, settings, onAnswer, onSubmit, onRetry }: { lang: 
         )
         : md ? (
           <>
+            {st.confidence && <ConfidenceBar lang={lang} c={st.confidence} />}
             {t.live.frenchNote && <span className="self-start rounded-md border border-border bg-background px-2 py-0.5 text-xs font-medium text-muted-foreground">{t.live.frenchNote}</span>}
             <Md text={settings.inline ? md : sansRenvois(md)} />
+            {st.conditional.length > 0 && (
+              <div className="flex flex-col gap-1 rounded-[var(--radius)] border border-border bg-muted px-3.5 py-2.5 text-xs text-muted-foreground">
+                <span className="font-medium text-foreground">{t.locus.conditional}</span>
+                <span>{st.conditional.join(" · ")}</span>
+              </div>
+            )}
           </>
         )
         : <Attente />}
-      {st.phase === "done" && <SourceList title={t.locus.sources} sources={st.sources} numbered={settings.inline} />}
+      {st.phase === "done" && <SourceList lang={lang} sources={st.sources} numbered={settings.inline} />}
     </>
   );
 }

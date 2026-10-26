@@ -6,7 +6,8 @@ import { langOf, lireCorps, MAX_QUESTION, ndjson, TROP_GROS, une } from "../_lib
 import { locusStream } from "../_lib/locus";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
+// Comme B2Pro : le mode approfondi et la reprise d'un formulaire dépassent souvent la minute.
+export const maxDuration = 300;
 
 /**
  * Colonne Locus du chatbot sourcé. Corps : `{ lang, query, settings }`, ou
@@ -25,7 +26,7 @@ export async function POST(req: Request) {
 
   if (body.reprise && typeof body.reprise.token === "string" && Array.isArray(body.reprise.answers)) {
     const answers = (body.reprise.answers as FormAnswer[]).slice(0, 20).map((a) => ({ i: Number(a?.i), values: Array.isArray(a?.values) ? a.values.slice(0, 20).map(String) : [], skipped: !!a?.skipped }));
-    return ndjson(locusStream({ lang, reprise: { token: body.reprise.token, answers } }), lang);
+    return ndjson(locusStream({ lang, reprise: { token: body.reprise.token, answers }, signal: req.signal }), lang);
   }
 
   const query = typeof body.query === "string" ? body.query.trim() : "";
@@ -34,7 +35,6 @@ export async function POST(req: Request) {
   const reel = donneesReelles(query);
   if (reel) return ndjson(une({ t: "error", detail: reel, code: "donnees_reelles" }), lang);
   const s = body.settings ?? {};
-  const settings: LocusSettings = { elic: !!s.elic, desamb: !!s.desamb, deep: !!s.deep, has: s.has !== false, ansm: s.ansm !== false };
-  if (!settings.has && !settings.ansm) settings.has = true;
-  return ndjson(locusStream({ lang, query, settings }), lang);
+  const settings: LocusSettings = { elic: !!s.elic, desamb: !!s.desamb, deep: !!s.deep };
+  return ndjson(locusStream({ lang, query, settings, signal: req.signal }), lang);
 }
