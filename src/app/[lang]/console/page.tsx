@@ -6,7 +6,7 @@ import { HomePage } from "@/sandbox/home/home-page";
 export async function generateMetadata({ params }: { params: Promise<{ lang: string }> }): Promise<Metadata> {
   const { lang } = await params;
   const l: Lang = isLang(lang) ? lang : "fr";
-  return { title: { absolute: home[l].meta.title }, description: home[l].meta.description, alternates: alternates(l, "") };
+  return { title: { absolute: home[l].meta.title }, description: home[l].meta.description, alternates: alternates(l, "/console") };
 }
 
 export default async function Page({ params }: { params: Promise<{ lang: string }> }) {
