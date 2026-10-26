@@ -1,7 +1,7 @@
 "use client";
 import * as React from "react";
 import { NOW_ISO } from "@/data/clock";
-import type { ComposePlan, ComposeAction } from "@/locus/compose/contract";
+import type { ComposeAction } from "@/locus/compose/contract";
 
 /**
  * Le cabinet local : les patients créés sans carte Vitale et leurs notes,
@@ -40,7 +40,6 @@ export interface NoteLocal {
   /** Le plan composé et validé (les actions gardées). */
   actions: ComposeAction[];
   synthese?: string;
-  via?: ComposePlan["via"];
   /** Modifiée en place après signature : les documents modifiés ont été renvoyés. */
   modifieLe?: string;
   /** « commande » : validée depuis ⌘K, hors consultation ; sinon une consultation. */
@@ -77,7 +76,7 @@ function sanitizeNote(v: unknown): NoteLocal | null {
   if (!v || typeof v !== "object") return null;
   const n = v as Record<string, unknown>;
   if (!str(n.id) || !str(n.date)) return null;
-  return { id: str(n.id), date: str(n.date), motif: str(n.motif) || undefined, texte: str(n.texte), actions: Array.isArray(n.actions) ? (n.actions as ComposeAction[]).filter((a) => a && typeof a === "object" && typeof a.id === "string") : [], synthese: str(n.synthese) || undefined, via: n.via === "simulation" ? "simulation" : typeof n.via === "string" && n.via ? "live" : undefined, modifieLe: str(n.modifieLe) || undefined, origine: n.origine === "commande" ? "commande" : undefined, transcript: str(n.transcript) || undefined };
+  return { id: str(n.id), date: str(n.date), motif: str(n.motif) || undefined, texte: str(n.texte), actions: Array.isArray(n.actions) ? (n.actions as ComposeAction[]).filter((a) => a && typeof a === "object" && typeof a.id === "string") : [], synthese: str(n.synthese) || undefined, modifieLe: str(n.modifieLe) || undefined, origine: n.origine === "commande" ? "commande" : undefined, transcript: str(n.transcript) || undefined };
 }
 export function sanitizePatient(v: unknown): PatientLocal | null {
   if (!v || typeof v !== "object") return null;

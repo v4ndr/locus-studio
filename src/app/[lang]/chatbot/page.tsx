@@ -10,18 +10,11 @@ export async function generateMetadata({ params }: { params: Promise<{ lang: str
 }
 
 /**
- * La saisie libre et le live sont réservés aux comptes connectés. La page
- * reste statique : le compte est lu côté navigateur (`useStudioAccount`,
- * zone Accès) et les routes `/api/chatbot/*` le revérifient côté serveur
- * (`guardLive` → `getStudioUserId`). Sous `next dev` seulement,
- * `STUDIO_CHATBOT_DEV_CONNECTED=1` simule un compte connecté.
+ * La page est derrière le mur d'accès : qui l'atteint a un compte, et chaque
+ * question part en direct (`/api/chatbot/*`, revérifié par `guardLive`).
  */
-async function connecte(): Promise<boolean> {
-  return process.env.NODE_ENV === "development" && process.env.STUDIO_CHATBOT_DEV_CONNECTED === "1";
-}
-
 export default async function Page({ params }: { params: Promise<{ lang: string }> }) {
   const { lang } = await params;
   const l: Lang = isLang(lang) ? lang : "fr";
-  return <ChatbotPage lang={l} devConnected={await connecte()} />;
+  return <ChatbotPage lang={l} />;
 }

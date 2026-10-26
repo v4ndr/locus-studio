@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { compose, composeMode } from "@/locus/compose/run";
+import { compose } from "@/locus/compose/run";
+import { MODELE_ABSENT, modeleConfigure } from "@/locus/compose/erreurs";
 import { ndjsonResponse } from "@/locus/ndjson";
 import { guardLive } from "@/lib/server/guard";
 
@@ -59,12 +60,13 @@ export async function POST(req: Request) {
   const note = b.note?.trim() || undefined;
   if (!texte && !note) return Response.json({ error: "Rien à composer : la demande est vide." }, { status: 400 });
   if (b.patient && b.patientId && b.patient.id !== b.patientId) return Response.json({ error: "Le patient local ne correspond pas à l'identifiant." }, { status: 400 });
-  return ndjsonResponse(compose({ texte, patientId: b.patientId, ecran: b.ecran, docId: b.docId, boite: b.boite, patient: b.patient, note, motif: b.motif || undefined }, { replay: g.replay }));
+  return ndjsonResponse(compose({ texte, patientId: b.patientId, ecran: b.ecran, docId: b.docId, boite: b.boite, patient: b.patient, note, motif: b.motif || undefined }));
 }
 
 export async function GET(req: Request) {
   const g = await guardLive(req);
   if (!g.ok) return g.response;
-  // Ni nom de modèle ni fournisseur dans une réponse publique.
-  return Response.json({ mode: g.replay || composeMode() === "simulation" ? "rejoue" : "live" });
+  // Ni nom de modèle ni fournisseur dans une réponse publique : branché ou non, c'est tout.
+  if (!modeleConfigure()) return Response.json({ ok: false, error: MODELE_ABSENT.message, code: MODELE_ABSENT.code }, { status: 503, headers: { "Cache-Control": "no-store" } });
+  return Response.json({ ok: true }, { headers: { "Cache-Control": "no-store" } });
 }

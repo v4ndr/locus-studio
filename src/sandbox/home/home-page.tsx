@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, BookOpen, Globe, KeyRound, Library, Plug, Plus, Zap } from "lucide-react";
+import { ArrowRight, BookOpen, Globe, KeyRound, Library, Plug, Zap } from "lucide-react";
 import { common, home, route, TOOLS, type Lang } from "@/i18n";
 import { TOOL_ICONS } from "@/components/shell/tool-icons";
 import { PageHead, PageInner } from "@/components/shell/page-inner";
@@ -15,9 +15,8 @@ export function HomePage({ lang }: { lang: Lang }) {
   return (
     <PageInner>
       <PageHead title={t.title}>
-        <span aria-disabled="true" title={c.nav.soon} className={buttonClass({ size: "icon", className: "opacity-60 max-[560px]:hidden" })}><BookOpen aria-label={t.docs} /></span>
-        <Link href={route(lang, "integration")} className={buttonClass({ className: "max-[560px]:hidden" })}><Plug aria-hidden="true" />{t.build}</Link>
-        <Link href={route(lang, "acces")} className={buttonClass({ variant: "primary" })}><Plus aria-hidden="true" />{t.request}</Link>
+        <Link href={route(lang, "documentation")} aria-label={t.docs} title={t.docs} className={buttonClass({ size: "icon", className: "max-[560px]:hidden" })}><BookOpen aria-hidden="true" /></Link>
+        <Link href={route(lang, "integration")} className={buttonClass({ variant: "primary" })}><Plug aria-hidden="true" />{t.build}</Link>
       </PageHead>
 
       <section>
@@ -65,24 +64,21 @@ export function HomePage({ lang }: { lang: Lang }) {
           <Box className="grid content-start gap-1.5 px-5 py-[18px]">
             <h3 className="m-0 flex items-center gap-2 text-sm font-semibold"><Library size={16} aria-hidden="true" />{c.nav.sources}</h3>
             <p className="m-0 text-[13px] text-muted-foreground">{t.resources.sources.text}</p>
-            <span aria-disabled="true" className={buttonClass({ size: "sm", className: "mt-1 justify-self-start opacity-60" })}>{t.resources.sources.cta}</span>
+            <Link href={route(lang, "sources")} className={buttonClass({ size: "sm", className: "mt-1 justify-self-start" })}>{t.resources.sources.cta}</Link>
           </Box>
           <Box className="grid content-start gap-1.5 px-5 py-[18px]">
             <h3 className="m-0 flex items-center gap-2 text-sm font-semibold"><BookOpen size={16} aria-hidden="true" />{c.nav.docs}</h3>
             <p className="m-0 text-[13px] text-muted-foreground">{t.resources.docs.text}</p>
-            <span aria-disabled="true" className={buttonClass({ size: "sm", className: "mt-1 justify-self-start opacity-60" })}>{t.resources.docs.cta}</span>
+            <Link href={route(lang, "documentation")} className={buttonClass({ size: "sm", className: "mt-1 justify-self-start" })}>{t.resources.docs.cta}</Link>
           </Box>
           <Box className="grid content-start gap-1.5 px-5 py-[18px]">
             <h3 className="m-0 flex items-center gap-2 text-sm font-semibold"><KeyRound size={16} aria-hidden="true" />{c.nav.keys}</h3>
             <p className="m-0 text-[13px] text-muted-foreground">{t.resources.keys.text}</p>
-            <Link href={route(lang, "acces")} className={buttonClass({ size: "sm", className: "mt-1 justify-self-start" })}>{t.resources.keys.cta}</Link>
+            <Link href={route(lang, "clesApi")} className={buttonClass({ size: "sm", className: "mt-1 justify-self-start" })}>{t.resources.keys.cta}</Link>
           </Box>
         </section>
       </div>
 
-      <div className="flex flex-wrap justify-center gap-[18px] text-[12.5px] text-muted-foreground">
-        <span>{t.legal.status}</span><span>{t.legal.privacy}</span><span>{t.legal.contact}</span><span>locus.fr</span>
-      </div>
     </PageInner>
   );
 }

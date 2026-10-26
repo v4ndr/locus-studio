@@ -5,7 +5,10 @@ import type { Lang } from "./config";
  * Toute navigation entre zones passe par `route()` : un slug ne change qu'ici.
  */
 export const SLUGS = {
-  home: "",
+  /** La page d'entrée publique : le mur d'accès. */
+  landing: "",
+  /** La console des sandbox, derrière le mur. */
+  home: "console",
   acces: "acces",
   lgcNatif: "lgc-natif",
   integration: "integration-lgc",

@@ -10,13 +10,14 @@ import { StudioAccountProvider } from "./auth";
  * connecté. Sans clés : visiteur, aucun script Clerk.
  *
  * L'inscription publique est fermée (accès sur invitation, mode « Restricted »
- * dans Clerk) : connexion et inscription renvoient toutes deux vers `/acces`.
+ * dans Clerk) : connexion et inscription renvoient toutes deux vers `/acces`,
+ * la déconnexion vers l'entrée.
  */
 export function AuthRoot({ lang, children }: { lang: Lang; children: React.ReactNode }) {
   if (!clerkEnabled()) return <StudioAccountProvider enabled={false}>{children}</StudioAccountProvider>;
   const acces = route(lang, "acces");
   return (
-    <ClerkProvider signInUrl={acces} signUpUrl={acces} signInFallbackRedirectUrl={route(lang, "home")} signUpFallbackRedirectUrl={route(lang, "home")} afterSignOutUrl={acces}>
+    <ClerkProvider signInUrl={acces} signUpUrl={acces} signInFallbackRedirectUrl={route(lang, "home")} signUpFallbackRedirectUrl={route(lang, "home")} afterSignOutUrl={route(lang, "landing")}>
       <StudioAccountProvider enabled>{children}</StudioAccountProvider>
     </ClerkProvider>
   );

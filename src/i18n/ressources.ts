@@ -142,20 +142,19 @@ const fr = {
   keys: {
     meta: { title: "Clés API", description: "Les clés API Locus sont délivrées sur invitation." },
     title: "Clés API",
-    lead: "Les clés sont délivrées sur invitation, une fois l'accès live accordé à votre organisation.",
+    lead: "Les clés sont remises par l'équipe Locus à votre organisation, après un échange sur votre intégration.",
     boxTitle: "Sur invitation",
-    boxText: "Une clé ouvre l'accès live : questions libres, dictée en direct, briques sur vos propres flux. Elle est rattachée à votre organisation et s'utilise côté serveur.",
-    request: "Demander un accès",
+    boxText: "Une clé appelle les mêmes services que Studio, depuis votre logiciel. Elle est rattachée à votre organisation et s'utilise côté serveur. Votre interlocuteur Locus vous la transmet.",
     docs: "Lire la documentation",
     stepsTitle: "Étapes",
     steps: [
-      { title: "Demander un accès", text: "Décrivez votre logiciel et l'usage envisagé." },
+      { title: "Tester dans Studio", text: "Essayez les quatre sandbox sur vos cas d'usage." },
       { title: "Recevoir la clé", text: "Après validation, la clé `lsk_…` est remise à votre organisation." },
       { title: "Premier appel", text: "Posez la clé côté serveur et appelez `POST /v2/retrieve/stream`." },
     ],
     formatTitle: "Format",
     formatText: "Une clé commence par `lsk_`, suivi de l'identifiant de votre organisation. Elle se transmet en jeton bearer.",
-    sandboxNote: "Sans clé, le sandbox reste ouvert en scénarios rejoués sur patients fictifs.",
+    sandboxNote: "Sans clé, Studio reste votre terrain d'essai, en direct sur patients fictifs.",
   },
 };
 
@@ -295,20 +294,19 @@ const en: typeof fr = {
   keys: {
     meta: { title: "API keys", description: "Locus API keys are issued by invitation." },
     title: "API keys",
-    lead: "Keys are issued by invitation, once live access is granted to your organisation.",
+    lead: "Keys are issued to your organisation by the Locus team, after a conversation about your integration.",
     boxTitle: "By invitation",
-    boxText: "A key opens live access: free questions, live dictation, blocks on your own flows. It belongs to your organisation and is used server-side.",
-    request: "Request access",
+    boxText: "A key calls the same services as Studio, from your software. It belongs to your organisation and is used server-side. Your Locus contact sends it to you.",
     docs: "Read the documentation",
     stepsTitle: "Steps",
     steps: [
-      { title: "Request access", text: "Describe your software and the intended use." },
+      { title: "Test in Studio", text: "Try the four sandboxes on your use cases." },
       { title: "Receive the key", text: "Once approved, the `lsk_…` key is issued to your organisation." },
       { title: "First call", text: "Keep the key server-side and call `POST /v2/retrieve/stream`." },
     ],
     formatTitle: "Format",
     formatText: "A key starts with `lsk_`, followed by your organisation's identifier. It is sent as a bearer token.",
-    sandboxNote: "Without a key, the sandbox stays open with replayed scenarios on fictional patients.",
+    sandboxNote: "Without a key, Studio remains your testing ground, live on fictional patients.",
   },
 };
 

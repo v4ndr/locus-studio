@@ -72,10 +72,10 @@ export interface ComposePlan {
   synthese: string;
   actions: ComposeAction[];
   references: ComposeRef[];
-  /** `live` : le modèle et Locus ; `simulation` : règles (sans clé, ou scénario rejoué). Jamais de nom de modèle côté client. */
-  via: "live" | "simulation";
   /** Nombre d'appels à locus-core pendant la composition. */
   locus: number;
+  /** Locus a été appelé et n'a pas répondu : le plan est fait sans sources, la carte le dit. */
+  locusEnPanne?: boolean;
   /** Le patient de la composition, pour le rendu des documents. */
   patient?: PatientPlan;
 }

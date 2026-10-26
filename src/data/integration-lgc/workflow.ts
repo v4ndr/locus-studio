@@ -1,12 +1,12 @@
 import { dossier, frDate, moisDepuis, type Bio, type Variante } from "./fournier";
-import { SOURCES, type LocusOut } from "./blocks";
+import type { LocusOut } from "./blocks";
 
 /**
  * Les briques en workflow : une consigne en langage naturel, structurée en
  * une chaîne d'étapes liées, puis exécutée sur le dossier fictif.
  *
  * - Condition et Extraire : déterministes sur le dossier ;
- * - Question Locus : core en direct, ou réponse rejouée ;
+ * - Question Locus : core, à chaque exécution (aucune réponse écrite d'avance) ;
  * - Calcul : déterministe local (aucune unité logique de core ne couvre
  *   l'écart d'HbA1c à la cible) ;
  * - Action dans le LGC : un brouillon, jamais exécuté sans clic ;
@@ -33,7 +33,6 @@ export interface StepResult {
   value: string;
   source?: string;
   action?: string;
-  locked?: boolean;
 }
 
 export interface RunResult {
@@ -50,49 +49,7 @@ export const WF_EXAMPLE = {
   en: "Give me the latest HbA1c if the patient is diabetic, and tell me whether it is on target.",
 };
 
-const HBA1C_ACTION = "Ajouter HbA1c à la prochaine biologie";
-
-type Lang = "fr" | "en";
-const T = (lang: Lang, fr: string, en: string) => (lang === "en" ? en : fr);
 const norm = (s: string) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
-
-/**
- * La structuration rejouée : la consigne de la maquette, et deux autres
- * consignes courantes. Sinon, une chaîne générique Extraire → Question → Sortie.
- */
-export function replayStructure(instruction: string, lang: Lang): WfStep[] {
-  const q = norm(instruction);
-  if (/hba1c|glyc|diab/.test(q)) {
-    return [
-      { type: "condition", config: T(lang, "Diabète de type 2 dans les antécédents", "Type 2 diabetes in history") },
-      { type: "extract", config: T(lang, "Dernière HbA1c", "Latest HbA1c") },
-      { type: "locus_question", config: T(lang, "Cible d'HbA1c pour ce patient", "HbA1c target for this patient") },
-      { type: "compute", config: T(lang, "Écart à la cible et délai depuis le dernier dosage", "Gap to target and time since last test") },
-      { type: "output", config: T(lang, "Bandeau à l'ouverture du dossier", "Banner when the record opens"), action: HBA1C_ACTION },
-    ];
-  }
-  if (/dfg|renal|rein|kidney|egfr|clairance/.test(q)) {
-    return [
-      { type: "condition", config: T(lang, "DFG inférieur à 60 mL/min", "eGFR below 60 mL/min") },
-      { type: "extract", config: T(lang, "Traitement de fond", "Long-term treatment") },
-      { type: "locus_question", config: T(lang, "Médicaments à adapter à la fonction rénale", "Drugs to adjust to renal function") },
-      { type: "output", config: T(lang, "Carte dans la zone", "Card in the zone") },
-    ];
-  }
-  if (/allerg|ordonnance|prescri/.test(q)) {
-    return [
-      { type: "extract", config: T(lang, "Allergies", "Allergies") },
-      { type: "extract", config: T(lang, "Ligne d'ordonnance en cours", "Current prescription line") },
-      { type: "locus_question", config: T(lang, "Cette prescription est-elle sûre pour ce patient ?", "Is this prescription safe for this patient?") },
-      { type: "output", config: T(lang, "Carte dans la zone", "Card in the zone") },
-    ];
-  }
-  return [
-    { type: "extract", config: T(lang, "Données transmises du dossier", "Record data sent") },
-    { type: "locus_question", config: instruction.trim().slice(0, 200) },
-    { type: "output", config: T(lang, "Carte dans la zone", "Card in the zone") },
-  ];
-}
 
 /** Valide et borne un plan reçu du navigateur. */
 export function cleanSteps(raw: unknown): WfStep[] | null {
@@ -122,8 +79,8 @@ interface Ctx {
   draft?: string;
 }
 
-/** Une question Locus : `null` → réponse rejouée ; sinon la réponse de core. */
-export type LocusAsk = (question: string) => Promise<{ value: string; source?: string } | null>;
+/** Une question Locus, relayée vers core. Lève une erreur quand core ne répond pas : la chaîne s'arrête là. */
+export type LocusAsk = (question: string) => Promise<{ value: string; source?: string }>;
 
 function condition(cfg: string, v: Variante, ctx: Ctx): { ok: boolean; value: string } {
   const d = dossier(v);
@@ -131,7 +88,8 @@ function condition(cfg: string, v: Variante, ctx: Ctx): { ok: boolean; value: st
   const num = Number((/(\d+(?:[.,]\d+)?)/.exec(q)?.[1] ?? "").replace(",", "."));
   const moins = /<|inf|moins|below|under|less/.test(q);
   if (/hba1c|glyc/.test(q) && ctx.hba1c) {
-    const seuil = Number.isFinite(num) && num > 0 ? num : ctx.cible ?? 7;
+    const seuil = Number.isFinite(num) && num > 0 ? num : ctx.cible;
+    if (seuil === undefined) return { ok: true, value: "Seuil d'HbA1c non précisé : condition considérée comme remplie" };
     const ok = moins ? ctx.hba1c.valeur < seuil : ctx.hba1c.valeur > seuil;
     return { ok, value: `${ok ? "Oui" : "Non"} : HbA1c ${ctx.hba1c.affichage} (seuil ${pct(seuil)})` };
   }
@@ -186,20 +144,20 @@ function extract(cfg: string, v: Variante, ctx: Ctx): string {
   return "Donnée introuvable dans le dossier";
 }
 
-function replayLocus(cfg: string, ctx: Ctx): { value: string; source?: string; locked?: boolean } {
-  const q = norm(cfg);
-  if (/cible|target|objectif|goal/.test(q) && (/hba1c|glyc/.test(q) || ctx.hba1c)) { ctx.cible = 7; return { value: "≤ 7 %", source: SOURCES.diabete }; }
-  if (/sur|safe|prescri|ordonnance/.test(q)) return { value: "Non : amoxicilline contre-indiquée (allergie à la pénicilline). Alternative : céfuroxime-axétil 250 mg ×2/j, 4 jours.", source: SOURCES.angine };
-  if (/antibio|angine/.test(q)) return { value: "Céfuroxime-axétil 250 mg ×2/j, 4 jours (allergie sans signe de gravité).", source: SOURCES.angine };
-  if (/renal|rein|kidney|dfg/.test(q)) return { value: "Metformine : dose à réduire si DFG < 45, arrêt si DFG < 30.", source: SOURCES.diabete };
-  return { value: "Question libre : réservée aux comptes invités", locked: true };
+/** La cible d'HbA1c lue dans la réponse de core (« ≤ 7 % »), quand la question la demandait. */
+function cibleLue(cfg: string, value: string): number | undefined {
+  if (!/cible|target|objectif|goal/.test(norm(cfg))) return undefined;
+  const m = /(\d+(?:[.,]\d+)?)\s*%/.exec(value);
+  const n = m ? Number(m[1].replace(",", ".")) : NaN;
+  return n > 4 && n < 12 ? n : undefined;
 }
 
-function compute(cfg: string, ctx: Ctx): string {
+function compute(cfg: string, v: Variante, ctx: Ctx): string {
   const q = norm(cfg);
   const parts: string[] = [];
-  if (/ecart|gap|diff|distance/.test(q) && ctx.hba1c) {
-    const cible = ctx.cible ?? 7;
+  if (/ecart|gap|diff|distance/.test(q) && ctx.hba1c && ctx.cible === undefined) parts.push("cible inconnue : écart non calculé");
+  else if (/ecart|gap|diff|distance/.test(q) && ctx.hba1c && ctx.cible !== undefined) {
+    const cible = ctx.cible;
     ctx.ecart = Math.round((ctx.hba1c.valeur - cible) * 10) / 10;
     parts.push(`${ctx.ecart > 0 ? "+" : ""}${ctx.ecart.toFixed(1).replace(".", ",")} point`);
   }
@@ -207,7 +165,10 @@ function compute(cfg: string, ctx: Ctx): string {
     ctx.mois = moisDepuis(ctx.hba1c.date);
     parts.push(`dernier dosage il y a ${ctx.mois} mois`);
   }
-  if (!parts.length && /dfg|clairance|ckd|cockcroft/.test(q)) parts.push("DFG 72 mL/min/1,73 m² (CKD-EPI, 18/06/2025)");
+  if (!parts.length && /dfg|clairance|ckd|cockcroft/.test(q)) {
+    const dfg = dossier(v).biologie.find((b) => b.libelle.startsWith("DFG"));
+    parts.push(dfg ? `DFG ${dfg.affichage} mL/min/1,73 m² (CKD-EPI, ${frDate(dfg.date)})` : "DFG absent du dossier");
+  }
   if (!parts.length && /imc|bmi/.test(q)) parts.push("Taille absente du dossier : IMC non calculable");
   if (!parts.length) return ctx.hba1c ? "Calcul non reconnu : précisez l'écart ou le délai" : "Calcul non reconnu sur ce dossier";
   return parts.join(" ; ");
@@ -231,11 +192,11 @@ function output(step: WfStep, ctx: Ctx, conditionned: boolean): { text: string; 
 }
 
 /**
- * Exécute la chaîne pas à pas sur le dossier fictif. `ask` relaie une
- * Question Locus vers core (live) ; sans `ask`, ou s'il renvoie `null`,
- * la réponse rejouée est utilisée.
+ * Exécute la chaîne pas à pas sur le dossier fictif. `ask` relaie chaque
+ * Question Locus vers core ; s'il lève une erreur, elle remonte telle
+ * quelle : pas de réponse de remplacement.
  */
-export async function runSteps(steps: WfStep[], v: Variante, ask?: LocusAsk): Promise<RunResult> {
+export async function runSteps(steps: WfStep[], v: Variante, ask: LocusAsk): Promise<RunResult> {
   const ctx: Ctx = { values: [] };
   const res: StepResult[] = [];
   let halted = false;
@@ -257,15 +218,16 @@ export async function runSteps(steps: WfStep[], v: Variante, ask?: LocusAsk): Pr
         break;
       }
       case "locus_question": {
-        const live = ask ? await ask(step.config).catch(() => null) : null;
-        const r = live ?? replayLocus(step.config, ctx);
+        const r = await ask(step.config);
         if (r.source) ctx.source = r.source;
+        const cible = cibleLue(step.config, r.value);
+        if (cible !== undefined) ctx.cible = cible;
         ctx.values.push(r.value);
-        res.push({ status: "done", value: r.value, source: r.source, ...("locked" in r && r.locked ? { locked: true } : {}) });
+        res.push({ status: "done", value: r.value, source: r.source });
         break;
       }
       case "compute": {
-        const value = compute(step.config, ctx);
+        const value = compute(step.config, v, ctx);
         ctx.values.push(value);
         res.push({ status: "done", value });
         break;

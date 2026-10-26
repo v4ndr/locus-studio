@@ -13,6 +13,7 @@ type Search = Record<string, string | string[] | undefined>;
 const un = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) ?? null;
 
 /**
+ * `?demande=1` : l'onglet de la demande d'accès (depuis l'entrée).
  * `?invited=1` : retour du lien d'invitation (core pose ce `redirect_url`).
  * Clerk y ajoute `__clerk_ticket` et `__clerk_status` (`sign_up` ou `sign_in`).
  */
@@ -23,6 +24,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
   return (
     <AccesPage
       lang={isLang(lang) ? lang : "fr"}
+      demande={un(sp.demande) === "1"}
       invited={un(sp.invited) === "1" || !!ticket}
       ticket={ticket && ticket.length < 4096 ? ticket : null}
       ticketStatus={un(sp.__clerk_status)}

@@ -11,7 +11,11 @@ import { DEFAULT_LANG, LANG_COOKIE, isLang, type Lang } from "@/i18n/config";
  * 3. Avec les clés de l'instance Clerk Studio, Clerk lit la session sur les
  *    pages et sur `/api/*` (le garde des routes live s'en sert, voir
  *    `src/lib/server/guard.ts`). Sans clés, Clerk n'est pas chargé et l'app
- *    tourne en visiteur.
+ *    tourne en local, sans mur.
+ * 4. Le mur : seules l'entrée (`/[lang]`) et l'accès (`/[lang]/acces`) sont
+ *    publiques. Toute autre page renvoie un visiteur vers l'entrée ; un compte
+ *    connecté qui arrive sur l'entrée part vers la console. Le mur suit Clerk,
+ *    `STUDIO_WALL=1|0` le force (sans Clerk, `1` ferme tout : pour tester).
  */
 
 const LEGACY = /^\/(p|inbox|nouveau|d)(\/|$)/;
@@ -29,11 +33,24 @@ function langFrom(req: NextRequest): Lang {
   return prefs.map((p) => p.lang).find(isLang) ?? DEFAULT_LANG;
 }
 
-function langues(req: NextRequest) {
+/** Les pages ouvertes sans compte : l'entrée et l'accès (formulaire, connexion, retour d'invitation). */
+const PUBLIQUES = new Set(["", "acces"]);
+
+function mur(req: NextRequest, lang: Lang, connecte: boolean) {
+  const page = req.nextUrl.pathname.split("/")[2] ?? "";
+  const url = req.nextUrl.clone();
+  url.search = "";
+  if (!connecte && !PUBLIQUES.has(page)) { url.pathname = `/${lang}`; return NextResponse.redirect(url, 307); }
+  // Un lien d'invitation ouvert déjà connecté garde sa page : le jeton peut viser un autre compte.
+  if (connecte && PUBLIQUES.has(page) && !req.nextUrl.searchParams.has("__clerk_ticket")) { url.pathname = `/${lang}/console`; return NextResponse.redirect(url, 307); }
+  return NextResponse.next();
+}
+
+function langues(req: NextRequest, connecte: boolean | null) {
   const { pathname } = req.nextUrl;
   const first = pathname.split("/")[1];
   if (first === "api") return NextResponse.next();
-  if (isLang(first)) return NextResponse.next();
+  if (isLang(first)) return connecte === null ? NextResponse.next() : mur(req, first, connecte);
 
   const url = req.nextUrl.clone();
   const lang = langFrom(req);
@@ -46,10 +63,14 @@ function langues(req: NextRequest) {
 }
 
 const clerkOn = !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY?.trim() && !!process.env.CLERK_SECRET_KEY?.trim();
-const avecClerk = clerkOn ? clerkMiddleware((_auth, req) => langues(req)) : null;
+const forceMur = process.env.STUDIO_WALL?.trim();
+const murActif = forceMur === "1" ? true : forceMur === "0" ? false : clerkOn;
+const avecClerk = clerkOn
+  ? clerkMiddleware(async (auth, req) => langues(req, murActif ? !!(await auth()).userId : null))
+  : null;
 
 export function proxy(req: NextRequest, ev: NextFetchEvent) {
-  return avecClerk ? avecClerk(req, ev) : langues(req);
+  return avecClerk ? avecClerk(req, ev) : langues(req, murActif ? false : null);
 }
 
 export const config = {

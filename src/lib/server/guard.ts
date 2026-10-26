@@ -1,51 +1,46 @@
 import "server-only";
 import { createHash, timingSafeEqual } from "node:crypto";
-import { getStudioUserId } from "./user";
+import { clerkEnabled, getStudioUserId } from "./user";
 
 /**
- * Le garde des routes live (`/api/compose`, `/api/note`, `/api/locus/*`) :
- * tout ce qui peut dépenser un appel de modèle ou des crédits Locus.
+ * Le garde des routes live (`/api/compose`, `/api/note`, `/api/locus/*`,
+ * `/api/chatbot/*`, `/api/scribe/*`, `/api/integration-lgc/*`) : tout ce qui
+ * peut dépenser un appel de modèle ou des crédits Locus. Studio n'a plus de
+ * scénario rejoué : tout est live, derrière un compte.
  *
- * Trois règles, dans cet ordre :
+ * 1. **Jeton interne.** L'en-tête `x-studio-live-token` égal à
+ *    `STUDIO_LIVE_TOKEN` passe toujours (tests internes), sans quota.
  *
- * 1. **Verrou de production.** Tant que les comptes n'existent pas, une
- *    route live répond 403 en production, sauf avec l'en-tête
- *    `x-studio-live-token` égal à `STUDIO_LIVE_TOKEN` (tests internes).
- *    « Production » = `VERCEL_ENV === "production"` ; hors Vercel
- *    (`VERCEL_ENV` absent), `NODE_ENV === "production"` (un `next start`).
- *    Les previews Vercel (`VERCEL_ENV === "preview"`) et `next dev` restent
- *    ouverts. `STUDIO_LIVE_LOCK=1|0` force l'un ou l'autre.
+ * 2. **Compte.** Un utilisateur connecté (instance Clerk Studio, voir
+ *    `./user.ts`) passe. Ses requêtes sont comptées par compte et par jour
+ *    (`STUDIO_USER_QUOTA_PER_DAY`, 300 par défaut).
  *
- * 2. **Scénario rejoué.** Le navigateur qui reçoit ce 403 renvoie la même
- *    requête avec `x-studio-replay: 1` : la route répond alors en mode
- *    rejoué (règles et Locus simulé), sans aucun appel externe.
- *
- * 3. **Rate limit par IP**, filet de sécurité hors `next dev` : 20 requêtes
- *    live par heure (`STUDIO_RATE_LIMIT_PER_HOUR`), 200 rejouées
- *    (`STUDIO_REPLAY_RATE_LIMIT_PER_HOUR`). Compteur en mémoire de
- *    l'instance, ou Upstash Redis (REST) si `UPSTASH_REDIS_REST_URL` et
- *    `UPSTASH_REDIS_REST_TOKEN` sont posés. Le jeton interne en est exempté.
- *
- * 4. **Comptes (PR « Accès »).** Un utilisateur connecté (instance Clerk
- *    Studio, voir `./user.ts`) passe le verrou de production. Ses requêtes
- *    live sont comptées par compte et par jour (`STUDIO_USER_QUOTA_PER_DAY`,
- *    60 par défaut, même compteur que le rate limit) au lieu de l'IP.
+ * 3. **Sans compte : 401 `auth_required`.** Le navigateur renvoie alors vers
+ *    l'entrée (`src/lib/live.ts`). Exception : quand le verrou est levé
+ *    (`next dev` sans Clerk, ou `STUDIO_LIVE_LOCK=0`), la route est ouverte,
+ *    avec un rate limit par IP hors `next dev` (`STUDIO_RATE_LIMIT_PER_HOUR`,
+ *    20). Compteurs en mémoire de l'instance, ou Upstash Redis (REST) si
+ *    `UPSTASH_REDIS_REST_URL` et `UPSTASH_REDIS_REST_TOKEN` sont posés.
  */
 
 export const LIVE_TOKEN_HEADER = "x-studio-live-token";
-export const REPLAY_HEADER = "x-studio-replay";
-/** Code d'erreur lu par le navigateur (`src/lib/live.ts`) pour basculer en rejoué. */
-export const LIVE_LOCKED = "live_locked";
+/** Code d'erreur lu par le navigateur (`src/lib/live.ts`) pour renvoyer vers l'entrée. */
+export const AUTH_REQUIRED = "auth_required";
 
 export type GuardResult =
-  | { ok: true; /** Répondre en scénario rejoué : aucun appel de modèle ni de core. */ replay: boolean }
+  | { ok: true }
   | { ok: false; response: Response };
 
-/** Vrai quand les routes live sont fermées au public. */
+/**
+ * Vrai quand une route live exige un compte. Avec Clerk, toujours ; sans
+ * Clerk, en production (un build déployé sans comptes ne dépense rien).
+ * `STUDIO_LIVE_LOCK=1|0` force l'un ou l'autre.
+ */
 export function liveLocked(): boolean {
   const force = process.env.STUDIO_LIVE_LOCK?.trim();
   if (force === "1" || force === "true") return true;
   if (force === "0" || force === "false") return false;
+  if (clerkEnabled()) return true;
   const vercel = process.env.VERCEL_ENV;
   if (vercel) return vercel === "production";
   return process.env.NODE_ENV === "production";
@@ -151,39 +146,34 @@ export async function hit(bucket: string, id: string, windowS = WINDOW_S): Promi
 const json = (body: unknown, status: number, headers: Record<string, string> = {}) =>
   Response.json(body, { status, headers: { "Cache-Control": "no-store", ...headers } });
 
-/**
- * À appeler en tête de chaque route live. `ok: false` → renvoyer `response`
- * tel quel. `ok: true, replay: true` → servir le scénario rejoué.
- */
+/** À appeler en tête de chaque route live. `ok: false` → renvoyer `response` tel quel. */
 export async function guardLive(req: Request): Promise<GuardResult> {
-  if (hasLiveToken(req)) return { ok: true, replay: false };
-  const replay = req.headers.get(REPLAY_HEADER) === "1";
+  if (hasLiveToken(req)) return { ok: true };
   // La session (cookie Clerk) ne compte que pour une requête de ce site : une page tierce ne dépense pas le quota d'un compte.
-  const userId = replay || !sameOrigin(req) ? null : await getStudioUserId();
+  const userId = sameOrigin(req) ? await getStudioUserId() : null;
   if (userId) {
-    // Compte invité : le verrou tombe, le quota par compte remplace le rate limit par IP.
-    const max = intEnv("STUDIO_USER_QUOTA_PER_DAY", 60);
+    const max = intEnv("STUDIO_USER_QUOTA_PER_DAY", 300);
     if (rateLimited() && max > 0) {
       const { n, resetS } = await hit("user", userId, 86_400);
       if (n > max) {
         return { ok: false, response: json({ error: "Quota du jour atteint pour ce compte. Il se renouvelle demain ; pour l'augmenter, écrivez à l'équipe Locus.", code: "quota_exceeded" }, 429, { "Retry-After": String(resetS) }) };
       }
     }
-    return { ok: true, replay: false };
+    return { ok: true };
   }
-  if (!replay && liveLocked()) {
-    return { ok: false, response: json({ error: "Le mode live est réservé aux comptes invités.", code: LIVE_LOCKED }, 403) };
+  if (liveLocked()) {
+    return { ok: false, response: json({ error: "Connectez-vous pour utiliser Studio.", code: AUTH_REQUIRED }, 401) };
   }
   if (rateLimited()) {
-    const max = replay ? intEnv("STUDIO_REPLAY_RATE_LIMIT_PER_HOUR", 200) : intEnv("STUDIO_RATE_LIMIT_PER_HOUR", 20);
+    const max = intEnv("STUDIO_RATE_LIMIT_PER_HOUR", 20);
     if (max > 0) {
-      const { n, resetS } = await hit(replay ? "replay" : "live", clientIp(req));
+      const { n, resetS } = await hit("live", clientIp(req));
       if (n > max) {
         return { ok: false, response: json({ error: "Trop de demandes depuis cette adresse. Réessayez dans une heure.", code: "rate_limited" }, 429, { "Retry-After": String(resetS) }) };
       }
     }
   }
-  return { ok: true, replay };
+  return { ok: true };
 }
 
 /* ---------- Unités logiques autorisées ---------- */

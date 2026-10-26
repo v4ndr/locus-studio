@@ -1,4 +1,4 @@
-import { clientIp, guardLive, hit, LIVE_LOCKED, sameOrigin } from "@/lib/server/guard";
+import { clientIp, guardLive, hit, sameOrigin } from "@/lib/server/guard";
 import { getStudioUserId } from "@/lib/server/user";
 
 export const dynamic = "force-dynamic";
@@ -8,8 +8,6 @@ export const maxDuration = 15;
  * Le jeton éphémère de la dictée en temps réel. La clé du service de
  * transcription reste ici ; le navigateur reçoit un jeton `rt_…` de courte
  * durée, limité à un modèle, et ouvre lui-même le WebSocket avec.
- *
- * Pas de scénario rejoué pour la dictée : en rejoué, 403.
  *
  * **Quota de minutes.** Chaque jeton ouvre un bloc de `BLOC_S` secondes de
  * dictée : le navigateur coupe la session à la fin du bloc et en redemande
@@ -33,7 +31,7 @@ const json = (body: unknown, status = 200, headers: Record<string, string> = {})
   Response.json(body, { status, headers: { "Cache-Control": "no-store", ...headers } });
 const indisponible = (status: number) => json({ error: "La dictée n'est pas disponible pour l'instant." }, status);
 
-/** Le compte qui dicte : l'utilisateur Studio connecté, sinon l'IP (jeton live sans session). */
+/** Le compte qui dicte : l'utilisateur Studio connecté, sinon l'IP (jeton interne, ou `next dev` sans comptes). */
 async function compte(req: Request): Promise<string> {
   return (await getStudioUserId()) ?? clientIp(req);
 }
@@ -49,7 +47,6 @@ export async function POST(req: Request) {
 
   const g = await guardLive(req);
   if (!g.ok) return g.response;
-  if (g.replay) return json({ error: "La dictée est réservée aux comptes invités.", code: LIVE_LOCKED }, 403);
   const key = process.env.MISTRAL_API_KEY?.trim();
   if (!key) return indisponible(503);
 

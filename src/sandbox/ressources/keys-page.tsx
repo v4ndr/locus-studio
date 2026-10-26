@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BookOpen, KeyRound, Plus } from "lucide-react";
+import { BookOpen, KeyRound } from "lucide-react";
 import { common, ressources, route, type Lang } from "@/i18n";
 import { PageHead, PageInner } from "@/components/shell/page-inner";
 import { buttonClass } from "@/components/ui/button";
@@ -7,7 +7,7 @@ import { Badge, StatusDot } from "@/components/ui/badge";
 import { Box, CardIcon } from "@/components/ui/card";
 import { Rich, SectionTitle } from "./rich";
 
-/** Clés API : délivrées sur invitation, renvoi vers la demande d'accès. */
+/** Clés API : remises par l'équipe Locus, renvoi vers la documentation. */
 export function KeysPage({ lang }: { lang: Lang }) {
   const t = ressources[lang].keys;
   const c = common[lang];
@@ -23,7 +23,6 @@ export function KeysPage({ lang }: { lang: Lang }) {
           <p className="m-0 max-w-[60ch] text-[13.5px] text-muted-foreground">{t.boxText}</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Link href={route(lang, "acces")} className={buttonClass({ variant: "primary" })}><Plus aria-hidden="true" />{t.request}</Link>
           <Link href={route(lang, "documentation")} className={buttonClass()}><BookOpen aria-hidden="true" />{t.docs}</Link>
         </div>
       </Box>

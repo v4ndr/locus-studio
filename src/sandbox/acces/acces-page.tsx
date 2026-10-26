@@ -1,9 +1,9 @@
 "use client";
 import * as React from "react";
 import Link from "next/link";
-import { ArrowLeft, Check, Lock, LockOpen } from "lucide-react";
-import { acces, route, type Lang } from "@/i18n";
-import { PageHead, PageInner } from "@/components/shell/page-inner";
+import { ArrowLeft, Check } from "lucide-react";
+import { acces, common, route, type Lang } from "@/i18n";
+import { LocusMark } from "@/components/shell/locus-mark";
 import { Box } from "@/components/ui/card";
 import { Button, buttonClass } from "@/components/ui/button";
 import { Field, Input, Select, Textarea } from "@/components/ui/input";
@@ -12,7 +12,7 @@ import { useStudioAccount } from "./auth";
 import { SigninBox } from "./signin";
 import { COUNTRIES, DemandeSchema, ORG_TYPES, emailPerso, type Country, type Demande, type DemandeReponse, type OrgType } from "./schema";
 
-/** L'écran `/[lang]/acces` : reprise de Acces.dc.html. */
+/** L'écran `/[lang]/acces` : reprise de Acces.dc.html, sorti de la console. */
 
 type Erreurs = Partial<Record<keyof Demande, string>>;
 
@@ -153,48 +153,55 @@ function Recu({ lang, email, onEdit }: { lang: Lang; email: string; onEdit: () =
       <h2 ref={titre} tabIndex={-1} className="m-0 text-base font-semibold tracking-[-.01em] outline-none">{t.sent.title}</h2>
       <p className="m-0 text-muted-foreground">{t.sent.text} <b className="font-medium text-foreground">{email || t.sent.fallback}</b>.</p>
       <div className="flex flex-wrap gap-2">
-        <Link href={route(lang, "home")} className={buttonClass()}>{t.back}</Link>
+        <Link href={route(lang, "landing")} className={buttonClass()}>{t.back}</Link>
         <Button variant="ghost" onClick={onEdit}>{t.sent.edit}</Button>
       </div>
     </div>
   );
 }
 
-export function AccesPage({ lang, invited, ticket, ticketStatus }: { lang: Lang; invited: boolean; ticket: string | null; ticketStatus: string | null }) {
+/**
+ * L'accès, hors console : connexion par code ou demande d'accès, une seule à
+ * la fois. `?demande=1` ouvre la demande ; le retour d'invitation ouvre la
+ * connexion.
+ */
+export function AccesPage({ lang, demande, invited, ticket, ticketStatus }: { lang: Lang; demande: boolean; invited: boolean; ticket: string | null; ticketStatus: string | null }) {
   const t = acces[lang];
+  const c = common[lang];
   const account = useStudioAccount();
   const [sentTo, setSentTo] = React.useState<string | null>(null);
+  const onglet = demande && !invited && !ticket ? "request" : "signin";
+  const tab = (key: "signin" | "request", href: string) => (
+    <Link href={href} replace scroll={false} aria-current={onglet === key ? "page" : undefined} className={cn("flex h-8 items-center rounded-md px-3 text-[13px]", onglet === key ? "bg-accent font-medium text-foreground" : "text-muted-foreground hover:text-foreground")}>{t.tabs[key]}</Link>
+  );
   return (
-    <PageInner>
-      <PageHead title={t.title}>
-        <Link href={route(lang, "home")} className={buttonClass()}><ArrowLeft aria-hidden="true" />{t.back}</Link>
-      </PageHead>
-      <div className="grid items-start gap-3 min-[1101px]:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
+    <main className="mx-auto grid min-h-dvh w-full max-w-[640px] content-start gap-6 px-4 pb-12 pt-6 min-[821px]:pt-10">
+      <div className="flex items-center justify-between gap-3">
+        <Link href={route(lang, "landing")} className="flex items-center gap-[9px] rounded-lg py-1.5 text-foreground">
+          <LocusMark size={22} className="shrink-0" />
+          <span className="whitespace-nowrap text-[19px] font-normal tracking-[-.5px]">{c.brand.wordmarkA}<span className="text-muted-foreground">{c.brand.wordmarkB}</span></span>
+        </Link>
+        <Link href={route(lang, "landing")} className={buttonClass({ variant: "ghost", size: "sm" })}><ArrowLeft aria-hidden="true" />{t.back}</Link>
+      </div>
+      <nav aria-label={t.tabs.label} className="flex w-fit gap-1 rounded-lg border border-border bg-card p-1">
+        {tab("signin", route(lang, "acces"))}
+        {tab("request", route(lang, "acces", "?demande=1"))}
+      </nav>
+      {onglet === "signin" ? (
+        <Box>
+          <BoxHead title={t.signin.title} />
+          <div className="grid gap-3 px-6 pb-[22px] pt-[18px]">
+            <SigninBox lang={lang} account={account} invited={invited} ticket={ticket} ticketStatus={ticketStatus} />
+          </div>
+        </Box>
+      ) : (
         <Box>
           <BoxHead title={t.form.title} sub={t.form.sub} />
           {/* Le formulaire reste monté sous « Demande reçue » : « Modifier la demande » retrouve les champs. */}
           <div className={cn(sentTo !== null && "hidden")}><DemandeForm lang={lang} onSent={setSentTo} /></div>
           {sentTo !== null && <Recu lang={lang} email={sentTo} onEdit={() => setSentTo(null)} />}
         </Box>
-        <div className="grid gap-3">
-          <Box>
-            <BoxHead title={t.signin.title} />
-            <div className="grid gap-3 px-6 pb-[22px] pt-[18px]">
-              <SigninBox lang={lang} account={account} invited={invited} ticket={ticket} ticketStatus={ticketStatus} />
-            </div>
-          </Box>
-          <Box className="grid gap-3.5 px-5 py-[18px]">
-            <div className="grid gap-1">
-              <h3 className="m-0 flex items-center gap-2 text-sm font-semibold"><Lock size={16} aria-hidden="true" />{t.compare.without}</h3>
-              <p className="m-0 text-[13px] text-muted-foreground">{t.compare.withoutText}</p>
-            </div>
-            <div className="grid gap-1">
-              <h3 className="m-0 flex items-center gap-2 text-sm font-semibold"><LockOpen size={16} aria-hidden="true" />{t.compare.with}</h3>
-              <p className="m-0 text-[13px] text-muted-foreground">{t.compare.withText}</p>
-            </div>
-          </Box>
-        </div>
-      </div>
-    </PageInner>
+      )}
+    </main>
   );
 }

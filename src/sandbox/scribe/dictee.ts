@@ -1,8 +1,9 @@
 "use client";
 import * as React from "react";
+import { fetchLive } from "@/lib/live";
 
 /**
- * La dictée au micro (comptes invités) : un jeton éphémère demandé au
+ * La dictée au micro : un jeton éphémère demandé au
  * serveur (`/api/scribe/stt`), puis un WebSocket direct vers le service de
  * transcription en temps réel. L'audio part en PCM s16le 16 kHz mono, par
  * paquets de 100 ms ; le texte revient en deltas. Rien n'est enregistré :
@@ -32,7 +33,7 @@ function base64(buf: ArrayBuffer): string {
 /** Un jeton de session, ou la raison du refus. */
 async function demanderSession(): Promise<Session | "quota" | "stt"> {
   try {
-    const res = await fetch("/api/scribe/stt", { method: "POST", cache: "no-store" });
+    const res = await fetchLive("/api/scribe/stt", { method: "POST", cache: "no-store" });
     if (res.status === 429) return "quota";
     if (!res.ok) return "stt";
     const s = (await res.json()) as Session;

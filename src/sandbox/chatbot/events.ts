@@ -13,8 +13,6 @@ export interface FormQuestion {
 }
 
 export type ChatEvent =
-  /** Le serveur ne fait pas de live ici : le navigateur rejoue le scénario s'il en a un. */
-  | { t: "replay" }
   | { t: "step"; text: string }
   | { t: "delta"; text: string }
   | { t: "form"; token: string; questions: FormQuestion[] }

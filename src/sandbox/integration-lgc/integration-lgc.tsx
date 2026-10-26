@@ -6,7 +6,7 @@ import { Layers, Minus, Plus, Moon, Sun, Workflow, Wrench, X, Copy, Check } from
 import { cn } from "@/lib/cn";
 import { common, lgc, LANG_COOKIE, LANGS, route, type Lang } from "@/i18n";
 import { useLang } from "@/i18n/lang";
-import { Button, ButtonLink, buttonClass } from "@/components/ui/button";
+import { Button, buttonClass } from "@/components/ui/button";
 import { Segmented } from "@/components/ui/segmented";
 import { LocusMark } from "@/components/shell/locus-mark";
 import { useTheme, type Mode } from "@/components/shell/theme";
@@ -14,21 +14,27 @@ import { ANCHOR_IDS, defaultFields, type AnchorId } from "@/data/integration-lgc
 import type { LocusOut } from "@/data/integration-lgc/blocks";
 import { WF_EXAMPLE } from "@/data/integration-lgc/workflow";
 import { Medicab, type ZoneProps } from "./medicab";
-import { AskBox, LocusBody, LocusCard, LocusLoading, LocusTag, type CardAction } from "./locus-card";
+import { AskBox, LocusBody, LocusCard, LocusFailed, LocusLoading, LocusTag, RetryButton, type CardAction } from "./locus-card";
 import { Wizard } from "./wizard";
 import { useDialogFocus } from "./use-dialog";
 import { MyBricks } from "./my-bricks";
-import { blockOutput, runWorkflow, type Via } from "./api";
+import { blockOutput, errorText, runWorkflow } from "./api";
 import { EXAMPLES, emptyDraft, nextId, useBricks, workflowDraft, type Brick, type Draft } from "./model";
 
 /**
  * « Intégration LGC » : MédiCab 7 en plein écran, et le chrome Studio réduit
  * à une barre flottante. On y pose des briques Locus (outil ou workflow) sur
  * cinq ancrages façon CDS Hooks, plus un bouton de barre d'outils.
+ * Chaque brique active est calculée par core quand elle s'affiche ou
+ * change ; un échec reste un échec, affiché avec « Réessayer ».
  */
 
-type Shown = LocusOut | "loading";
-interface OutState { key: string; loading: boolean; out: LocusOut | null; error?: boolean }
+/** Une brique en échec : le message à afficher, dans la langue de l'UI. */
+interface Failed { failed: string }
+type Shown = LocusOut | "loading" | Failed;
+interface OutState { key: string; loading: boolean; out: LocusOut | null; error?: string }
+
+const isFailed = (s: Shown | null): s is Failed => !!s && typeof s === "object" && "failed" in s;
 
 const brickKey = (b: Brick) => JSON.stringify([b.kind, b.tool, b.settings, b.fields, b.anchor, b.steps]);
 const POP = "rounded-xl border border-border bg-popover text-popover-foreground shadow-[0_16px_40px_rgba(0,0,0,.45)] font-sans";
@@ -54,7 +60,6 @@ export function IntegrationLgc() {
   const [wiz, setWiz] = React.useState<{ draft: Draft; step: number; editId: string | null } | null>(null);
 
   // État de MédiCab
-  const [replaced, setReplaced] = React.useState(false);
   const [validated, setValidated] = React.useState(false);
   const [dismissed, setDismissed] = React.useState<Set<string>>(new Set());
   const [wfDone, setWfDone] = React.useState<Set<string>>(new Set());
@@ -76,7 +81,8 @@ export function IntegrationLgc() {
   // Sorties des briques actives
   const [outs, setOuts] = React.useState<Record<string, OutState>>({});
   const outsRef = React.useRef(outs);
-  const [via, setVia] = React.useState<Via | null>(null);
+  /** Incrémenté par « Réessayer » : relance le calcul des briques sans sortie. */
+  const [attempt, setAttempt] = React.useState(0);
 
   // La hauteur de la barre flottante (elle passe sur plusieurs lignes en mobile) place les popovers au-dessus.
   const rootRef = React.useRef<HTMLDivElement>(null);
@@ -97,12 +103,20 @@ export function IntegrationLgc() {
       const put = (s: OutState) => { outsRef.current = { ...outsRef.current, [b.id]: s }; setOuts(outsRef.current); };
       put({ key, loading: true, out: null });
       const p = b.kind === "workflow"
-        ? runWorkflow(b.steps ?? [], b).then((r) => ({ out: r.output, via: r.via }))
-        : blockOutput(b).then((r) => ({ out: r.output, via: r.via }));
-      p.then((r) => { if (outsRef.current[b.id]?.key !== key) return; put({ key, loading: false, out: r.out }); setVia((v) => (v === "replay" ? v : r.via)); })
-        .catch(() => { if (outsRef.current[b.id]?.key !== key) return; put({ key, loading: false, out: null, error: true }); });
+        ? runWorkflow(b.steps ?? [], b).then((r) => ({ out: r.output }))
+        : blockOutput(b).then((r) => ({ out: r.output }));
+      p.then((r) => { if (outsRef.current[b.id]?.key !== key) return; put({ key, loading: false, out: r.out }); })
+        .catch((e) => { if (outsRef.current[b.id]?.key !== key) return; put({ key, loading: false, out: null, error: errorText(e, t.out) }); });
     }
-  }, [bricks]);
+  }, [bricks, attempt, t.out]);
+
+  /** Oublie la sortie en échec d'une brique : l'effet ci-dessus la recalcule. */
+  const retry = (id: string) => {
+    const { [id]: _, ...rest } = outsRef.current;
+    outsRef.current = rest;
+    setOuts(rest);
+    setAttempt((n) => n + 1);
+  };
 
   React.useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -125,11 +139,8 @@ export function IntegrationLgc() {
     if (dismissed.has(b.id)) return null;
     const o = outs[b.id];
     if (!o || o.loading || o.key !== brickKey(b)) return "loading";
-    if (o.error) return { title: "Locus", lines: [t.out.error] };
+    if (o.error) return { failed: o.error };
     if (!o.out) return null; // workflow arrêté par sa condition : rien ne s'affiche
-    if (b.kind === "tool" && b.tool === "controle" && replaced && o.out.actions?.includes("replace")) {
-      return { title: "Ligne remplacée", lines: ["Céfuroxime-axétil 250 mg, 1 cp matin et soir, 4 jours."], actions: ["cancel"] };
-    }
     if (b.kind === "workflow" && wfDone.has(b.id)) {
       const label = o.out.actionLabel ?? "";
       return { title: /hba1c/i.test(label) ? "HbA1c" : o.out.title, lines: [/hba1c/i.test(label) ? "HbA1c ajoutée à la prochaine biologie." : `Brouillon créé : ${label}.`], actions: ["cancel"] };
@@ -137,8 +148,8 @@ export function IntegrationLgc() {
     return o.out;
   };
 
-  /** Une alerte bloquante : le contrôle d'ordonnance réglé sur « Bloquant » qui signale une ligne. */
-  const isBlocking = (b: Brick, out: LocusOut | "loading" | null) => b.kind === "tool" && b.tool === "controle" && b.settings.niveau === "bloquant" && !!out && out !== "loading" && !!out.actions?.includes("replace");
+  /** Une alerte bloquante : la réponse du contrôle d'ordonnance réglé sur « Bloquant », tant qu'elle n'est pas écartée avec un motif. */
+  const isBlocking = (b: Brick, out: Shown | null) => b.kind === "tool" && b.tool === "controle" && b.settings.niveau === "bloquant" && !!out && out !== "loading" && !isFailed(out) && !!out.actions?.includes("ignore");
 
   const dismiss = (ids: string[], motif?: string) => {
     setDismissed((s) => { const n = new Set(s); for (const id of ids) n.add(id); return n; });
@@ -152,12 +163,11 @@ export function IntegrationLgc() {
       dismiss([b.id]);
       setModal((m) => (m?.mode === "show" ? null : m));
     }
-    if (a === "replace") { setReplaced(true); setModal(null); }
     if (a === "openLetter") setLetter(out.letter ?? out.lines);
     if (a === "wfAction") setWfDone((s) => new Set(s).add(b.id));
     if (a === "cancel") {
       if (b.kind === "workflow") setWfDone((s) => { const n = new Set(s); n.delete(b.id); return n; });
-      else { setReplaced(false); setValidated(false); setOverrides({}); }
+      else { setValidated(false); setOverrides({}); }
     }
   };
 
@@ -165,6 +175,7 @@ export function IntegrationLgc() {
   const banners: React.ReactNode[] = [];
   const panels: React.ReactNode[] = [];
   const widgets: { b: Brick; s: Shown }[] = [];
+  const failed = (b: Brick, msg: string) => <LocusFailed key={b.id} message={msg} onRetry={() => retry(b.id)} />;
   const modals: { b: Brick; out: LocusOut }[] = [];
   let blocked = false;
   let modalAlert = false;
@@ -177,27 +188,33 @@ export function IntegrationLgc() {
     if (!s) continue;
     if (b.kind === "workflow" && wfDone.has(b.id) && /hba1c/i.test(outs[b.id]?.out?.actionLabel ?? "")) hba1cAdded = true;
     const hidden = b.anchor === "tb" && !tbOpen;
-    if (s !== "loading" && b.tool === "controle" && s.actions?.includes("replace")) {
+    if (isBlocking(b, s)) {
       flagged = true;
       // En « Fenêtre bloquante », c'est la fenêtre qui bloque : « Valider » l'ouvre. Ailleurs, le bouton se grise.
-      if (isBlocking(b, s) && b.display !== "modal" && !hidden) blocked = true;
+      if (b.display !== "modal" && !hidden) blocked = true;
       if (b.display === "modal") modalAlert = true;
     }
     if (hidden) continue;
     const key = b.id;
     if (b.display === "inline" && b.anchor !== "tb") {
-      inline[b.anchor].push(s === "loading" ? <LocusLoading key={key} /> : <LocusCard key={key} brick={b} out={s} onAction={(a) => act(b, s, a)} />);
-    } else if (b.display === "inline" || b.display === "banner") {
+      inline[b.anchor].push(s === "loading" ? <LocusLoading key={key} /> : isFailed(s) ? failed(b, s.failed) : <LocusCard key={key} brick={b} out={s} onAction={(a) => act(b, s, a)} />);
+    } else if (b.display === "inline" || b.display === "banner" || (b.display === "modal" && isFailed(s))) {
+      // Une fenêtre bloquante en échec ne bloque rien : son erreur passe en bandeau.
       banners.push(
         <div key={key} className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-2 border-b border-border bg-card px-3 py-2 font-sans text-[13px] text-card-foreground">
-          <LocusTag />
-          {s === "loading" ? <span className="text-muted-foreground">{t.out.loading}</span> : (
+          <LocusTag state={s === "loading" ? "computing" : isFailed(s) ? "error" : "done"} />
+          {s === "loading" ? <span className="text-muted-foreground">{t.out.loading}</span> : isFailed(s) ? (
+            <>
+              <span role="alert" className="min-w-[min(100%,260px)] flex-1">{s.failed}</span>
+              <RetryButton onRetry={() => retry(b.id)} />
+            </>
+          ) : (
             <>
               <b className="font-semibold">{s.title}</b>
               <span className="min-w-[min(100%,260px)] flex-1 text-muted-foreground">{s.lines[0]}</span>
               {s.source && <span className="rounded-full border border-border bg-background px-2 py-0.5 text-[11px] text-muted-foreground">{s.source}</span>}
               {s.actions?.map((a) => (
-                <button key={a} type="button" onClick={() => act(b, s, a)} className={buttonClass({ variant: a === "replace" || a === "wfAction" ? "primary" : "default", size: "sm", className: "h-8 px-3 text-[13px]" })}>
+                <button key={a} type="button" onClick={() => act(b, s, a)} className={buttonClass({ variant: a === "wfAction" ? "primary" : "default", size: "sm", className: "h-8 px-3 text-[13px]" })}>
                   {a === "wfAction" ? s.actionLabel : t.out[a]}
                 </button>
               ))}
@@ -208,16 +225,21 @@ export function IntegrationLgc() {
     } else if (b.display === "panel") {
       panels.push(
         <div key={key} className="flex flex-col gap-2 rounded-lg border border-border bg-muted px-3.5 py-3 text-[13px] text-foreground">
-          {s === "loading" ? <span className="text-muted-foreground">{t.out.loading}</span> : <LocusBody brick={b} out={s} variant="panel" onAction={(a) => act(b, s, a)} />}
+          <span className="flex"><LocusTag state={s === "loading" ? "computing" : isFailed(s) ? "error" : "done"} /></span>
+          {s === "loading" ? <span className="text-muted-foreground">{t.out.loading}</span> : isFailed(s) ? (
+            <>
+              <span role="alert">{s.failed}</span>
+              <span className="flex"><RetryButton onRetry={() => retry(b.id)} /></span>
+            </>
+          ) : <LocusBody brick={b} out={s} variant="panel" onAction={(a) => act(b, s, a)} />}
         </div>,
       );
     } else if (b.display === "widget") widgets.push({ b, s });
-    else if (b.display === "modal" && s !== "loading") modals.push({ b, out: s });
+    else if (b.display === "modal" && s !== "loading" && !isFailed(s)) modals.push({ b, out: s });
   }
 
   const panel = panels.length ? (
     <aside aria-label={t.out.panel} className="flex min-w-[240px] flex-[0_1_300px] flex-col gap-2.5 self-stretch rounded-xl border border-border bg-card p-3 font-sans text-card-foreground shadow-sm max-[760px]:flex-[1_1_100%]">
-      <span><LocusTag /></span>
       {panels}
     </aside>
   ) : null;
@@ -260,6 +282,9 @@ export function IntegrationLgc() {
   const modalOpen = !!modal && (modal.mode === "override" || modals.length > 0);
   const overrideMotif = Object.entries(overrides).find(([id]) => dismissed.has(id))?.[1];
   const tbBricks = active.filter((b) => b.anchor === "tb");
+  /** L'état du calcul des briques actives, pour la barre : en cours, en échec, ou tout calculé en direct. */
+  const states = active.map((b) => outs[b.id]).map((o, i) => (!o || o.loading || o.key !== brickKey(active[i]) ? "computing" : o.error ? "error" : "done"));
+  const status: BarStatus = !states.length ? null : states.includes("computing") ? { kind: "computing" } : states.includes("error") ? { kind: "error", n: states.filter((x) => x === "error").length } : { kind: "done" };
 
   return (
     <div ref={rootRef} className="relative [--bar-h:50px]">
@@ -269,8 +294,7 @@ export function IntegrationLgc() {
         banners={banners}
         panel={panel}
         toolbarLocus={{ show: tbBricks.length > 0, open: tbOpen, hint: t.out.toolbarHint, onClick: () => { setTbOpen((o) => !o); if (!tbOpen && tbBricks.some((b) => b.display === "modal")) setModal({ mode: "show" }); } }}
-        replaced={replaced}
-        flagged={flagged && !replaced}
+        flagged={flagged}
         blocked={blocked}
         validated={validated}
         overrideMotif={overrideMotif}
@@ -292,14 +316,17 @@ export function IntegrationLgc() {
       {widgets.length > 0 && (
         <section aria-label={t.out.widget} className={cn(POP, "absolute bottom-[calc(var(--bar-h)+48px)] right-4 z-[15] max-h-[min(60vh,calc(100%-var(--bar-h)-120px))] w-[min(340px,calc(100%-32px))] overflow-auto text-sm")}>
           <div className="flex items-center gap-2 border-b border-border py-2 pl-3 pr-2">
-            <span className="flex-1"><LocusTag /></span>
+            {/* Une seule étiquette pour le widget : l'état le moins avancé de ses briques. */}
+            <span className="flex-1"><LocusTag state={widgets.some(({ s }) => s === "loading") ? "computing" : widgets.some(({ s }) => isFailed(s)) ? "error" : "done"} /></span>
             <button type="button" onClick={() => setWidgetMin((m) => !m)} aria-label={widgetMin ? t.out.expand : t.out.minimize} aria-expanded={!widgetMin} className={buttonClass({ variant: "ghost", size: "icon", className: "size-8" })}>{widgetMin ? <Plus aria-hidden="true" /> : <Minus aria-hidden="true" />}</button>
           </div>
           {!widgetMin && (
             <div className="flex flex-col gap-2.5 p-3 text-[13px]">
               {widgets.map(({ b, s }) => (
                 <div key={b.id} className="flex flex-col gap-1.5">
-                  {s === "loading" ? <span className="text-muted-foreground">{t.out.loading}</span> : <LocusBody brick={b} out={{ ...s, question: false }} variant="widget" onAction={(a) => act(b, s, a)} />}
+                  {s === "loading" ? <span className="text-muted-foreground">{t.out.loading}</span> : isFailed(s) ? (
+                    <span className="flex flex-wrap items-center gap-2"><span role="alert" className="flex-1">{s.failed}</span><RetryButton onRetry={() => retry(b.id)} /></span>
+                  ) : <LocusBody brick={b} out={{ ...s, question: false }} variant="widget" onAction={(a) => act(b, s, a)} />}
                 </div>
               ))}
               <AskBox brick={widgets[0].b} />
@@ -316,7 +343,7 @@ export function IntegrationLgc() {
         count={bricks.length}
         chooser={chooser}
         list={list}
-        via={via}
+        status={status}
         barRef={barRef}
         onAdd={() => { setList(false); setChooser((v) => !v); }}
         onList={() => { setChooser(false); setList((v) => !v); }}
@@ -340,7 +367,7 @@ export function IntegrationLgc() {
           onToggle={(id) => { setBricks((bs) => bs.map((b) => (b.id === id ? { ...b, on: !b.on } : b))); setWidgetMin(false); }}
           onEdit={(b) => openWizard({ ...b }, b.id)}
           onRemove={(id) => setBricks((bs) => bs.filter((b) => b.id !== id))}
-          onReset={() => { setBricks(EXAMPLES); setDismissed(new Set()); setWfDone(new Set()); setReplaced(false); setValidated(false); setOverrides({}); }}
+          onReset={() => { setBricks(EXAMPLES); setDismissed(new Set()); setWfDone(new Set()); setValidated(false); setOverrides({}); }}
         />
       )}
 
@@ -366,7 +393,7 @@ export function IntegrationLgc() {
           onClose={() => setModal(null)}
           onValidate={() => { setModal(null); setValidated(true); }}
           onOverride={(motif) => {
-            const ids = modal.mode === "override" ? modal.ids ?? [] : modals.filter(({ b, out }) => b.tool === "controle" && out.actions?.includes("replace")).map(({ b }) => b.id);
+            const ids = modal.mode === "override" ? modal.ids ?? [] : modals.filter(({ b, out }) => isBlocking(b, out)).map(({ b }) => b.id);
             dismiss(ids, motif);
             setModal(null);
             if (modal.mode === "validate") setValidated(true);
@@ -457,8 +484,10 @@ function LetterDialog({ lines, onClose }: { lines: string[]; onClose: () => void
   );
 }
 
-function StudioBar({ lang, mode, setMode, setLang, count, chooser, list, via, barRef, onAdd, onList }: {
-  lang: Lang; mode: Mode; setMode: (m: Mode) => void; setLang: (l: Lang) => void; count: number; chooser: boolean; list: boolean; via: Via | null; barRef: React.RefObject<HTMLDivElement | null>; onAdd: () => void; onList: () => void;
+type BarStatus = { kind: "computing" } | { kind: "error"; n: number } | { kind: "done" } | null;
+
+function StudioBar({ lang, mode, setMode, setLang, count, chooser, list, status, barRef, onAdd, onList }: {
+  lang: Lang; mode: Mode; setMode: (m: Mode) => void; setLang: (l: Lang) => void; count: number; chooser: boolean; list: boolean; status: BarStatus; barRef: React.RefObject<HTMLDivElement | null>; onAdd: () => void; onList: () => void;
 }) {
   const t = lgc[lang];
   const c = common[lang];
@@ -475,8 +504,12 @@ function StudioBar({ lang, mode, setMode, setLang, count, chooser, list, via, ba
       <span aria-hidden="true" className="mx-0.5 h-5 w-px bg-border max-[640px]:hidden" />
       <Segmented<Mode> label={t.bar.theme} value={mode} onChange={setMode} options={[{ value: "dark", label: <Moon aria-hidden="true" />, aria: t.bar.dark }, { value: "light", label: <Sun aria-hidden="true" />, aria: t.bar.light }]} />
       <Segmented<Lang> label={t.bar.language} value={lang} onChange={setLang} options={LANGS.map((l) => ({ value: l, label: l.toUpperCase() }))} />
-      {via && <span className="px-1.5 font-mono text-[11px] text-muted-foreground max-[1100px]:hidden">{via === "replay" ? t.bar.replay : t.bar.live}</span>}
-      <ButtonLink href={route(lang, "acces")}>{t.bar.access}</ButtonLink>
+      {status && (
+        <span role="status" className="flex items-center gap-1.5 px-1.5 text-xs text-muted-foreground max-[1100px]:hidden">
+          <i aria-hidden="true" className={cn("block size-1.5 rounded-full", status.kind === "error" ? "bg-muted-foreground" : "bg-brand", status.kind === "computing" && "animate-pulse")} />
+          {status.kind === "computing" ? t.bar.computing : status.kind === "error" ? t.bar.failed(status.n) : t.bar.live}
+        </span>
+      )}
     </div>
   );
 }

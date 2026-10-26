@@ -28,6 +28,8 @@ import { AccountFooter, MobileSignin } from "@/sandbox/acces/account";
 
 /** Les routes plein écran : pas de sidebar ni de fond, la page porte son propre chrome. */
 const IMMERSIVE: RouteKey[] = ["integration"];
+/** Les pages d'avant le mur (entrée, accès) : ni sidebar ni palette, seulement le grain. */
+const NUES: RouteKey[] = ["landing", "acces"];
 
 function Wordmark({ lang, onClick }: { lang: Lang; onClick?: () => void }) {
   const t = common[lang];
@@ -137,8 +139,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const items: PaletteItem[] = [
     { href: route(lang, "home"), label: t.nav.home, icon: House },
     ...TOOLS.map((k) => ({ href: route(lang, k), label: t.tools[k], icon: TOOL_ICONS[k] })),
-    { href: route(lang, "acces"), label: t.account.request, icon: KeyRound },
+    { href: route(lang, "sources"), label: t.nav.sources, icon: Library },
+    { href: route(lang, "documentation"), label: t.nav.docs, icon: BookOpen },
+    { href: route(lang, "clesApi"), label: t.nav.keys, icon: KeyRound },
   ];
+
+  if (NUES.some((k) => pathname === route(lang, k) || pathname === route(lang, k) + "/")) {
+    return <div className="shell-main min-h-dvh">{children}</div>;
+  }
 
   if (IMMERSIVE.some((k) => pathname === route(lang, k) || pathname.startsWith(route(lang, k) + "/"))) {
     return <>{children}{palette && <CommandPalette items={items} lang={lang} onClose={() => setPalette(false)} />}</>;
