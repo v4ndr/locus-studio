@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, BookOpen, Globe, KeyRound, Library, Plug, Zap } from "lucide-react";
+import { ArrowRight, BookOpen, Globe, KeyRound, Library, Zap } from "lucide-react";
 import { common, home, route, TOOLS, type Lang } from "@/i18n";
 import { TOOL_ICONS } from "@/components/shell/tool-icons";
 import { PageHead, PageInner } from "@/components/shell/page-inner";
@@ -16,7 +16,6 @@ export function HomePage({ lang }: { lang: Lang }) {
     <PageInner>
       <PageHead title={t.title}>
         <Link href={route(lang, "documentation")} aria-label={t.docs} title={t.docs} className={buttonClass({ size: "icon", className: "max-[560px]:hidden" })}><BookOpen aria-hidden="true" /></Link>
-        <Link href={route(lang, "integration")} className={buttonClass({ variant: "primary" })}><Plug aria-hidden="true" />{t.build}</Link>
       </PageHead>
 
       <section>

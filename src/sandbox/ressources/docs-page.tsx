@@ -67,9 +67,9 @@ ${JSON.stringify({
     hook: "order-select",
     tool: "prescription-check",
     data: { age: "58 ans", allergies: "Pénicilline (urticaire, 2019)", draft_order: "Amoxicilline 1 g ×2/j, 6 jours" },
-    settings: { allergies: true, interactions: true, niveau: "Informatif" },
+    settings: { niveau: "info" },
     display: "inline-card",
-    context: { patientId: "sandbox-gilles-fournier" },
+    context: { patientId: "pseudo-7f3a91" },
   }, null, 2)}`;
   return { curl, ts, ndjson, blocks };
 }

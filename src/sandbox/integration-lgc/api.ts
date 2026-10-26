@@ -1,7 +1,6 @@
 "use client";
 import { fetchLive } from "@/lib/live";
 import { TOOLS, type LocusOut } from "@/data/integration-lgc/blocks";
-import type { RunResult, StepResult, WfStep } from "@/data/integration-lgc/workflow";
 import type { Brick } from "./model";
 
 /**
@@ -28,31 +27,22 @@ async function post<T>(url: string, body: unknown, signal?: AbortSignal): Promis
   return j;
 }
 
-export interface ErrorCopy { realData: string; quota: string; unconfigured: string; tooMany: string; error: string }
+export interface ErrorCopy { realData: string; quota: string; unconfigured: string; error: string }
 
 /**
  * Le message à afficher pour une erreur de route : données réelles refusées
- * (422), quota atteint (429), Locus non configuré (503), plan trop long,
- * ou Locus qui n'a pas répondu.
+ * (422), quota atteint (429), Locus non configuré (503), ou Locus qui
+ * n'a pas répondu.
  */
 export function errorText(e: unknown, t: ErrorCopy): string {
   if (!(e instanceof ApiError)) return t.error;
   if (e.status === 422) return t.realData;
   if (e.status === 429) return t.quota;
   if (e.code === "core_unconfigured") return t.unconfigured;
-  if (e.code === "too_many_questions") return t.tooMany;
   return t.error;
 }
 
 export function blockOutput(b: Brick, question?: string, signal?: AbortSignal) {
-  const api = TOOLS[question ? "question" : b.tool ?? "controle"].api;
+  const api = TOOLS[question ? "question" : b.tool].api;
   return post<{ output: LocusOut }>(`/api/integration-lgc/blocks/${api}`, { anchor: b.anchor, fields: b.fields, settings: b.settings, question }, signal);
-}
-
-export function runWorkflow(steps: WfStep[], b: Pick<Brick, "anchor" | "fields">, variant: "fournier" | "non-diabetique" = "fournier", signal?: AbortSignal) {
-  return post<RunResult>("/api/integration-lgc/workflow/run", { steps, anchor: b.anchor, fields: b.fields, variant }, signal);
-}
-
-export function structureWorkflow(instruction: string, lang: "fr" | "en") {
-  return post<{ steps: WfStep[]; preview: (Pick<StepResult, "value" | "source" | "status"> | null)[] }>("/api/integration-lgc/workflow/structure", { instruction, lang });
 }
