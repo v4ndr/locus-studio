@@ -1,7 +1,6 @@
 import "server-only";
 import * as z from "zod/v4";
 import { ANCHOR_IDS, FIELD_KEYS, fieldsFor, type AnchorId, type FieldKey } from "@/data/integration-lgc/fournier";
-import { MAX_STEPS, STEP_TYPES } from "@/data/integration-lgc/workflow";
 
 /**
  * Lecture des corps de requête des briques : taille bornée, puis schéma zod.
@@ -10,8 +9,8 @@ import { MAX_STEPS, STEP_TYPES } from "@/data/integration-lgc/workflow";
  * `cleanSettings`, qui connaît chaque outil.
  */
 
-/** Taille maximale d'un corps : un plan de 8 étapes tient largement en 16 Ko. */
-export const MAX_BODY = 16_000;
+/** Taille maximale d'un corps : une brique et sa question tiennent largement en 4 Ko. */
+export const MAX_BODY = 4_000;
 
 export const json = (b: unknown, status = 200) => Response.json(b, { status, headers: { "Cache-Control": "no-store" } });
 
@@ -24,20 +23,6 @@ export const BlockBody = z.object({
   fields,
   settings: z.record(z.string().max(20), scalar).refine((o) => Object.keys(o).length <= 10).default({}),
   question: z.string().max(300).optional(),
-});
-
-export const StepSchema = z.object({ type: z.enum(STEP_TYPES), config: z.string().max(200), action: z.string().max(120).optional() });
-
-export const RunBody = z.object({
-  anchor,
-  fields,
-  steps: z.array(StepSchema).min(1).max(MAX_STEPS),
-  variant: z.enum(["fournier", "non-diabetique"]).default("fournier"),
-});
-
-export const StructureBody = z.object({
-  instruction: z.string().max(500),
-  lang: z.enum(["fr", "en"]).default("fr"),
 });
 
 /** Lit et valide le corps ; renvoie la réponse d'erreur à servir telle quelle sinon. */
@@ -53,8 +38,8 @@ export async function parse<S extends z.ZodType>(req: Request, schema: S): Promi
   return { ok: true, data: r.data };
 }
 
-/** Les champs transmis : seulement ceux que l'ancrage autorise. */
-export function fieldsOf(v: readonly string[], a: AnchorId): FieldKey[] {
+/** Les champs transmis : ceux que l'ancrage autorise, plus ceux sans lesquels l'outil n'a rien à dire. */
+export function fieldsOf(v: readonly string[], a: AnchorId, required: readonly FieldKey[] = []): FieldKey[] {
   const ok = fieldsFor(a);
-  return FIELD_KEYS.filter((k) => v.includes(k) && ok.includes(k));
+  return FIELD_KEYS.filter((k) => ok.includes(k) && (v.includes(k) || required.includes(k)));
 }
