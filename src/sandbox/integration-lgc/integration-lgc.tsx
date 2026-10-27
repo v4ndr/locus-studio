@@ -2,7 +2,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Layers, Minus, Plus, Moon, Sun, Workflow, Wrench, X, Copy, Check } from "lucide-react";
+import { Layers, Minus, Plus, Moon, Sun, X } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { common, lgc, LANG_COOKIE, LANGS, route, type Lang } from "@/i18n";
 import { useLang } from "@/i18n/lang";
@@ -11,20 +11,19 @@ import { Segmented } from "@/components/ui/segmented";
 import { LocusMark } from "@/components/shell/locus-mark";
 import { useTheme, type Mode } from "@/components/shell/theme";
 import { ANCHOR_IDS, defaultFields, type AnchorId } from "@/data/integration-lgc/fournier";
-import type { LocusOut } from "@/data/integration-lgc/blocks";
-import { WF_EXAMPLE } from "@/data/integration-lgc/workflow";
+import { TOOLS, defaultSettings, type LocusOut, type ToolId } from "@/data/integration-lgc/blocks";
 import { Medicab, type ZoneProps } from "./medicab";
-import { AskBox, LocusBody, LocusCard, LocusFailed, LocusLoading, LocusTag, RetryButton, type CardAction } from "./locus-card";
+import { AskBox, LocusBody, LocusCard, LocusFailed, LocusLoading, LocusTag, RetryButton, Verdict, surface, type CardAction } from "./locus-card";
 import { Wizard } from "./wizard";
 import { useDialogFocus } from "./use-dialog";
 import { MyBricks } from "./my-bricks";
-import { blockOutput, errorText, runWorkflow } from "./api";
-import { EXAMPLES, emptyDraft, nextId, useBricks, workflowDraft, type Brick, type Draft } from "./model";
+import { blockOutput, errorText } from "./api";
+import { EXAMPLES, emptyDraft, nextId, useBricks, withRequired, type Brick, type Draft } from "./model";
 
 /**
  * « Intégration LGC » : MédiCab 7 en plein écran, et le chrome Studio réduit
- * à une barre flottante. On y pose des briques Locus (outil ou workflow) sur
- * cinq ancrages façon CDS Hooks, plus un bouton de barre d'outils.
+ * à une barre flottante. On y pose des briques Locus (trois outils) sur
+ * trois ancrages façon CDS Hooks, plus un bouton de barre d'outils.
  * Chaque brique active est calculée par core quand elle s'affiche ou
  * change ; un échec reste un échec, affiché avec « Réessayer ».
  */
@@ -36,7 +35,7 @@ interface OutState { key: string; loading: boolean; out: LocusOut | null; error?
 
 const isFailed = (s: Shown | null): s is Failed => !!s && typeof s === "object" && "failed" in s;
 
-const brickKey = (b: Brick) => JSON.stringify([b.kind, b.tool, b.settings, b.fields, b.anchor, b.steps]);
+const brickKey = (b: Brick) => JSON.stringify([b.tool, b.settings, b.fields, b.anchor]);
 const POP = "rounded-xl border border-border bg-popover text-popover-foreground shadow-[0_16px_40px_rgba(0,0,0,.45)] font-sans";
 
 function autreLangue(pathname: string, to: Lang) {
@@ -55,14 +54,12 @@ export function IntegrationLgc() {
   const [bricks, setBricks] = useBricks();
 
   // Chrome Studio
-  const [chooser, setChooser] = React.useState(false);
   const [list, setList] = React.useState(false);
   const [wiz, setWiz] = React.useState<{ draft: Draft; step: number; editId: string | null } | null>(null);
 
   // État de MédiCab
   const [validated, setValidated] = React.useState(false);
   const [dismissed, setDismissed] = React.useState<Set<string>>(new Set());
-  const [wfDone, setWfDone] = React.useState<Set<string>>(new Set());
   /**
    * La fenêtre Locus : `show` (une brique « Fenêtre bloquante » vient d'être
    * activée), `validate` (ouverte par « Valider l'ordonnance »), `override`
@@ -74,8 +71,9 @@ export function IntegrationLgc() {
   /** Les alertes passées outre, avec leur motif (affiché dans la barre de signature). */
   const [overrides, setOverrides] = React.useState<Record<string, string>>({});
   const [widgetMin, setWidgetMin] = React.useState(false);
+  // Sur téléphone, le widget couvrirait tout MédiCab : il arrive replié, son en-tête Locus reste visible.
+  React.useEffect(() => { if (window.matchMedia("(max-width: 640px)").matches) setWidgetMin(true); }, []);
   const [tbOpen, setTbOpen] = React.useState(false);
-  const [letter, setLetter] = React.useState<string[] | null>(null);
   const [narrowSeen, setNarrowSeen] = React.useState(false);
 
   // Sorties des briques actives
@@ -102,10 +100,8 @@ export function IntegrationLgc() {
       if (outsRef.current[b.id]?.key === key) continue;
       const put = (s: OutState) => { outsRef.current = { ...outsRef.current, [b.id]: s }; setOuts(outsRef.current); };
       put({ key, loading: true, out: null });
-      const p = b.kind === "workflow"
-        ? runWorkflow(b.steps ?? [], b).then((r) => ({ out: r.output }))
-        : blockOutput(b).then((r) => ({ out: r.output }));
-      p.then((r) => { if (outsRef.current[b.id]?.key !== key) return; put({ key, loading: false, out: r.out }); })
+      blockOutput(b)
+        .then((r) => { if (outsRef.current[b.id]?.key !== key) return; put({ key, loading: false, out: r.output }); })
         .catch((e) => { if (outsRef.current[b.id]?.key !== key) return; put({ key, loading: false, out: null, error: errorText(e, t.out) }); });
     }
   }, [bricks, attempt, t.out]);
@@ -121,7 +117,7 @@ export function IntegrationLgc() {
   React.useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
-      setChooser(false); setList(false); setModal(null); setLetter(null);
+      setList(false); setModal(null);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -140,16 +136,15 @@ export function IntegrationLgc() {
     const o = outs[b.id];
     if (!o || o.loading || o.key !== brickKey(b)) return "loading";
     if (o.error) return { failed: o.error };
-    if (!o.out) return null; // workflow arrêté par sa condition : rien ne s'affiche
-    if (b.kind === "workflow" && wfDone.has(b.id)) {
-      const label = o.out.actionLabel ?? "";
-      return { title: /hba1c/i.test(label) ? "HbA1c" : o.out.title, lines: [/hba1c/i.test(label) ? "HbA1c ajoutée à la prochaine biologie." : `Brouillon créé : ${label}.`], actions: ["cancel"] };
-    }
     return o.out;
   };
 
-  /** Une alerte bloquante : la réponse du contrôle d'ordonnance réglé sur « Bloquant », tant qu'elle n'est pas écartée avec un motif. */
-  const isBlocking = (b: Brick, out: Shown | null) => b.kind === "tool" && b.tool === "controle" && b.settings.niveau === "bloquant" && !!out && out !== "loading" && !isFailed(out) && !!out.actions?.includes("ignore");
+  /**
+   * Une alerte bloquante : un contrôle d'ordonnance réglé sur « Bloquant »
+   * dont la réponse signale un problème, tant qu'elle n'est pas écartée avec
+   * un motif. Une réponse rassurante ne bloque rien.
+   */
+  const isBlocking = (b: Brick, out: Shown | null) => b.tool === "controle" && b.settings.niveau === "bloquant" && !!out && out !== "loading" && !isFailed(out) && !!out.alert;
 
   const dismiss = (ids: string[], motif?: string) => {
     setDismissed((s) => { const n = new Set(s); for (const id of ids) n.add(id); return n; });
@@ -163,12 +158,6 @@ export function IntegrationLgc() {
       dismiss([b.id]);
       setModal((m) => (m?.mode === "show" ? null : m));
     }
-    if (a === "openLetter") setLetter(out.letter ?? out.lines);
-    if (a === "wfAction") setWfDone((s) => new Set(s).add(b.id));
-    if (a === "cancel") {
-      if (b.kind === "workflow") setWfDone((s) => { const n = new Set(s); n.delete(b.id); return n; });
-      else { setValidated(false); setOverrides({}); }
-    }
   };
 
   const inline = Object.fromEntries(ANCHOR_IDS.map((a) => [a, [] as React.ReactNode[]])) as Record<AnchorId, React.ReactNode[]>;
@@ -180,16 +169,15 @@ export function IntegrationLgc() {
   let blocked = false;
   let modalAlert = false;
   let flagged = false;
-  let hba1cAdded = false;
   const active = bricks.filter((b) => b.on);
 
   for (const b of active) {
     const s = shown(b);
     if (!s) continue;
-    if (b.kind === "workflow" && wfDone.has(b.id) && /hba1c/i.test(outs[b.id]?.out?.actionLabel ?? "")) hba1cAdded = true;
+    // La ligne d'ordonnance se signale dès qu'un contrôle y trouve un problème, bloquant ou non.
+    if (b.tool === "controle" && s !== "loading" && !isFailed(s) && s.alert) flagged = true;
     const hidden = b.anchor === "tb" && !tbOpen;
     if (isBlocking(b, s)) {
-      flagged = true;
       // En « Fenêtre bloquante », c'est la fenêtre qui bloque : « Valider » l'ouvre. Ailleurs, le bouton se grise.
       if (b.display !== "modal" && !hidden) blocked = true;
       if (b.display === "modal") modalAlert = true;
@@ -201,30 +189,31 @@ export function IntegrationLgc() {
     } else if (b.display === "inline" || b.display === "banner" || (b.display === "modal" && isFailed(s))) {
       // Une fenêtre bloquante en échec ne bloque rien : son erreur passe en bandeau.
       banners.push(
-        <div key={key} className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-2 border-b border-border bg-card px-3 py-2 font-sans text-[13px] text-card-foreground">
-          <LocusTag state={s === "loading" ? "computing" : isFailed(s) ? "error" : "done"} />
-          {s === "loading" ? <span className="text-muted-foreground">{t.out.loading}</span> : isFailed(s) ? (
-            <>
-              <span role="alert" className="min-w-[min(100%,260px)] flex-1">{s.failed}</span>
-              <RetryButton onRetry={() => retry(b.id)} />
-            </>
-          ) : (
-            <>
-              <b className="font-semibold">{s.title}</b>
-              <span className="min-w-[min(100%,260px)] flex-1 text-muted-foreground">{s.lines[0]}</span>
-              {s.source && <span className="rounded-full border border-border bg-background px-2 py-0.5 text-[11px] text-muted-foreground">{s.source}</span>}
-              {s.actions?.map((a) => (
-                <button key={a} type="button" onClick={() => act(b, s, a)} className={buttonClass({ variant: a === "wfAction" ? "primary" : "default", size: "sm", className: "h-8 px-3 text-[13px]" })}>
-                  {a === "wfAction" ? s.actionLabel : t.out[a]}
-                </button>
-              ))}
-            </>
-          )}
+        <div key={key} className="shrink-0 bg-[#e9edf2] px-2 pt-2">
+          <div key={s === "loading" ? "l" : isFailed(s) ? "e" : "o"} role={isFailed(s) ? "alert" : undefined} className={cn(surface(), "flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3 text-sm")}>
+            <LocusTag state={s === "loading" ? "computing" : isFailed(s) ? "error" : "done"} />
+            {s === "loading" ? <span className="text-muted-foreground">{t.out.loading}</span> : isFailed(s) ? (
+              <>
+                <span className="min-w-[min(100%,260px)] flex-1">{s.failed}</span>
+                <RetryButton onRetry={() => retry(b.id)} />
+              </>
+            ) : (
+              <>
+                <b className="text-[15px] font-semibold tracking-[-.01em]">{s.title}</b>
+                {s.alert !== undefined && <Verdict alert={s.alert} />}
+                <span className="min-w-[min(100%,260px)] flex-1">{s.lines[0]}</span>
+                {s.sources?.[0] && <span className="rounded-full border border-border bg-background px-2 py-0.5 text-xs text-muted-foreground">{s.sources[0]}</span>}
+                {s.actions?.map((a) => (
+                  <button key={a} type="button" onClick={() => act(b, s, a)} className={buttonClass({ size: "sm", className: "h-8 px-3 text-[13px]" })}>{t.out[a]}</button>
+                ))}
+              </>
+            )}
+          </div>
         </div>,
       );
     } else if (b.display === "panel") {
       panels.push(
-        <div key={key} className="flex flex-col gap-2 rounded-lg border border-border bg-muted px-3.5 py-3 text-[13px] text-foreground">
+        <div key={key} className="flex flex-col gap-2.5 text-sm">
           <span className="flex"><LocusTag state={s === "loading" ? "computing" : isFailed(s) ? "error" : "done"} /></span>
           {s === "loading" ? <span className="text-muted-foreground">{t.out.loading}</span> : isFailed(s) ? (
             <>
@@ -239,23 +228,30 @@ export function IntegrationLgc() {
   }
 
   const panel = panels.length ? (
-    <aside aria-label={t.out.panel} className="flex min-w-[240px] flex-[0_1_300px] flex-col gap-2.5 self-stretch rounded-xl border border-border bg-card p-3 font-sans text-card-foreground shadow-sm max-[760px]:flex-[1_1_100%]">
+    <aside aria-label={t.out.panel} className={cn(surface(), "flex min-w-0 flex-[0_0_320px] flex-col gap-4 self-stretch p-4 max-[760px]:flex-[1_1_100%] [&>*+*]:border-t [&>*+*]:border-border [&>*+*]:pt-4")}>
       {panels}
     </aside>
   ) : null;
 
   /* ---------- Assistant ---------- */
 
-  const openWizard = (draft: Draft, editId: string | null = null) => { setChooser(false); setList(false); setWiz({ draft, step: 1, editId }); };
+  const openWizard = (draft: Draft, editId: string | null = null) => { setList(false); setWiz({ draft, step: 1, editId }); };
   const setDraft = (p: Partial<Draft>) => setWiz((w) => (w ? { ...w, draft: { ...w.draft, ...p } } : w));
-  const pickAnchor = (a: AnchorId) => setDraft({ anchor: a, fields: defaultFields(a, wiz?.draft.kind === "workflow") });
+  const pickAnchor = (a: AnchorId) => setWiz((w) => (w?.draft.tool ? { ...w, draft: { ...w.draft, anchor: a, fields: withRequired(w.draft.tool, a, defaultFields(a)) } } : w));
+  /** Changer d'outil garde l'ancrage et l'affichage s'ils lui conviennent ; un outil à un seul ancrage le prend d'office. */
+  const pickTool = (tool: ToolId) => setWiz((w) => {
+    if (!w) return w;
+    const d = w.draft;
+    const def = TOOLS[tool];
+    const anchor = d.anchor && def.anchors.includes(d.anchor) ? d.anchor : def.anchors.length === 1 ? def.anchors[0] : null;
+    return { ...w, draft: { tool, anchor, fields: anchor ? withRequired(tool, anchor, anchor === d.anchor && d.tool ? d.fields : defaultFields(anchor)) : [], settings: d.tool === tool ? d.settings : defaultSettings(tool), display: d.display && def.displays.includes(d.display) ? d.display : null } };
+  });
   const submit = () => {
-    if (!wiz || !wiz.draft.anchor || !wiz.draft.display) return;
+    if (!wiz || !wiz.draft.tool || !wiz.draft.anchor || !wiz.draft.display) return;
     const id = wiz.editId ?? nextId(bricks);
-    const nb: Brick = { ...wiz.draft, id, on: true, anchor: wiz.draft.anchor, display: wiz.draft.display };
+    const nb: Brick = { ...wiz.draft, id, on: true, tool: wiz.draft.tool, anchor: wiz.draft.anchor, display: wiz.draft.display };
     setBricks((bs) => (wiz.editId ? bs.map((x) => (x.id === id ? nb : x)) : [...bs, nb]));
     setDismissed((s) => { const n = new Set(s); n.delete(id); return n; });
-    setWfDone((s) => { const n = new Set(s); n.delete(id); return n; });
     setWiz(null);
     setList(true);
     setWidgetMin(false);
@@ -266,7 +262,8 @@ export function IntegrationLgc() {
 
   const zones = Object.fromEntries(ANCHOR_IDS.map((a) => {
     const sel = !!wiz && wiz.draft.anchor === a;
-    const cand = !!wiz && wiz.step === 1 && !sel;
+    // Pendant le choix de l'ancrage, seules les zones où l'outil a un sens proposent « Injecter ici ».
+    const cand = !!wiz && wiz.step === 2 && !sel && !!wiz.draft.tool && TOOLS[wiz.draft.tool].anchors.includes(a);
     const slot = sel
       ? <span className="rounded-md bg-primary px-2 py-[3px] font-sans text-xs font-medium text-primary-foreground">{t.wizard.anchorTag}</span>
       : cand ? <button type="button" onClick={() => pickAnchor(a)} className="min-h-[26px] rounded-md border border-dashed border-ring bg-background px-2.5 font-sans text-xs font-medium text-foreground hover:bg-accent">{t.wizard.inject}</button> : null;
@@ -287,7 +284,8 @@ export function IntegrationLgc() {
   const status: BarStatus = !states.length ? null : states.includes("computing") ? { kind: "computing" } : states.includes("error") ? { kind: "error", n: states.filter((x) => x === "error").length } : { kind: "done" };
 
   return (
-    <div ref={rootRef} className="relative [--bar-h:50px]">
+    // Widget ouvert sur grand écran : MédiCab lui laisse sa colonne, pour qu'il ne cache rien (`--widget-pad`, lu par `.body`).
+    <div ref={rootRef} className={cn("relative [--bar-h:50px]", widgets.length > 0 && !widgetMin && "min-[1180px]:[--widget-pad:412px]")}>
       <Medicab
         zones={zones}
         inline={inline}
@@ -299,8 +297,8 @@ export function IntegrationLgc() {
         validated={validated}
         overrideMotif={overrideMotif}
         onValidate={validate}
-        hba1cAdded={hba1cAdded}
         activeCount={active.length}
+        widgetOpen={widgets.length > 0 && !widgetMin}
         banner={c.banner}
       />
 
@@ -314,16 +312,16 @@ export function IntegrationLgc() {
 
       {/* Widget Locus ancré */}
       {widgets.length > 0 && (
-        <section aria-label={t.out.widget} className={cn(POP, "absolute bottom-[calc(var(--bar-h)+48px)] right-4 z-[15] max-h-[min(60vh,calc(100%-var(--bar-h)-120px))] w-[min(340px,calc(100%-32px))] overflow-auto text-sm")}>
-          <div className="flex items-center gap-2 border-b border-border py-2 pl-3 pr-2">
+        <section aria-label={t.out.widget} className={cn(surface(), "absolute bottom-[calc(var(--bar-h)+48px)] right-4 z-[15] max-h-[calc(100%-var(--bar-h)-150px)] w-[min(388px,calc(100%-32px))] overflow-auto text-sm")}>
+          <div className="sticky top-0 z-[1] flex items-center gap-2 border-b border-border bg-card py-2 pl-3.5 pr-2">
             {/* Une seule étiquette pour le widget : l'état le moins avancé de ses briques. */}
             <span className="flex-1"><LocusTag state={widgets.some(({ s }) => s === "loading") ? "computing" : widgets.some(({ s }) => isFailed(s)) ? "error" : "done"} /></span>
             <button type="button" onClick={() => setWidgetMin((m) => !m)} aria-label={widgetMin ? t.out.expand : t.out.minimize} aria-expanded={!widgetMin} className={buttonClass({ variant: "ghost", size: "icon", className: "size-8" })}>{widgetMin ? <Plus aria-hidden="true" /> : <Minus aria-hidden="true" />}</button>
           </div>
           {!widgetMin && (
-            <div className="flex flex-col gap-2.5 p-3 text-[13px]">
+            <div className="flex flex-col gap-3.5 p-4">
               {widgets.map(({ b, s }) => (
-                <div key={b.id} className="flex flex-col gap-1.5">
+                <div key={b.id} className="flex flex-col gap-2">
                   {s === "loading" ? <span className="text-muted-foreground">{t.out.loading}</span> : isFailed(s) ? (
                     <span className="flex flex-wrap items-center gap-2"><span role="alert" className="flex-1">{s.failed}</span><RetryButton onRetry={() => retry(b.id)} /></span>
                   ) : <LocusBody brick={b} out={{ ...s, question: false }} variant="widget" onAction={(a) => act(b, s, a)} />}
@@ -341,24 +339,12 @@ export function IntegrationLgc() {
         setMode={setMode}
         setLang={setLang}
         count={bricks.length}
-        chooser={chooser}
         list={list}
         status={status}
         barRef={barRef}
-        onAdd={() => { setList(false); setChooser((v) => !v); }}
-        onList={() => { setChooser(false); setList((v) => !v); }}
+        onAdd={() => openWizard(emptyDraft())}
+        onList={() => setList((v) => !v)}
       />
-
-      {chooser && !wiz && (
-        <section aria-label={t.chooser.label} className={cn(POP, "absolute bottom-[calc(var(--bar-h)+44px)] left-4 z-[22] flex w-[min(400px,calc(100%-32px))] flex-col gap-1.5 p-2")}>
-          {([["tool", Wrench, t.chooser.tool, t.chooser.toolDesc], ["workflow", Workflow, t.chooser.workflow, t.chooser.workflowDesc]] as const).map(([k, Icon, title, desc]) => (
-            <button key={k} type="button" onClick={() => openWizard(k === "tool" ? emptyDraft() : workflowDraft(WF_EXAMPLE[lang]))} className="flex min-h-14 items-center gap-3 rounded-lg px-3 py-2.5 text-left text-foreground hover:bg-accent">
-              <span className="grid size-8 shrink-0 place-items-center rounded-md border border-border bg-muted"><Icon size={16} aria-hidden="true" /></span>
-              <span className="grid gap-0.5"><span className="text-sm font-medium">{title}</span><span className="text-[13px] text-muted-foreground">{desc}</span></span>
-            </button>
-          ))}
-        </section>
-      )}
 
       {list && !wiz && (
         <MyBricks
@@ -367,7 +353,7 @@ export function IntegrationLgc() {
           onToggle={(id) => { setBricks((bs) => bs.map((b) => (b.id === id ? { ...b, on: !b.on } : b))); setWidgetMin(false); }}
           onEdit={(b) => openWizard({ ...b }, b.id)}
           onRemove={(id) => setBricks((bs) => bs.filter((b) => b.id !== id))}
-          onReset={() => { setBricks(EXAMPLES); setDismissed(new Set()); setWfDone(new Set()); setValidated(false); setOverrides({}); }}
+          onReset={() => { setBricks(EXAMPLES); setDismissed(new Set()); setValidated(false); setOverrides({}); }}
         />
       )}
 
@@ -381,6 +367,7 @@ export function IntegrationLgc() {
           onClose={() => setWiz(null)}
           onSubmit={submit}
           pickAnchor={pickAnchor}
+          pickTool={pickTool}
         />
       )}
 
@@ -401,7 +388,6 @@ export function IntegrationLgc() {
         />
       )}
 
-      {letter && <LetterDialog lines={letter} onClose={() => setLetter(null)} />}
     </div>
   );
 }
@@ -429,14 +415,14 @@ function LocusDialog({ mode, items, alert, onAction, onClose, onValidate, onOver
   const label = mode === "override" ? t.overrideTitle : `Locus · ${t.before}`;
   return (
     <div className="absolute inset-0 z-40 grid place-items-center bg-black/50 p-4">
-      <section ref={ref} role="dialog" aria-modal="true" aria-label={label} className={cn(POP, "flex max-h-[90dvh] w-[min(480px,100%)] flex-col gap-3 overflow-auto p-5 text-sm")}>
+      <section ref={ref} role="dialog" aria-modal="true" aria-label={label} className={cn(surface(), "flex max-h-[90dvh] w-[min(520px,100%)] flex-col gap-3.5 overflow-auto p-5 text-sm")}>
         <div className="flex items-center gap-2">
           <LocusTag /><span className="flex-1 text-[13px] text-muted-foreground">{mode === "override" ? t.overrideTitle : t.before}</span>
           <button type="button" onClick={onClose} aria-label={mode === "show" ? t.close : t.editOrder} className={buttonClass({ variant: "ghost", size: "icon", className: "size-8" })}><X aria-hidden="true" /></button>
         </div>
         {items.map(({ b, out }) => (
           <div key={b.id} className="flex flex-col gap-2">
-            <span className="text-base font-semibold tracking-[-.01em]">{out.title}</span>
+            <span className="flex flex-wrap items-center gap-2"><span className="text-base font-semibold tracking-[-.01em]">{out.title}</span>{out.alert !== undefined && <Verdict alert={out.alert} />}</span>
             {/* Avant validation, « Ignorer » cède la place à « Passer outre, avec motif ». */}
             <LocusBody brick={b} out={mode === "show" ? out : { ...out, actions: asking ? [] : out.actions?.filter((a) => a !== "ignore") }} variant="modal" onAction={(a) => onAction(b, out, a)} />
           </div>
@@ -463,31 +449,10 @@ function LocusDialog({ mode, items, alert, onAction, onClose, onValidate, onOver
   );
 }
 
-function LetterDialog({ lines, onClose }: { lines: string[]; onClose: () => void }) {
-  const lang = useLang();
-  const t = lgc[lang].out;
-  const [copied, setCopied] = React.useState(false);
-  const ref = useDialogFocus<HTMLElement>();
-  return (
-    <div className="absolute inset-0 z-40 grid place-items-center bg-black/50 p-4">
-      <section ref={ref} role="dialog" aria-modal="true" aria-label={t.letter} className={cn(POP, "flex max-h-[90dvh] w-[min(560px,100%)] flex-col gap-3 overflow-auto p-5 text-sm")}>
-        <div className="flex items-center gap-2"><LocusTag /><span className="flex-1 font-semibold">{t.letter}</span>
-          <button type="button" onClick={onClose} aria-label={t.close} className={buttonClass({ variant: "ghost", size: "icon", className: "size-8" })}><X aria-hidden="true" /></button>
-        </div>
-        <div className="grid gap-2 rounded-lg border border-border bg-muted p-4 leading-[1.5]">{lines.map((l, i) => <p key={i} className="m-0">{l}</p>)}</div>
-        <div className="flex justify-end gap-2">
-          <Button onClick={async () => { try { await navigator.clipboard.writeText(lines.join("\n\n")); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch {} }}>{copied ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}{copied ? t.copied : t.copy}</Button>
-          <Button variant="primary" onClick={onClose}>{t.close}</Button>
-        </div>
-      </section>
-    </div>
-  );
-}
-
 type BarStatus = { kind: "computing" } | { kind: "error"; n: number } | { kind: "done" } | null;
 
-function StudioBar({ lang, mode, setMode, setLang, count, chooser, list, status, barRef, onAdd, onList }: {
-  lang: Lang; mode: Mode; setMode: (m: Mode) => void; setLang: (l: Lang) => void; count: number; chooser: boolean; list: boolean; status: BarStatus; barRef: React.RefObject<HTMLDivElement | null>; onAdd: () => void; onList: () => void;
+function StudioBar({ lang, mode, setMode, setLang, count, list, status, barRef, onAdd, onList }: {
+  lang: Lang; mode: Mode; setMode: (m: Mode) => void; setLang: (l: Lang) => void; count: number; list: boolean; status: BarStatus; barRef: React.RefObject<HTMLDivElement | null>; onAdd: () => void; onList: () => void;
 }) {
   const t = lgc[lang];
   const c = common[lang];
@@ -499,7 +464,7 @@ function StudioBar({ lang, mode, setMode, setLang, count, chooser, list, status,
       </Link>
       <span aria-hidden="true" className="h-5 w-px bg-border max-[640px]:hidden" />
       <span className="px-2 font-medium max-[1100px]:hidden">{c.tools.integration}</span>
-      <Button variant="primary" onClick={onAdd} aria-expanded={chooser}><Plus aria-hidden="true" />{t.bar.addBrick}</Button>
+      <Button variant="primary" onClick={onAdd}><Plus aria-hidden="true" />{t.bar.addBrick}</Button>
       <Button onClick={onList} aria-pressed={list} className={list ? "bg-accent" : undefined}><Layers aria-hidden="true" />{t.bar.myBricks}<span className="font-mono text-xs text-muted-foreground">{count}</span></Button>
       <span aria-hidden="true" className="mx-0.5 h-5 w-px bg-border max-[640px]:hidden" />
       <Segmented<Mode> label={t.bar.theme} value={mode} onChange={setMode} options={[{ value: "dark", label: <Moon aria-hidden="true" />, aria: t.bar.dark }, { value: "light", label: <Sun aria-hidden="true" />, aria: t.bar.light }]} />

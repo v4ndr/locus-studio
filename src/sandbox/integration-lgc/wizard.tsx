@@ -1,23 +1,21 @@
 "use client";
 import * as React from "react";
-import { ArrowRight, Check, ListTree, Play, Plus, X } from "lucide-react";
+import { ArrowRight, Check, Lock, X } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { lgc } from "@/i18n";
 import { useLang } from "@/i18n/lang";
 import { Button, buttonClass } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { ANCHOR_IDS, FIELDS, defaultFields, fieldsFor, type AnchorId } from "@/data/integration-lgc/fournier";
-import { DISPLAY_IDS, HOOKS, TOOLS, TOOL_IDS, defaultSettings } from "@/data/integration-lgc/blocks";
-import { INSERTABLE, WF_EXAMPLE, type RunResult } from "@/data/integration-lgc/workflow";
-import { errorText, runWorkflow, structureWorkflow } from "./api";
+import { FIELDS, fieldsFor, type AnchorId } from "@/data/integration-lgc/fournier";
+import { HOOKS, TOOLS, TOOL_IDS, type ToolId } from "@/data/integration-lgc/blocks";
 import type { Draft } from "./model";
 import { useDialogFocus } from "./use-dialog";
-import { LocusTag } from "./locus-card";
 
 /**
  * L'assistant de brique, à la Zapier : 4 étapes, chacune repliée en une
- * ligne résumé une fois faite. Point d'injection → données transmises →
- * outil Locus (ou workflow) → affichage de la sortie.
+ * ligne résumé une fois faite. Outil Locus → point d'injection → données
+ * transmises → affichage de la sortie. Chaque étape ne propose que ce qui
+ * a un sens pour l'outil choisi : ancrages, données exigées, affichages.
  */
 
 const OPT = "flex min-h-11 items-center gap-2.5 rounded-md border border-border bg-card px-3 py-2 text-left text-sm text-foreground transition-colors hover:bg-accent";
@@ -32,30 +30,27 @@ function Badge({ n, state }: { n: number; state: "done" | "open" | "todo" }) {
 }
 
 export function canContinue(d: Draft, step: number) {
-  if (step === 1) return !!d.anchor;
-  if (step === 2) return d.fields.length > 0;
-  if (step === 3) return d.kind === "workflow" ? !!d.steps?.length : !!d.tool;
+  if (step === 1) return !!d.tool;
+  if (step === 2) return !!d.anchor;
+  if (step === 3) return d.fields.length > 0;
   return !!d.display;
 }
 
-export function Wizard({ draft, setDraft, step, setStep, editing, onClose, onSubmit, pickAnchor }: {
+export function Wizard({ draft, setDraft, step, setStep, editing, onClose, onSubmit, pickAnchor, pickTool }: {
   draft: Draft; setDraft: (p: Partial<Draft>) => void; step: number; setStep: (n: number) => void; editing: boolean;
-  onClose: () => void; onSubmit: () => void; pickAnchor: (a: AnchorId) => void;
+  onClose: () => void; onSubmit: () => void; pickAnchor: (a: AnchorId) => void; pickTool: (t: ToolId) => void;
 }) {
   const lang = useLang();
   const t = lgc[lang];
   const w = t.wizard;
-  const isWf = draft.kind === "workflow";
   const ready = canContinue(draft, step);
-  const titles = w.steps.map((x, i) => (i === 2 && isWf ? w.stepsWorkflow : x));
+  const titles = w.steps;
 
   const chosen = draft.anchor ? fieldsFor(draft.anchor).filter((k) => draft.fields.includes(k)) : [];
   const sums = [
+    draft.tool ? [t.tools[draft.tool].name, ...TOOLS[draft.tool].settings.map((s) => { const v = draft.settings[s.k]; return s.kind === "toggle" ? `${t.settings[s.k]} ${v ? w.on : w.off}` : t.options[String(v)]; })].join(" · ") : "",
     draft.anchor ? `${t.anchors[draft.anchor]} · ${HOOKS[draft.anchor]}` : "",
     w.data(chosen.length, chosen.map((k) => t.fields[k]).join(", ")),
-    isWf
-      ? w.workflowSummary(draft.steps?.length ?? 0)
-      : draft.tool ? [t.tools[draft.tool].name, ...TOOLS[draft.tool].settings.map((s) => { const v = draft.settings[s.k]; return s.kind === "toggle" ? `${t.settings[s.k]} ${v ? w.on : w.off}` : t.options[String(v)]; })].join(" · ") : "",
     draft.display ? t.displays[draft.display] : "",
   ];
 
@@ -93,9 +88,10 @@ export function Wizard({ draft, setDraft, step, setStep, editing, onClose, onSub
                 </span>
                 {done && <Button variant="ghost" size="sm" onClick={() => setStep(n)}>{w.edit}</Button>}
               </div>
-              {open && n === 1 && (
+              {open && n === 1 && <ToolStep draft={draft} setDraft={setDraft} pickTool={pickTool} />}
+              {open && n === 2 && draft.tool && (
                 <div role="radiogroup" aria-label={title} className="flex flex-col gap-1.5 pt-3">
-                  {ANCHOR_IDS.map((a) => (
+                  {TOOLS[draft.tool].anchors.map((a) => (
                     <button key={a} type="button" role="radio" aria-checked={draft.anchor === a} onClick={() => pickAnchor(a)} className={cn(OPT, draft.anchor === a && OPT_SEL)}>
                       <span className="flex-1">{t.anchors[a]}</span>
                       <span className="font-mono text-[11px] text-muted-foreground">{HOOKS[a]}</span>
@@ -103,8 +99,7 @@ export function Wizard({ draft, setDraft, step, setStep, editing, onClose, onSub
                   ))}
                 </div>
               )}
-              {open && n === 2 && draft.anchor && <Fields draft={draft} setDraft={setDraft} />}
-              {open && n === 3 && <ToolStep draft={draft} setDraft={setDraft} />}
+              {open && n === 3 && draft.anchor && <Fields draft={draft} setDraft={setDraft} />}
               {open && n === 4 && <DisplayStep draft={draft} setDraft={setDraft} />}
             </div>
           );
@@ -127,9 +122,11 @@ function Fields({ draft, setDraft }: { draft: Draft; setDraft: (p: Partial<Draft
     <div className="flex flex-col gap-1 pt-3">
       {fieldsFor(draft.anchor!).map((k) => {
         const on = draft.fields.includes(k);
+        // Une donnée exigée par l'outil reste cochée : sans elle, la brique n'aurait rien à dire.
+        const locked = !!draft.tool && TOOLS[draft.tool].required.includes(k);
         return (
-          <button key={k} type="button" role="checkbox" aria-checked={on} onClick={() => setDraft({ fields: on ? draft.fields.filter((x) => x !== k) : [...draft.fields, k] })} className="grid min-h-10 grid-cols-[20px_minmax(0,140px)_12px_minmax(0,1fr)] items-center gap-2 rounded-md px-2 py-1 text-left hover:bg-accent">
-            <span className={cn("grid size-5 place-items-center rounded-[5px] border", on ? "border-primary bg-primary text-primary-foreground" : "border-input bg-background")}>{on && <Check size={12} strokeWidth={3} aria-hidden="true" />}</span>
+          <button key={k} type="button" role="checkbox" aria-checked={on} aria-disabled={locked || undefined} title={locked ? t.wizard.required : undefined} onClick={() => { if (!locked) setDraft({ fields: on ? draft.fields.filter((x) => x !== k) : [...draft.fields, k] }); }} className={cn("grid min-h-10 grid-cols-[20px_minmax(0,140px)_12px_minmax(0,1fr)] items-center gap-2 rounded-md px-2 py-1 text-left", locked ? "cursor-default" : "hover:bg-accent")}>
+            <span className={cn("grid size-5 place-items-center rounded-[5px] border", on ? "border-primary bg-primary text-primary-foreground" : "border-input bg-background")}>{locked ? <Lock size={11} strokeWidth={3} aria-hidden="true" /> : on && <Check size={12} strokeWidth={3} aria-hidden="true" />}</span>
             <span className="text-[13px] font-medium">{t.fields[k]}</span>
             <ArrowRight size={12} aria-hidden="true" className="text-muted-foreground" />
             <span className={cn("truncate text-[13px]", on ? "text-foreground" : "text-muted-foreground opacity-60")}>{FIELDS[k].value}</span>
@@ -141,179 +138,39 @@ function Fields({ draft, setDraft }: { draft: Draft; setDraft: (p: Partial<Draft
   );
 }
 
-function ToolStep({ draft, setDraft }: { draft: Draft; setDraft: (p: Partial<Draft>) => void }) {
+function ToolStep({ draft, setDraft, pickTool }: { draft: Draft; setDraft: (p: Partial<Draft>) => void; pickTool: (t: ToolId) => void }) {
   const lang = useLang();
   const t = lgc[lang];
-  const isWf = draft.kind === "workflow";
   return (
     <div className="flex flex-col gap-3 pt-3">
-      <div role="radiogroup" aria-label={t.chooser.label} className="grid grid-cols-2 gap-1.5">
-        {(["tool", "workflow"] as const).map((k) => (
-          <button key={k} type="button" role="radio" aria-checked={draft.kind === k} onClick={() => setDraft(k === "workflow" ? { kind: k, instruction: draft.instruction || WF_EXAMPLE[lang], fields: draft.anchor ? [...new Set([...draft.fields, ...defaultFields(draft.anchor, true)])] : draft.fields } : { kind: k })} className={cn(OPT, "items-start", draft.kind === k && OPT_SEL)}>
-            <span className="grid gap-0.5"><span className="font-medium">{t.kinds[k].label}</span><span className="text-xs text-muted-foreground">{t.kinds[k].desc}</span></span>
+      <div role="radiogroup" aria-label={t.wizard.steps[0]} className="flex flex-col gap-1.5">
+        {TOOL_IDS.map((id) => (
+          <button key={id} type="button" role="radio" aria-checked={draft.tool === id} onClick={() => pickTool(id)} className={cn(OPT, draft.tool === id && OPT_SEL)}>
+            <span className="grid gap-0.5"><span className="font-medium">{t.tools[id].name}</span><span className="text-xs text-muted-foreground">{t.tools[id].desc}</span></span>
           </button>
         ))}
       </div>
-      {isWf ? <WorkflowEditor draft={draft} setDraft={setDraft} /> : (
-        <>
-          <div role="radiogroup" aria-label={t.wizard.steps[2]} className="flex flex-col gap-1.5">
-            {TOOL_IDS.map((id) => (
-              <button key={id} type="button" role="radio" aria-checked={draft.tool === id} onClick={() => setDraft({ tool: id, settings: draft.tool === id ? draft.settings : defaultSettings(id) })} className={cn(OPT, draft.tool === id && OPT_SEL)}>
-                <span className="grid gap-0.5"><span className="font-medium">{t.tools[id].name}</span><span className="text-xs text-muted-foreground">{t.tools[id].desc}</span></span>
-              </button>
-            ))}
-          </div>
-          {draft.tool && (
-            <div className="flex flex-col rounded-lg border border-border bg-card px-3 py-2">
-              <span className="py-1 text-xs font-medium text-muted-foreground">{t.wizard.settings}</span>
-              {TOOLS[draft.tool].settings.map((s) => {
-                const v = draft.settings[s.k];
-                return (
-                  <div key={s.k} className="flex min-h-11 flex-wrap items-center gap-2">
-                    <span className="flex-1 text-[13px]">{t.settings[s.k]}</span>
-                    {s.kind === "toggle" ? (
-                      <Switch checked={!!v} onCheckedChange={(x) => setDraft({ settings: { ...draft.settings, [s.k]: x } })} aria-label={t.settings[s.k]} />
-                    ) : (
-                      <span role="group" aria-label={t.settings[s.k]} className="inline-flex gap-0.5 rounded-md bg-muted p-[3px]">
-                        {s.options.map((o) => (
-                          <button key={o} type="button" aria-pressed={v === o} onClick={() => setDraft({ settings: { ...draft.settings, [s.k]: o } })} className={cn("h-7 rounded-[6px] px-2.5 text-xs font-medium", v === o ? "bg-background text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground")}>{t.options[o]}</button>
-                        ))}
-                      </span>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </>
-      )}
-    </div>
-  );
-}
-
-/** Un test sur le dossier : `result` est nul tant que core calcule. */
-type Test = { result: RunResult | null; running: boolean; nonDiab: boolean } | null;
-
-function WorkflowEditor({ draft, setDraft }: { draft: Draft; setDraft: (p: Partial<Draft>) => void }) {
-  const lang = useLang();
-  const t = lgc[lang];
-  const wf = t.wf;
-  const steps = draft.steps ?? [];
-  const [busy, setBusy] = React.useState(false);
-  const [error, setError] = React.useState("");
-  const [editIdx, setEditIdx] = React.useState<number | null>(null);
-  const [insertIdx, setInsertIdx] = React.useState<number | null>(null);
-  const [nonDiab, setNonDiab] = React.useState(false);
-  const [test, setTest] = React.useState<Test>(null);
-  /** Le test en cours : un résultat arrivé après une modification du plan est ignoré. */
-  const runId = React.useRef(0);
-  const reset = () => { runId.current += 1; setTest(null); };
-
-  const setSteps = (s: typeof steps, previews = draft.previews) => { reset(); setDraft({ steps: s, previews }); };
-
-  const structure = async () => {
-    setBusy(true); setError(""); setEditIdx(null); setInsertIdx(null);
-    try {
-      const r = await structureWorkflow(draft.instruction ?? "", lang);
-      setSteps(r.steps, r.preview);
-    } catch (e) {
-      setError(errorText(e, { ...t.out, error: wf.error, unconfigured: wf.unconfigured }));
-    } finally { setBusy(false); }
-  };
-
-  // Le test appelle core pour chaque Question Locus ; les valeurs s'affichent quand la réponse arrive, toutes ensemble.
-  const run = async () => {
-    const id = ++runId.current;
-    setError("");
-    setTest({ result: null, running: true, nonDiab });
-    try {
-      const result = await runWorkflow(steps, { anchor: draft.anchor ?? "pv", fields: draft.fields }, nonDiab ? "non-diabetique" : "fournier");
-      if (id !== runId.current) return;
-      setTest({ result, running: false, nonDiab });
-      if (!nonDiab) setDraft({ previews: result.steps.map((s) => ({ value: s.value, source: s.source, status: s.status })) });
-    } catch (e) {
-      if (id !== runId.current) return;
-      setTest(null);
-      setError(errorText(e, t.out));
-    }
-  };
-
-  const finished = test && !test.running && test.result ? test.result : null;
-  const out = finished?.output;
-
-  return (
-    <div className="flex flex-col gap-2.5">
-      <label htmlFor="wf-text" className="text-[13px] font-medium">{wf.describe}</label>
-      <textarea id="wf-text" rows={3} maxLength={500} value={draft.instruction ?? ""} onChange={(e) => setDraft({ instruction: e.target.value })} className="resize-y rounded-md border border-input bg-background px-3 py-2.5 text-sm leading-[1.45] text-foreground shadow-xs focus:outline-2 focus:outline-offset-1 focus:outline-ring" />
-      <Button onClick={structure} disabled={busy || !(draft.instruction ?? "").trim()} className="self-start"><ListTree aria-hidden="true" />{busy ? wf.structuring : steps.length ? wf.restructure : wf.structure}</Button>
-      {error && <p className="m-0 text-[13px] text-muted-foreground" role="alert">{error}</p>}
-
-      {steps.length > 0 && (
-        <>
-          <div className="flex flex-col pt-1.5">
-            {steps.map((st, i) => {
-              const r = test?.result?.steps[i];
-              const status = !test ? "idle" : test.running ? "running" : r?.status ?? "skipped";
-              const prev = draft.previews?.[i];
-              const value = status === "idle" ? prev?.value ?? wf.pending : r?.value ?? "";
-              const source = status === "done" ? r?.source : status === "idle" ? prev?.source : undefined;
-              const notLast = i < steps.length - 1;
-              return (
-                <div key={i} className="flex gap-2.5">
-                  <div className="flex w-7 shrink-0 flex-col items-center">
-                    <span className={cn("grid size-[26px] place-items-center rounded-full text-xs font-semibold", status === "done" && "border border-border bg-secondary text-foreground", status === "running" && "animate-pulse border border-border bg-muted text-foreground", status === "stopped" && "border border-dashed border-ring bg-background text-foreground", status === "skipped" && "border border-border bg-muted text-muted-foreground", status === "idle" && "bg-primary text-primary-foreground")}>
-                      {status === "done" ? <Check size={14} aria-hidden="true" /> : i + 1}
-                    </span>
-                    {notLast && <span aria-hidden="true" className="min-h-[18px] w-px flex-1 bg-border" />}
-                  </div>
-                  <div className="flex min-w-0 flex-1 flex-col gap-1.5 pb-3">
-                    <div className="flex min-h-7 items-center gap-1">
-                      <span className="flex-1 text-xs text-muted-foreground">{wf.types[st.type]}</span>
-                      <button type="button" onClick={() => setEditIdx(editIdx === i ? null : i)} className={buttonClass({ variant: "ghost", size: "sm", className: "h-7 text-xs" })}>{t.wizard.edit}</button>
-                      {steps.length > 1 && <button type="button" onClick={() => { setSteps(steps.filter((_, j) => j !== i), draft.previews?.filter((_, j) => j !== i)); setEditIdx(null); setInsertIdx(null); }} className={buttonClass({ variant: "ghost", size: "sm", className: "h-7 text-xs text-muted-foreground" })}>{wf.remove}</button>}
-                    </div>
-                    {editIdx === i ? (
-                      <form className="flex gap-1.5" onSubmit={(e) => { e.preventDefault(); setEditIdx(null); }}>
-                        <input autoFocus aria-label={wf.configAria} value={st.config} maxLength={200} onChange={(e) => { const s = steps.map((x, j) => (j === i ? { ...x, config: e.target.value } : x)); const p = [...(draft.previews ?? [])]; p[i] = null; setSteps(s, p); }} className="h-9 min-w-0 flex-1 rounded-md border border-ring bg-background px-2.5 text-[13px] text-foreground shadow-xs" />
-                        <Button type="submit" variant="primary">{wf.ok}</Button>
-                      </form>
-                    ) : <span className="text-sm font-medium leading-[1.35]">{st.config}</span>}
-                    <div className={cn("flex gap-2 rounded-lg px-2.5 py-[7px] text-[13px] leading-[1.4]", status === "stopped" ? "border border-dashed border-ring bg-background" : status === "skipped" ? "border border-border text-muted-foreground" : "border border-border bg-muted", (status === "running" || (status === "idle" && !prev)) && "text-muted-foreground")}>
-                      <ArrowRight size={12} aria-hidden="true" className="mt-[3px] shrink-0 opacity-60" />
-                      <span className="min-w-0 flex-1">{status === "running" ? wf.testing : value}</span>
-                    </div>
-                    {source && <span className="self-start rounded-full border border-border bg-background px-2 py-0.5 text-[11px] text-muted-foreground">{source}</span>}
-                    {st.action && <span className="self-start rounded-md border border-input bg-background px-2.5 py-1 text-xs">{st.action}</span>}
-                    {notLast && (
-                      <button type="button" onClick={() => setInsertIdx(insertIdx === i ? null : i)} aria-label={wf.insert} aria-expanded={insertIdx === i} className="-ml-[33px] grid size-[26px] place-items-center self-start rounded-full border border-border bg-background text-muted-foreground hover:text-foreground"><Plus size={12} aria-hidden="true" /></button>
-                    )}
-                    {insertIdx === i && (
-                      <div className="flex flex-wrap gap-1.5">
-                        {INSERTABLE.map((ty) => (
-                          <button key={ty} type="button" onClick={() => { const s = [...steps]; s.splice(i + 1, 0, { type: ty, config: wf.newStep }); const p = [...(draft.previews ?? steps.map(() => null))]; p.splice(i + 1, 0, null); setSteps(s, p); setInsertIdx(null); setEditIdx(i + 1); }} className="min-h-7 rounded-full border border-border bg-background px-2.5 text-xs hover:bg-accent">{wf.types[ty]}</button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-          <div className="flex flex-wrap items-center gap-2 border-t border-border pt-3">
-            <label className="flex min-h-10 flex-1 cursor-pointer items-center gap-2 text-[13px]">
-              <Switch checked={nonDiab} onCheckedChange={(v) => { reset(); setNonDiab(v); }} aria-label={wf.nonDiab} />
-              {wf.nonDiab}
-            </label>
-            <Button variant="primary" onClick={run} disabled={!!test?.running}><Play aria-hidden="true" />{test?.running ? wf.testing : wf.test}</Button>
-          </div>
-          {finished && (
-            <div className={cn("flex flex-col gap-1.5 rounded-[10px] px-3.5 py-3", finished.halted ? "border border-dashed border-ring bg-background" : "border border-border bg-muted")} aria-live="polite">
-              <span className="flex items-center gap-2"><span className="flex-1 text-xs font-medium text-muted-foreground">{wf.result}</span><LocusTag state="done" /></span>
-              <span className="text-sm leading-[1.45]">{finished.halted || !out ? wf.halted : out.lines[0]}</span>
-              {!finished.halted && out?.actionLabel && <span className="self-start rounded-md bg-primary px-2.5 py-[5px] text-xs font-medium text-primary-foreground">{out.actionLabel}</span>}
-            </div>
-          )}
-        </>
+      {draft.tool && TOOLS[draft.tool].settings.length > 0 && (
+        <div className="flex flex-col rounded-lg border border-border bg-card px-3 py-2">
+          <span className="py-1 text-xs font-medium text-muted-foreground">{t.wizard.settings}</span>
+          {TOOLS[draft.tool].settings.map((s) => {
+            const v = draft.settings[s.k];
+            return (
+              <div key={s.k} className="flex min-h-11 flex-wrap items-center gap-2">
+                <span className="flex-1 text-[13px]">{t.settings[s.k]}</span>
+                {s.kind === "toggle" ? (
+                  <Switch checked={!!v} onCheckedChange={(x) => setDraft({ settings: { ...draft.settings, [s.k]: x } })} aria-label={t.settings[s.k]} />
+                ) : (
+                  <span role="group" aria-label={t.settings[s.k]} className="inline-flex gap-0.5 rounded-md bg-muted p-[3px]">
+                    {s.options.map((o) => (
+                      <button key={o} type="button" aria-pressed={v === o} onClick={() => setDraft({ settings: { ...draft.settings, [s.k]: o } })} className={cn("h-7 rounded-[6px] px-2.5 text-xs font-medium", v === o ? "bg-background text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground")}>{t.options[o]}</button>
+                    ))}
+                  </span>
+                )}
+              </div>
+            );
+          })}
+        </div>
       )}
     </div>
   );
@@ -323,11 +180,11 @@ function DisplayStep({ draft, setDraft }: { draft: Draft; setDraft: (p: Partial<
   const lang = useLang();
   const t = lgc[lang];
   const d = draft.display;
-  const ring = "border border-ring";
+  const ring = "border-2 border-brand";
   return (
     <div className="flex flex-col gap-3 pt-3">
       <div role="radiogroup" aria-label={t.wizard.steps[3]} className="grid grid-cols-2 gap-1.5">
-        {DISPLAY_IDS.map((x) => (
+        {(draft.tool ? TOOLS[draft.tool].displays : []).map((x) => (
           <button key={x} type="button" role="radio" aria-checked={d === x} onClick={() => setDraft({ display: x })} className={cn(OPT, "justify-center text-center text-[13px]", d === x && OPT_SEL)}>{t.displays[x]}</button>
         ))}
       </div>

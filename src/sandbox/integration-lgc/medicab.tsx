@@ -2,14 +2,15 @@
 import * as React from "react";
 import { CreditCard, FileText, FlaskConical, Mail, Pill, Printer, User } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { dossier, frDate, type AnchorId } from "@/data/integration-lgc/fournier";
+import { dossier, frDate, REF_DATE, type AnchorId } from "@/data/integration-lgc/fournier";
 import s from "./medicab.module.css";
 
 /**
  * MédiCab 7, le LGC fictif : fenêtre, menus, barre d'outils, bandeau
- * patient, historique, consultation, ordonnance, panneaux. Les six zones
+ * patient, historique, consultation, ordonnance, panneaux. Les quatre zones
  * d'injection (`Zone`) reçoivent les sorties Locus et, pendant l'assistant,
  * le bouton « Injecter ici » ou le repère « Point d'injection ».
+ * MédiCab garde son allure d'époque ; seules les surfaces Locus détonnent.
  */
 
 export type ZoneMode = "idle" | "cand" | "sel";
@@ -34,8 +35,9 @@ export interface MedicabProps {
   /** Le motif d'une alerte bloquante passée outre, s'il y en a une. */
   overrideMotif?: string;
   onValidate: () => void;
-  hba1cAdded: boolean;
   activeCount: number;
+  /** Le widget Locus est ouvert : sur un écran moyen, MédiCab range ses colonnes secondaires pour lui faire place. */
+  widgetOpen?: boolean;
   /** Le bandeau sandbox, dans la langue de l'UI. */
   banner: string;
 }
@@ -45,7 +47,7 @@ export function Medicab(p: MedicabProps) {
   const ligne = d.ordonnance[0];
   const [creat, dfg, kali, ...hba] = d.biologie;
   return (
-    <div className={s.win}>
+    <div className={s.win} data-widget={p.widgetOpen || undefined}>
       <div className={s.title}>
         <span aria-hidden="true" className={s.appIcon} />
         <b>MédiCab 7 — Cabinet des Tilleuls</b>
@@ -116,7 +118,7 @@ export function Medicab(p: MedicabProps) {
           <Zone z={p.zones.note}>
             <div className={s.box}>
               <div className={s.tabs}>
-                <span className={s.tabOn}>Consultation du {frDate("2026-10-20")}</span>
+                <span className={s.tabOn}>Consultation du {frDate(REF_DATE)}</span>
                 <span className={s.tab}>Examen</span>
                 <span className={s.tab}>Courrier</span>
                 <span className={s.spacer} />
@@ -146,18 +148,12 @@ export function Medicab(p: MedicabProps) {
             </div>
           </Zone>
 
-          <Zone z={p.zones.sign}>
-            <div className="flex flex-col gap-2">
-              <Outs items={p.inline.sign} />
-              <div className={s.signBar}>
-                {p.zones.sign.slot}
-                <span className={s.signStatus}>{p.blocked ? "Validation bloquée par Locus" : p.validated ? (p.overrideMotif ? `Ordonnance validée · alerte Locus passée outre, motif : ${p.overrideMotif}` : "Ordonnance validée") : p.overrideMotif ? `Alerte Locus passée outre, motif : ${p.overrideMotif}` : ""}</span>
-                <button type="button" className={s.legacyBtn}>Imprimer</button>
-                <button type="button" className={s.legacyBtn}>Annuler</button>
-                <button type="button" className={s.validate} onClick={p.onValidate} disabled={p.blocked} title={p.blocked ? "Alerte Locus à traiter avant validation" : undefined}>Valider l&apos;ordonnance</button>
-              </div>
-            </div>
-          </Zone>
+          <div className={s.signBar}>
+            <span className={s.signStatus}>{p.blocked ? "Validation bloquée par Locus" : p.validated ? (p.overrideMotif ? `Ordonnance validée · alerte Locus passée outre, motif : ${p.overrideMotif}` : "Ordonnance validée") : p.overrideMotif ? `Alerte Locus passée outre, motif : ${p.overrideMotif}` : ""}</span>
+            <button type="button" className={s.legacyBtn}>Imprimer</button>
+            <button type="button" className={s.legacyBtn}>Annuler</button>
+            <button type="button" className={s.validate} onClick={p.onValidate} disabled={p.blocked} title={p.blocked ? "Alerte Locus à traiter avant validation" : undefined}>Valider l&apos;ordonnance</button>
+          </div>
         </div>
 
         <div className={s.side}>
@@ -173,22 +169,18 @@ export function Medicab(p: MedicabProps) {
             <div className={s.boxHead}><span>Traitement de fond</span></div>
             <div className={s.list}>{d.traitement.map((t) => <span key={t}>{t}</span>)}</div>
           </div>
-          <Zone z={p.zones.lab}>
-            <div className={s.box}>
-              <div className={s.boxHead}><span>Biologie reçue</span>{p.zones.lab.slot}</div>
-              <table className={cn(s.table, s.labTable)}>
-                <tbody>
-                  <tr><td>{creat.libelle}</td><td>{creat.affichage}</td></tr>
-                  <tr><td>{dfg.libelle}</td><td>{dfg.affichage}</td></tr>
-                  <tr><td>{kali.libelle}</td><td>{kali.affichage}</td></tr>
-                  <tr><td colSpan={2} className={s.mut}>Laboratoire des Tilleuls · {frDate(creat.date)}</td></tr>
-                  {hba.map((b, i) => <tr key={b.date} className={i === 0 ? s.labSep : undefined}><td>{b.libelle}</td><td>{b.affichage} · {frDate(b.date)}</td></tr>)}
-                  {p.hba1cAdded && <tr className={s.labNew}><td>HbA1c</td><td>à prescrire · prochain bilan</td></tr>}
-                </tbody>
-              </table>
-              <Outs items={p.inline.lab} pad />
-            </div>
-          </Zone>
+          <div className={s.box}>
+            <div className={s.boxHead}><span>Biologie reçue</span></div>
+            <table className={cn(s.table, s.labTable)}>
+              <tbody>
+                <tr><td>{creat.libelle}</td><td>{creat.affichage}</td></tr>
+                <tr><td>{dfg.libelle}</td><td>{dfg.affichage}</td></tr>
+                <tr><td>{kali.libelle}</td><td>{kali.affichage}</td></tr>
+                <tr><td colSpan={2} className={s.mut}>Laboratoire des Tilleuls · {frDate(creat.date)}</td></tr>
+                {hba.map((b, i) => <tr key={b.date} className={i === 0 ? s.labSep : undefined}><td>{b.libelle}</td><td>{b.affichage} · {frDate(b.date)}</td></tr>)}
+              </tbody>
+            </table>
+          </div>
         </div>
 
         {p.panel}
