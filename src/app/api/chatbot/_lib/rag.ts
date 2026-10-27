@@ -119,7 +119,7 @@ export async function* ragStream(query: string, lang: Lang): AsyncGenerator<Chat
   // Une source par document, numérotée dans l'ordre des blocs retrouvés.
   const sources: ChatSource[] = [];
   const num = new Map<number, number>();
-  for (const b of blocs) if (!num.has(b.d)) { const d = idx.file.docs[b.d]; num.set(b.d, sources.length + 1); sources.push({ n: sources.length + 1, label: `HAS · ${d.t}${d.y ? `, ${d.y}` : ""}`, url: d.u }); }
+  for (const b of blocs) if (!num.has(b.d)) { const d = idx.file.docs[b.d]; num.set(b.d, sources.length + 1); sources.push({ n: sources.length + 1, kind: "doc", label: d.t, publisher: "HAS", detail: d.y ? String(d.y) : undefined, url: d.u, cited: true }); }
   const contexte = blocs.map((b) => `[${num.get(b.d)}] ${idx.file.docs[b.d].t}\n${neutre(b.x)}`).join("\n\n---\n\n");
 
   let res: Response;
@@ -182,5 +182,5 @@ export async function* ragStream(query: string, lang: Lang): AsyncGenerator<Chat
   if (!texte.trim() || !fini) { yield { t: "error", detail: t.live.ragDown }; return; }
   // Les sources citées si le texte en cite, sinon tout ce qui a été retrouvé.
   const cites = new Set([...texte.matchAll(/\[(\d+)\]/g)].map((m) => Number(m[1])));
-  yield { t: "answer", markdown: texte.trim(), sources: cites.size ? sources.filter((x) => cites.has(x.n)) : sources };
+  yield { t: "answer", markdown: texte.trim(), sources: cites.size ? sources.filter((x) => cites.has(x.n)) : sources.map((x) => ({ ...x, cited: false })) };
 }
