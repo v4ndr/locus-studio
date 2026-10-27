@@ -414,7 +414,7 @@ function LocusDialog({ mode, items, alert, onAction, onClose, onValidate, onOver
   const ok = (motif ?? "").trim().length >= 3;
   const label = mode === "override" ? t.overrideTitle : `Locus · ${t.before}`;
   return (
-    <div className="absolute inset-0 z-40 grid place-items-center bg-black/50 p-4">
+    <div className="absolute inset-0 z-40 grid place-items-center bg-green-ink/45 p-4">
       <section ref={ref} role="dialog" aria-modal="true" aria-label={label} className={cn(surface(), "flex max-h-[90dvh] w-[min(520px,100%)] flex-col gap-3.5 overflow-auto p-5 text-sm")}>
         <div className="flex items-center gap-2">
           <LocusTag /><span className="flex-1 text-[13px] text-muted-foreground">{mode === "override" ? t.overrideTitle : t.before}</span>

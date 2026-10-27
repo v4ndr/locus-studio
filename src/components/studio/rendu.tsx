@@ -362,7 +362,7 @@ export function ActionPanel({ action, patient, onChange, onClose, onRemove, titr
     onChange({ ...action, ...m, justification: action.justification, statut: alerte ? "relire" : "pret" });
   };
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-6" onClick={onClose} role="dialog" aria-modal="true" aria-label={titre ?? action.titre}>
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-green-ink/45 p-0 sm:items-center sm:p-6" onClick={onClose} role="dialog" aria-modal="true" aria-label={titre ?? action.titre}>
       <div ref={boite} onClick={(e) => e.stopPropagation()} className="flex max-h-[94dvh] w-full max-w-[1100px] flex-col overflow-hidden rounded-t-[16px] border border-border bg-bg sm:rounded-[16px]" style={{ boxShadow: "var(--shadow-sm)" }}>
         <div className="flex items-center gap-3 border-b border-line-2 px-5 py-3">
           <span className="d flex h-6 min-w-6 items-center justify-center rounded-[6px] bg-soft px-1 text-[10px] text-ink-3">{action.code}</span>

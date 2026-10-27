@@ -13,7 +13,7 @@ export default function Error({ error, reset }: { error: Error & { digest?: stri
   const t = common[lang];
   return (
     <PageInner className="justify-items-center py-24 text-center">
-      <h1 className="m-0 text-2xl font-semibold tracking-[-.02em]">{t.error.title}</h1>
+      <h1 className="m-0 text-[28px] font-extrabold tracking-[-.03em]">{t.error.title}</h1>
       <p className="m-0 max-w-[480px] text-muted-foreground">{t.error.text}</p>
       <div className="flex flex-wrap justify-center gap-2">
         <Button variant="primary" onClick={reset}>{t.error.retry}</Button>

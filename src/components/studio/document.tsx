@@ -104,7 +104,7 @@ function Inner({ v, doc, boite, boiteKind, praticien }: { v: PatientView; doc: D
           </div>
           <div className="flex flex-col gap-2">
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1"><span className="k">{L(doc.type)}</span><span className="d">{doc.date}</span><span className="d">·</span><span className="text-[13px] text-dim-2">{doc.de}</span></div>
-            <h1 className="m-0 text-[22px] font-medium leading-[1.3] tracking-[-.02em] sm:text-2xl">{doc.titre}</h1>
+            <h1 className="m-0 text-[24px] font-extrabold leading-[1.2] tracking-[-.025em] sm:text-[28px]">{doc.titre}</h1>
           </div>
 
           <div><button type="button" onClick={() => composer.run({ texte: LIRE, patientId: v.ref.id, ecran: "document", docId: doc.id })} disabled={composer.state.busy} className="flex min-h-11 items-center gap-2.5 rounded-full bg-ink px-4 py-[9px] text-sm font-medium text-paper hover:text-paper disabled:opacity-40"><LocusMark size={16} />{d.doc.read}</button></div>

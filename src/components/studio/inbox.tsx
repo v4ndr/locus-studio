@@ -64,7 +64,7 @@ export function InboxView({ v, praticien }: { v: IV; praticien: { initials: stri
           ))}
         </nav>
         <div className="flex flex-col gap-1.5">
-          <h1 className="m-0 text-2xl font-medium tracking-[-.02em]">{t.h1}{nonLus.length > 0 && <span className="ml-3 text-base font-normal text-dim-2">{d.inbox.unread(nonLus.length)}</span>}</h1>
+          <h1 className="m-0 text-[28px] font-extrabold tracking-[-.03em]">{t.h1}{nonLus.length > 0 && <span className="ml-3 text-base font-normal text-dim-2">{d.inbox.unread(nonLus.length)}</span>}</h1>
           <p className="m-0 text-sm text-dim-2">{t.sous}</p>
         </div>
         {types.length > 0 && (

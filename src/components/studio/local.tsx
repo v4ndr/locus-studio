@@ -83,7 +83,7 @@ export function NouveauView() {
     <div className="flex min-h-dvh flex-col">
       <Header praticien={PRATICIEN} back="/d" />
       <main className="mx-auto flex w-full max-w-[760px] flex-1 flex-col gap-6 px-4 pb-10 pt-8 sm:px-6 sm:pt-12">
-        <div className="flex flex-col gap-1.5"><h1 className="m-0 text-2xl font-medium tracking-[-.02em]">{d.local.newPatient}</h1><p className="m-0 text-sm text-dim-2">{d.local.newIntro}</p></div>
+        <div className="flex flex-col gap-1.5"><h1 className="m-0 text-[28px] font-extrabold tracking-[-.03em]">{d.local.newPatient}</h1><p className="m-0 text-sm text-dim-2">{d.local.newIntro}</p></div>
         <React.Suspense fallback={null}><PatientForm /></React.Suspense>
       </main>
     </div>
@@ -106,7 +106,7 @@ export function CabinetView() {
       <Header praticien={PRATICIEN} back="/" />
       <main className="mx-auto flex w-full max-w-[760px] flex-1 flex-col gap-6 px-4 pb-10 pt-8 sm:px-6 sm:pt-12">
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className="m-0 text-2xl font-medium tracking-[-.02em]">{t.cabinet}</h1>
+          <h1 className="m-0 text-[28px] font-extrabold tracking-[-.03em]">{t.cabinet}</h1>
           <span className="d">{t.count(cab.patients.length, cab.patients.reduce((n, p) => n + p.notes.length, 0))}</span>
           <span className="flex-1" />
           <Link href="/nouveau" className="flex items-center gap-2 rounded-[10px] bg-ink px-3.5 py-[8px] text-sm text-paper hover:text-paper"><I.plus /> {t.newPatient}</Link>

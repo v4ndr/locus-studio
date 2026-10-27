@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { notFound } from "next/navigation";
-import { Geist, Geist_Mono } from "next/font/google";
+import { DM_Sans, Geist_Mono } from "next/font/google";
 import "../globals.css";
 import { ThemeScript } from "@/components/shell/theme";
 import { AppShell } from "@/components/shell/app-shell";
@@ -10,12 +10,13 @@ import { CabinetProvider } from "@/store/cabinet";
 import { AuthRoot } from "@/sandbox/acces/auth-root";
 import { StudioAnalytics } from "@/components/shell/analytics";
 
-const geist = Geist({ subsets: ["latin"], variable: "--font-geist", display: "swap", weight: ["400", "500", "600"] });
-const mono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono", display: "swap", weight: ["400", "500"] });
+/* Les polices de la landing : DM Sans (variable, avec l'italique léger des accents) et Geist Mono. */
+const sans = DM_Sans({ subsets: ["latin"], variable: "--font-dm-sans", display: "swap", style: ["normal", "italic"], axes: ["opsz"] });
+const mono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono", display: "swap" });
 
 export function generateStaticParams() { return LANGS.map((lang) => ({ lang })); }
 
-export const viewport: Viewport = { themeColor: "#0a0a0a", colorScheme: "dark light" };
+export const viewport: Viewport = { themeColor: "#f3efe8", colorScheme: "light dark" };
 
 export async function generateMetadata({ params }: { params: Promise<{ lang: string }> }): Promise<Metadata> {
   const { lang } = await params;
@@ -34,7 +35,7 @@ export default async function RootLayout({ children, params }: { children: React
   const { lang } = await params;
   if (!isLang(lang)) notFound();
   return (
-    <html lang={lang} suppressHydrationWarning className={`${geist.variable} ${mono.variable}`}>
+    <html lang={lang} suppressHydrationWarning className={`${sans.variable} ${mono.variable}`}>
       <body className="min-h-dvh font-sans">
         <ThemeScript />
         <LangProvider lang={lang}>

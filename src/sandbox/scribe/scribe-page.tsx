@@ -319,7 +319,7 @@ export function ScribePage({ lang }: { lang: Lang }) {
       <PageInner className="flex-1 grid-cols-[minmax(0,1fr)] content-start gap-5">
         <div className="flex flex-wrap items-end gap-x-5 gap-y-3">
           <div className="flex min-w-0 flex-[1_1_auto] flex-col gap-0.5">
-            <h1 className="m-0 text-[26px] font-semibold leading-[1.15] tracking-[-.03em]">{titre}</h1>
+            <h1 className="m-0 text-[30px] font-extrabold leading-[1.08] tracking-[-.03em] min-[821px]:text-[38px]">{titre}</h1>
             <span className="text-muted-foreground">{sousTitre}</span>
           </div>
           {t.frenchContent && <Badge variant="pill">{t.frenchContent}</Badge>}

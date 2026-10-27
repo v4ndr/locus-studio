@@ -84,7 +84,7 @@ export function Home({ data }: { data: HomeData }) {
       <React.Suspense fallback={null}><DemandeDepuisUrl onDemande={depuisPalette} /></React.Suspense>
       <main className="flex flex-1 flex-col items-center px-4 pb-12 pt-[8vh] sm:px-6 sm:pt-[14vh]">
         <div className="flex w-full max-w-[680px] flex-col gap-7">
-          {!open && <h1 className="m-0 text-[26px] font-medium tracking-[-.02em] sm:text-[28px]">{t.home.title}</h1>}
+          {!open && <h1 className="m-0 text-[30px] font-extrabold tracking-[-.03em] sm:text-[38px]">{t.home.title}</h1>}
           <div className={cn("overflow-hidden rounded-[14px] border border-line bg-paper", open ? "shadow-[0_8px_24px_rgba(17,17,17,.06)]" : "")} style={!open ? { boxShadow: "var(--shadow)" } : undefined}>
             <div className={cn("flex items-center gap-3.5 px-5 py-[18px]", open && "border-b border-line-2")} onClick={() => { inputRef.current?.focus(); setOpen(true); }}>
               <I.search color={open ? "var(--ink)" : "var(--dim-2)"} />
