@@ -4,6 +4,7 @@ import { BookOpen, Check, ChevronDown, ChevronRight, ExternalLink, RotateCw, Sli
 import { cn } from "@/lib/cn";
 import { chatbot, type Lang } from "@/i18n";
 import { LocusMark } from "@/components/shell/locus-mark";
+import { LocusMarkMotion } from "@/components/shell/locus-mark-motion";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import type { Settings } from "./request";
@@ -33,15 +34,19 @@ export function ColumnIcon({ kind }: { kind: "rag" | "locus" }) {
   );
 }
 
-/** L'état de la colonne en toutes lettres : pastille teal tant que la colonne travaille. */
-export function StatusPill({ phase, lang, className }: { phase: Phase; lang: Lang; className?: string }) {
+/**
+ * L'état de la colonne en toutes lettres. Tant que Locus travaille, sa marque
+ * se bâtit à côté (le loader Locus) ; le RAG simple, lui, n'a qu'un point fade.
+ */
+export function StatusPill({ kind = "locus", phase, lang, className }: { kind?: "rag" | "locus"; phase: Phase; lang: Lang; className?: string }) {
   const label = chatbot[lang].status[phase];
   const busy = phase === "waiting" || phase === "streaming";
   return (
     <span className={cn("inline-flex items-center gap-1.5 whitespace-nowrap text-xs font-medium", phase === "error" ? "text-destructive" : busy || phase === "form" ? "text-foreground" : "text-muted-foreground", className)}>
       {phase === "error" ? <TriangleAlert size={13} aria-hidden="true" />
         : phase === "done" ? <Check size={13} aria-hidden="true" />
-        : <i aria-hidden="true" className={cn("block size-1.5 shrink-0 rounded-full", busy || phase === "form" ? "bg-brand" : "bg-ring", busy && "animate-pulse")} />}
+        : busy && kind === "locus" ? <LocusMarkMotion size={18} className="text-brand" />
+        : <i aria-hidden="true" className={cn("block size-1.5 shrink-0 rounded-full", phase === "form" && kind === "locus" ? "bg-brand" : "bg-ring opacity-60")} />}
       {label}
     </span>
   );
@@ -55,7 +60,7 @@ export function ColumnHead({ kind, title, meta, phase, lang }: { kind: "rag" | "
         <span className="text-base font-semibold leading-tight tracking-[-.01em]">{title}</span>
         {meta && <span className="text-xs text-muted-foreground">{meta}</span>}
       </span>
-      <StatusPill phase={phase} lang={lang} className="ml-auto" />
+      <StatusPill kind={kind} phase={phase} lang={lang} className="ml-auto" />
     </div>
   );
 }
@@ -69,17 +74,6 @@ export function ErrorNote({ detail, retry, onRetry }: { detail: string; retry: s
         {detail}
       </span>
       {onRetry && <Button size="sm" onClick={onRetry}><RotateCw aria-hidden="true" />{retry}</Button>}
-    </div>
-  );
-}
-
-/** L'attente d'une réponse : trois lignes grises, sans compteur. */
-export function Attente() {
-  return (
-    <div aria-hidden="true" className="flex flex-col gap-2.5 py-1">
-      <span className="h-3 w-11/12 animate-pulse rounded bg-muted" />
-      <span className="h-3 w-4/5 animate-pulse rounded bg-muted" />
-      <span className="h-3 w-3/5 animate-pulse rounded bg-muted" />
     </div>
   );
 }

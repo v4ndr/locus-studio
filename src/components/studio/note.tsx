@@ -10,6 +10,7 @@ import { materialize, isoParis, type Charge } from "@/locus/compose/materialize"
 import type { ComposeAction, ComposePlan, ComposeInput, ComposeKind } from "@/locus/compose/contract";
 import { cn } from "@/lib/cn";
 import { fetchLive } from "@/lib/live";
+import { LocusLoader } from "@/components/shell/locus-loader";
 
 /**
  * La consultation : un seul éditeur qui cumule trois sources — la dictée au
@@ -263,7 +264,7 @@ export function NoteEditor({ patientId, local, nom, retour, onSaved, script, mot
           <div className="flex flex-wrap items-center gap-2 px-3.5 py-2">
             <button type="button" onClick={() => setTranscriptOuvert((o) => !o)} aria-expanded={transcriptOuvert || micro === "ecoute" || scriptEtat === "en-cours"} className="flex min-h-9 items-center gap-2 text-sm text-ink-2 hover:text-ink"><I.chevron open={transcriptOuvert || micro === "ecoute" || scriptEtat === "en-cours"} /> {t.transcript} <span className="d">{t.words(transcript.trim().split(/\s+/).filter(Boolean).length)}</span></button>
             <span className="flex-1" />
-            {synth.busy && <span className="flex items-center gap-2 text-xs text-dim-2"><span className="h-2 w-2 rounded-full bg-brand animate-pulse-soft" /> {t.synthBusy}</span>}
+            {synth.busy && <LocusLoader px={22} label={t.synthBusy} className="text-[13px]" />}
             {!synth.busy && !signee && transcript.trim() && micro !== "ecoute" && scriptEtat !== "en-cours" && <button type="button" onClick={() => void synthetiser()} className="min-h-9 rounded-[8px] border border-line bg-paper px-3 py-1.5 text-xs text-ink hover:bg-hover">{texte.trim() ? t.regenNote : t.synthNote}</button>}
           </div>
           {(transcriptOuvert || micro === "ecoute" || scriptEtat === "en-cours") && <div className="border-t border-line-4 px-3.5 py-3 text-[14px] leading-[1.6] text-ink-2"><span className="whitespace-pre-wrap">{transcript}</span>{interim && <span className="text-dim-3"> {interim}</span>}{(micro === "ecoute" || scriptEtat === "en-cours") && <span className="caret" />}</div>}
@@ -346,7 +347,7 @@ export function BrouillonBanner({ patientId, href, onOpen, version }: { patientI
       {list.map((b) => {
         const n = nActions(b);
         const inner = (<>
-          <span className="h-2 w-2 shrink-0 rounded-full bg-brand animate-pulse-soft" />
+          <span className="h-2 w-2 shrink-0 rounded-full bg-brand" />
           <span className="flex min-w-0 flex-1 flex-col"><span className="font-medium">{b.noteId ? d.note.editing(b.noteDate ? new Date(b.noteDate).toLocaleDateString(d.dateLocale) : undefined) : b.plan ? d.toValidateN(n) : d.note.ongoing}</span><span className="truncate text-[13px] text-dim-2">{b.motif ? `${b.motif} · ` : ""}{b.texte.replace(/\s+/g, " ").slice(0, 90) || d.note.emptyNote}</span></span>
           <span className="shrink-0 text-[13px]">{d.note.resume}</span>
         </>);

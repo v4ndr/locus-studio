@@ -38,6 +38,8 @@ const fr = {
     waitVerdict: "En attente de précisions.",
     waitWhy: "Répondez aux questions ci-dessus pour obtenir la réponse.",
     submit: "Obtenir la réponse",
+    /** Sous le loader Locus, tant que la réponse n'a pas commencé. */
+    thinking: "Locus raisonne sur les sources…",
     skip: "Passer",
     rerun: "Relancer avec ces réglages",
     sources: "Sources",
@@ -151,6 +153,7 @@ const en: typeof fr = {
     waitVerdict: "Waiting for details.",
     waitWhy: "Answer the questions above to get the answer.",
     submit: "Get the answer",
+    thinking: "Locus is reasoning over the sources…",
     skip: "Skip",
     rerun: "Run again with these settings",
     sources: "Sources",

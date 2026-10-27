@@ -190,7 +190,8 @@ export function ComposeCard({ state, onClose, onRetry, suivreSeul = true, onVali
     <div aria-hidden="true" className="locus-scrim" />
     <section aria-label={t.locus} aria-busy={!done && !state.error} className="locus-card flex flex-col gap-3.5 rounded-[16px] border border-input bg-paper px-5 py-4 sm:px-6 sm:py-5" data-etat={done ? "pret" : "compose"}>
       <div className="flex items-center gap-3">
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent text-foreground">{done || state.error ? <LocusMark size={18} /> : <LocusMarkMotion size={18} />}</span>
+        {/* Tant que Locus compose, sa marque se bâtit en grand (le loader Locus) ; ensuite, la marque fixe. */}
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center text-brand">{done || state.error ? <LocusMark size={24} /> : <LocusMarkMotion size={38} />}</span>
         <span className="flex min-w-0 flex-1 flex-col">
           <span className="flex items-baseline gap-2"><b className="text-[15px] font-semibold">Locus</b><span className="truncate text-[13px] text-dim-2">{done ? (gardes.length ? d.toValidateN(gardes.length) : docs.length ? t.nothing : tableaux.length ? t.computed : state.plan?.references.length || state.plan?.locus ? t.answer : t.composer) : state.error ? t.composer : last ? L(last) : t.reading}</span></span>
           {demande && <span className="truncate text-[13px] text-dim-2">« {demande} »</span>}

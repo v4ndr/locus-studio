@@ -5,6 +5,9 @@ import { cn } from "@/lib/cn";
 import { lgc } from "@/i18n";
 import { useLang } from "@/i18n/lang";
 import { buttonClass } from "@/components/ui/button";
+import { LocusMark } from "@/components/shell/locus-mark";
+import { LocusMarkMotion } from "@/components/shell/locus-mark-motion";
+import { LocusLoader } from "@/components/shell/locus-loader";
 import type { LocusOut, OutAction } from "@/data/integration-lgc/blocks";
 import { blockOutput, errorText } from "./api";
 import type { Brick } from "./model";
@@ -26,12 +29,15 @@ export type LiveState = "computing" | "done" | "error";
 /** La classe d'une surface Locus : contour, ombre et arrivée. `arrive` rejoue l'animation quand la clé React change. */
 export const surface = (arrive = true) => cn(s.surface, arrive && s.arrive, "rounded-xl bg-card font-sans text-card-foreground");
 
-/** L'étiquette Locus ; avec `state`, elle dit aussi l'état du calcul en direct. */
+/**
+ * L'étiquette Locus, sa marque en tête ; avec `state`, elle dit aussi l'état
+ * du calcul en direct : pendant le calcul, la marque se bâtit (le loader Locus).
+ */
 export function LocusTag({ state }: { state?: LiveState }) {
   const lang = useLang();
   return (
-    <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-primary px-2.5 py-0.5 text-xs font-semibold text-primary-foreground">
-      <i aria-hidden="true" className={cn("block size-1.5 rounded-full", state === "error" ? "bg-muted-foreground" : "bg-brand", state === "computing" && "animate-pulse")} />Locus
+    <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-primary py-0.5 pl-1.5 pr-2.5 text-xs font-semibold text-primary-foreground">
+      {state === "computing" ? <LocusMarkMotion size={16} /> : <LocusMark size={14} className={cn(state === "error" && "opacity-50")} />}Locus
       {state && state !== "done" && <span className="font-normal opacity-75">· {lgc[lang].out.state[state]}</span>}
     </span>
   );
@@ -87,8 +93,8 @@ export function AskBox({ brick, sugg = [], court = true }: { brick: Brick; sugg?
       )}
       {state && (
         <div className="grid gap-1.5 rounded-lg border border-border bg-muted px-3 py-2.5 text-sm" aria-live="polite">
-          <span className="flex items-start gap-2"><span className="flex-1 font-semibold">{state.q}</span>{live && live !== "done" && <LocusTag state={live} />}</span>
-          {state.busy && <span className="text-muted-foreground">{t.loading}</span>}
+          <span className="flex items-start gap-2"><span className="flex-1 font-semibold">{state.q}</span>{live === "error" && <LocusTag state={live} />}</span>
+          {state.busy && <LocusLoader px={28} label={t.loading} />}
           {state.error && (
             <span className="flex flex-wrap items-center gap-2"><span className="flex-1 text-muted-foreground" role="alert">{state.error}</span><RetryButton onRetry={() => void ask(state.q)} /></span>
           )}
@@ -146,14 +152,19 @@ export function LocusCard({ brick, out, onAction, className }: { brick: Brick; o
   );
 }
 
-/** En attente de la réponse de la brique. */
+/** En attente de la réponse de la brique : le loader Locus, en grand, dans la surface Locus. */
 export function LocusLoading({ className }: { className?: string }) {
   const lang = useLang();
   return (
-    <div aria-live="polite" className={cn(surface(), "flex flex-wrap items-center gap-2.5 px-4 py-3.5 text-sm text-muted-foreground", className)}>
-      <LocusTag state="computing" />{lgc[lang].out.loading}
+    <div aria-live="polite" className={cn(surface(), "px-4 py-3.5 text-sm", className)}>
+      <LocusWorking label={lgc[lang].out.loading} />
     </div>
   );
+}
+
+/** Le loader Locus d'une brique en calcul (bandeau, panneau, widget, carte). */
+export function LocusWorking({ label }: { label: string }) {
+  return <LocusLoader size="card" px={40} label={label} />;
 }
 
 /** Une brique dont le calcul a échoué : le message, et « Réessayer ». Jamais de sortie de remplacement. */

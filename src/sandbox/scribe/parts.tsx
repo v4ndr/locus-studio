@@ -7,6 +7,7 @@ import { Badge, StatusDot } from "@/components/ui/badge";
 import { Box } from "@/components/ui/card";
 import type { CarteAide, RubriqueCr } from "@/data/scribe/consultations";
 import type { ScribeDict } from "@/i18n";
+import { LocusMarkMotion } from "@/components/shell/locus-mark-motion";
 
 /* ---------- Stepper numéroté (pas de pastilles) ---------- */
 
@@ -64,7 +65,8 @@ function EtatLigne({ t, etat }: { t: ScribeDict; etat: EtatGen }) {
     <span className={cn("inline-flex items-center gap-1.5", etat === "pret" ? "text-foreground" : etat === "erreur" ? "text-destructive" : "text-muted-foreground")}>
       {etat === "pret" ? <Check size={14} strokeWidth={2.5} aria-hidden="true" className="text-ok" />
         : etat === "erreur" ? <AlertTriangle size={14} aria-hidden="true" />
-        : <StatusDot active={etat === "encours"} className={cn(etat === "encours" && "animate-pulse")} />}
+        : etat === "encours" ? <LocusMarkMotion size={18} className="text-brand" />
+        : <StatusDot active={false} />}
       {t.run.etat[etat]}
     </span>
   );

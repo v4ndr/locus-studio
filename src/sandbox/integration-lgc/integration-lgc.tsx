@@ -9,11 +9,12 @@ import { useLang } from "@/i18n/lang";
 import { Button, buttonClass } from "@/components/ui/button";
 import { Segmented } from "@/components/ui/segmented";
 import { LocusMark } from "@/components/shell/locus-mark";
+import { LocusMarkMotion } from "@/components/shell/locus-mark-motion";
 import { useTheme, type Mode } from "@/components/shell/theme";
 import { ANCHOR_IDS, defaultFields, type AnchorId } from "@/data/integration-lgc/fournier";
 import { TOOLS, defaultSettings, type LocusOut, type ToolId } from "@/data/integration-lgc/blocks";
 import { Medicab, type ZoneProps } from "./medicab";
-import { AskBox, LocusBody, LocusCard, LocusFailed, LocusLoading, LocusTag, RetryButton, Verdict, surface, type CardAction } from "./locus-card";
+import { AskBox, LocusBody, LocusCard, LocusFailed, LocusLoading, LocusTag, LocusWorking, RetryButton, Verdict, surface, type CardAction } from "./locus-card";
 import { Wizard } from "./wizard";
 import { useDialogFocus } from "./use-dialog";
 import { MyBricks } from "./my-bricks";
@@ -191,8 +192,8 @@ export function IntegrationLgc() {
       banners.push(
         <div key={key} className="shrink-0 bg-[#e9edf2] px-2 pt-2">
           <div key={s === "loading" ? "l" : isFailed(s) ? "e" : "o"} role={isFailed(s) ? "alert" : undefined} className={cn(surface(), "flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3 text-sm")}>
-            <LocusTag state={s === "loading" ? "computing" : isFailed(s) ? "error" : "done"} />
-            {s === "loading" ? <span className="text-muted-foreground">{t.out.loading}</span> : isFailed(s) ? (
+            {s !== "loading" && <LocusTag state={isFailed(s) ? "error" : "done"} />}
+            {s === "loading" ? <LocusWorking label={t.out.loading} /> : isFailed(s) ? (
               <>
                 <span className="min-w-[min(100%,260px)] flex-1">{s.failed}</span>
                 <RetryButton onRetry={() => retry(b.id)} />
@@ -214,8 +215,8 @@ export function IntegrationLgc() {
     } else if (b.display === "panel") {
       panels.push(
         <div key={key} className="flex flex-col gap-2.5 text-sm">
-          <span className="flex"><LocusTag state={s === "loading" ? "computing" : isFailed(s) ? "error" : "done"} /></span>
-          {s === "loading" ? <span className="text-muted-foreground">{t.out.loading}</span> : isFailed(s) ? (
+          {s !== "loading" && <span className="flex"><LocusTag state={isFailed(s) ? "error" : "done"} /></span>}
+          {s === "loading" ? <LocusWorking label={t.out.loading} /> : isFailed(s) ? (
             <>
               <span role="alert">{s.failed}</span>
               <span className="flex"><RetryButton onRetry={() => retry(b.id)} /></span>
@@ -322,7 +323,7 @@ export function IntegrationLgc() {
             <div className="flex flex-col gap-3.5 p-4">
               {widgets.map(({ b, s }) => (
                 <div key={b.id} className="flex flex-col gap-2">
-                  {s === "loading" ? <span className="text-muted-foreground">{t.out.loading}</span> : isFailed(s) ? (
+                  {s === "loading" ? <LocusWorking label={t.out.loading} /> : isFailed(s) ? (
                     <span className="flex flex-wrap items-center gap-2"><span role="alert" className="flex-1">{s.failed}</span><RetryButton onRetry={() => retry(b.id)} /></span>
                   ) : <LocusBody brick={b} out={{ ...s, question: false }} variant="widget" onAction={(a) => act(b, s, a)} />}
                 </div>
@@ -471,7 +472,7 @@ function StudioBar({ lang, mode, setMode, setLang, count, list, status, barRef, 
       <Segmented<Lang> label={t.bar.language} value={lang} onChange={setLang} options={LANGS.map((l) => ({ value: l, label: l.toUpperCase() }))} />
       {status && (
         <span role="status" className="flex items-center gap-1.5 px-1.5 text-xs text-muted-foreground max-[1100px]:hidden">
-          <i aria-hidden="true" className={cn("block size-1.5 rounded-full", status.kind === "error" ? "bg-muted-foreground" : "bg-brand", status.kind === "computing" && "animate-pulse")} />
+          {status.kind === "computing" ? <LocusMarkMotion size={18} className="text-brand" /> : <i aria-hidden="true" className={cn("block size-1.5 rounded-full", status.kind === "error" ? "bg-muted-foreground" : "bg-brand")} />}
           {status.kind === "computing" ? t.bar.computing : status.kind === "error" ? t.bar.failed(status.n) : t.bar.live}
         </span>
       )}

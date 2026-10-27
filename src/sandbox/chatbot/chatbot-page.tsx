@@ -5,13 +5,15 @@ import { cn } from "@/lib/cn";
 import { chatbot, type Lang } from "@/i18n";
 import { TOOL_ICONS } from "@/components/shell/tool-icons";
 import { PageHead, PageInner } from "@/components/shell/page-inner";
+import { LocusLoader, PlainLoader } from "@/components/shell/locus-loader";
+import { LocusMarkMotion } from "@/components/shell/locus-mark-motion";
 import { Button } from "@/components/ui/button";
 import { Md } from "@/components/md";
 import { SUGGESTIONS } from "@/data/chatbot/suggestions";
 import type { ChatEvent, ChatSource, Confiance, FormQuestion } from "./events";
 import { APP_SURFACE, APP_VERSION, coreParams, DEFAULT_SETTINGS, locusOf, type LocusSettings, type Settings } from "./request";
 import { chatStream, formatCourt, sansRenvois, type StreamErrors } from "./stream";
-import { AskChips, Attente, ColumnHead, ConfidenceBar, ErrorNote, Panel, SettingsPanel, SourceList, StatusPill, Steps, type Phase } from "./parts";
+import { AskChips, ColumnHead, ConfidenceBar, ErrorNote, Panel, SettingsPanel, SourceList, StatusPill, Steps, type Phase } from "./parts";
 
 /**
  * L'écran « Chatbot sourcé » : la question en haut, une fois ; dessous, deux
@@ -167,8 +169,8 @@ export function ChatbotPage({ lang }: { lang: Lang }) {
           {(["rag", "locus"] as const).map((k) => (
             <button key={k} type="button" role="tab" id={`chatbot-tab-${k}`} aria-selected={tab === k} aria-controls={`chatbot-col-${k}`} onClick={() => setTab(k)} className={cn("flex h-9 items-center justify-center gap-2 rounded-[6px] px-2 text-[13px] font-medium", tab === k ? "bg-background text-foreground shadow-xs" : "text-muted-foreground")}>
               {k === "rag" ? t.rag.title : t.locus.title}
-              <StatusPill phase={k === "rag" ? rag.phase : locus.phase} lang={lang} className="sr-only" />
-              <i aria-hidden="true" className={cn("block size-1.5 rounded-full", phaseDot(k === "rag" ? rag.phase : locus.phase))} />
+              <StatusPill kind={k} phase={k === "rag" ? rag.phase : locus.phase} lang={lang} className="sr-only" />
+              {k === "locus" && inacheve(locus.phase) ? <LocusMarkMotion size={16} className="text-brand" /> : <i aria-hidden="true" className={cn("block size-1.5 rounded-full", phaseDot(k, k === "rag" ? rag.phase : locus.phase))} />}
             </button>
           ))}
         </div>
@@ -178,7 +180,7 @@ export function ChatbotPage({ lang }: { lang: Lang }) {
             {rag.phase === "idle" ? <Idle text={t.rag.idle} />
               : rag.phase === "error" ? <ErrorNote detail={rag.error ?? t.live.error} retry={t.retry} onRetry={question ? () => void lancerRag(question) : undefined} />
               : rag.text ? <Md text={settings.inline ? ragMd : sansRenvois(ragMd)} />
-              : <Attente />}
+              : <PlainLoader />}
             {rag.phase === "done" && <SourceList lang={lang} sources={rag.sources} numbered={settings.inline} />}
             {rag.phase === "done" && <p className="m-0 text-xs leading-relaxed text-muted-foreground">{t.rag.corpus}</p>}
           </Column>
@@ -219,7 +221,8 @@ export function ChatbotPage({ lang }: { lang: Lang }) {
   );
 }
 
-const phaseDot = (p: Phase) => (p === "error" ? "bg-destructive" : p === "waiting" || p === "streaming" ? "animate-pulse bg-brand" : p === "form" ? "bg-brand" : p === "done" ? "bg-foreground" : "bg-ring");
+/** Le point d'un onglet mobile : Locus en cours a sa marque animée (plus haut), le RAG simple reste fade. */
+const phaseDot = (k: "rag" | "locus", p: Phase) => (p === "error" ? "bg-destructive" : k === "rag" && inacheve(p) ? "animate-pulse-soft bg-ring" : p === "form" ? "bg-brand" : p === "done" ? "bg-foreground" : "bg-ring");
 
 function applyRag(st: ColState, ev: ChatEvent): ColState {
   switch (ev.t) {
@@ -325,7 +328,7 @@ function LocusBody({ lang, st, settings, onAnswer, onSubmit, onRetry }: { lang: 
             )}
           </>
         )
-        : <Attente />}
+        : <LocusLoader size="card" label={t.locus.thinking} />}
       {st.phase === "done" && <SourceList lang={lang} sources={st.sources} numbered={settings.inline} />}
     </>
   );

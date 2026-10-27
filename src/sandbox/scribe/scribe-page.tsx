@@ -12,6 +12,7 @@ import { CONSULTATIONS, consultation, transcriptTexte, type Consultation, type R
 import type { DecisionReponse, ErreurReponse, LiveProbe, ModeleNote, NoteReponse } from "@/data/scribe/live";
 import { ActionRow, AideCard, NoteTable, Player, Provenance, Recap, Stepper, TranscriptLines, type EtatGen, type LigneVue } from "./parts";
 import { useDictee } from "./dictee";
+import { LocusLoader } from "@/components/shell/locus-loader";
 
 /**
  * Scribe + aide à la décision (maquette Scribe.dc.html, spec §6).
@@ -466,10 +467,11 @@ function Genere({ texte }: { texte: string }) {
   return <span className="inline-flex items-center gap-1.5 text-[13px] text-muted-foreground"><StatusDot />{texte}</span>;
 }
 
+/** Locus génère : son loader, en grand, à la place du contenu attendu. */
 function Attente({ texte }: { texte: string }) {
   return (
-    <Box className="flex items-center gap-2.5 px-5 py-6 text-muted-foreground" aria-live="polite">
-      <StatusDot className="animate-pulse" />{texte}
+    <Box className="px-5 py-6" aria-live="polite">
+      <LocusLoader size="card" label={texte} />
     </Box>
   );
 }
