@@ -16,6 +16,8 @@ import { DEFAULT_LANG, LANG_COOKIE, isLang, type Lang } from "@/i18n/config";
  *    publiques. Toute autre page renvoie un visiteur vers l'entrée ; un compte
  *    connecté qui arrive sur l'entrée part vers la console. Le mur suit Clerk,
  *    `STUDIO_WALL=1|0` le force (sans Clerk, `1` ferme tout : pour tester).
+ * 5. Avec `LOCUS_OPEN_URL` et `LOCUS_OPEN_PASSERELLE_SECRET`, `/[lang]/lgc-natif/…`
+ *    part vers `/api/open`, qui ouvre Locus Open avec un jeton signé.
  */
 
 const LEGACY = /^\/(p|inbox|nouveau|d)(\/|$)/;
@@ -50,7 +52,19 @@ function langues(req: NextRequest, connecte: boolean | null) {
   const { pathname } = req.nextUrl;
   const first = pathname.split("/")[1];
   if (first === "api") return NextResponse.next();
-  if (isLang(first)) return connecte === null ? NextResponse.next() : mur(req, first, connecte);
+  if (isLang(first)) {
+    // Le LGC natif est servi par Locus Open : la passerelle signe l'accès et y renvoie.
+    if (openOn && pathname.split("/")[2] === "lgc-natif" && connecte !== false) {
+      const url = req.nextUrl.clone();
+      const reste = pathname.split("/").slice(3).join("/");
+      url.pathname = "/api/open";
+      url.search = "";
+      url.searchParams.set("lang", first);
+      if (reste) url.searchParams.set("chemin", `/${reste}`);
+      return NextResponse.redirect(url, 307);
+    }
+    return connecte === null ? NextResponse.next() : mur(req, first, connecte);
+  }
 
   const url = req.nextUrl.clone();
   const lang = langFrom(req);
@@ -63,6 +77,8 @@ function langues(req: NextRequest, connecte: boolean | null) {
 }
 
 const clerkOn = !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY?.trim() && !!process.env.CLERK_SECRET_KEY?.trim();
+// Même condition que `openConfigure()` (src/lib/server/passerelle-open.ts), sinon la passerelle et le proxy se renverraient la page.
+const openOn = /^https?:\/\//.test(process.env.LOCUS_OPEN_URL?.trim() ?? "") && (process.env.LOCUS_OPEN_PASSERELLE_SECRET?.trim().length ?? 0) >= 32;
 const forceMur = process.env.STUDIO_WALL?.trim();
 const murActif = forceMur === "1" ? true : forceMur === "0" ? false : clerkOn;
 const avecClerk = clerkOn
