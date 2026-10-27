@@ -1,6 +1,6 @@
 import type { Dict } from "./config";
 
-/** Zone commune : coque (sidebar, tiroir, palette), noms des outils, bandeau sandbox. */
+/** Zone commune : coque (pilules flottantes, menu, palette), noms des outils, bandeau sandbox. */
 const fr = {
   brand: { name: "Locus Studio", wordmarkA: "locus", wordmarkB: "/studio" },
   nav: {
@@ -21,7 +21,6 @@ const fr = {
     chatbot: "Chatbot sourcé",
     scribe: "Scribe + aide à la décision",
   },
-  notice: { title: "Sandbox", text: "Patients fictifs. Non destiné à un usage clinique." },
   banner: "Sandbox · patients fictifs · non destiné à un usage clinique",
   theme: { label: "Thème", dark: "Sombre", light: "Clair" },
   language: { label: "Langue" },
@@ -53,7 +52,6 @@ const en: typeof fr = {
     chatbot: "Grounded chatbot",
     scribe: "Scribe to decision support",
   },
-  notice: { title: "Sandbox", text: "Fictional patients. Not for clinical use." },
   banner: "Sandbox · fictional patients · not for clinical use",
   theme: { label: "Theme", dark: "Dark", light: "Light" },
   language: { label: "Language" },
