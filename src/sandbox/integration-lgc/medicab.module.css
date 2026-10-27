@@ -1,69 +1,71 @@
 /*
- * MédiCab 7 : un LGC web legacy fictif, sans marque. C'est le décor client :
- * il garde son style d'époque (Tahoma/Verdana 12 px, palette ardoise) dans
- * les deux thèmes. Seules les surfaces Locus et Studio suivent l'identité Noir.
+ * MédiCab 7 : un LGC web legacy fictif, sans marque. C'est le décor client,
+ * et seulement un décor : Tahoma/Verdana 11 px, gris délavés, contraste bas,
+ * dans les deux thèmes. Il s'efface pour que les briques Locus (vertes, en
+ * DM Sans, plus grandes) soient ce qu'on voit d'abord.
  */
-.win { position: relative; height: 100dvh; min-height: 560px; display: flex; flex-direction: column; overflow: hidden; background: #eef1f5; color: #1e2a38; font-family: Tahoma, Verdana, "DejaVu Sans", sans-serif; font-size: 12px; }
-.title { display: flex; align-items: center; gap: 10px; background: #24364f; color: #fff; padding: 6px 12px; flex-shrink: 0; }
-.title b { font-size: 12px; flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.title .doc { color: #c9d6e8; white-space: nowrap; }
-.appIcon { width: 14px; height: 14px; border-radius: 3px; background: #7fa3d1; flex-shrink: 0; }
+.win { position: relative; height: 100dvh; min-height: 560px; display: flex; flex-direction: column; overflow: hidden; background: #ebeced; color: #7a8086; font-family: Tahoma, Verdana, "DejaVu Sans", sans-serif; font-size: 11px; }
+.title { display: flex; align-items: center; gap: 10px; background: #b4b9bf; color: #f6f7f8; padding: 6px 12px; flex-shrink: 0; }
+.title b { font-size: 11px; flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.title .doc { color: #eceef0; white-space: nowrap; }
+.appIcon { width: 14px; height: 14px; border-radius: 3px; background: #d6dade; flex-shrink: 0; }
 .winBtns { display: flex; gap: 6px; }
-.winBtns span { width: 10px; height: 10px; border: 1px solid #8fa4bf; }
-.menus { display: flex; flex-wrap: wrap; gap: 2px 16px; background: #e9edf2; border-bottom: 1px solid #c9d1dc; padding: 4px 12px; flex-shrink: 0; }
-.toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; background: #f4f6f9; border-bottom: 1px solid #c9d1dc; padding: 5px 10px; }
-.tbBtn { display: flex; align-items: center; gap: 5px; padding: 4px 8px; border: 1px solid #c9d1dc; background: #fff; color: #1e2a38; font: inherit; }
-.tbBtn svg { width: 14px; height: 14px; stroke: #3d5a80; }
-.patient { background: #fff; border-bottom: 1px solid #b9c3d0; padding: 8px 12px; display: flex; flex-direction: column; gap: 6px; }
+.winBtns span { width: 10px; height: 10px; border: 1px solid #dfe2e5; }
+.menus { display: flex; flex-wrap: wrap; gap: 2px 16px; background: #e6e8ea; border-bottom: 1px solid #dadde0; color: #9ca1a7; padding: 4px 12px; flex-shrink: 0; }
+.toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; background: #eff0f1; border-bottom: 1px solid #dadde0; padding: 5px 10px; }
+.tbBtn { display: flex; align-items: center; gap: 5px; padding: 4px 8px; border: 1px solid #dadde0; background: #f6f7f7; color: #8a9096; font: inherit; }
+.tbBtn svg { width: 13px; height: 13px; stroke: #a7acb2; }
+.patient { background: #f6f7f7; border-bottom: 1px solid #dadde0; padding: 8px 12px; display: flex; flex-direction: column; gap: 6px; }
 .patientRow { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 16px; }
-.patientName { font-size: 14px; color: #1e3a5f; }
-.mut { color: #5a6b80; }
+.patientName { font-size: 13px; color: #686f75; }
+.mut { color: #9ca1a7; }
 .flags { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
-.flagRed { background: #fce8e6; color: #9b1c1c; border-radius: 3px; padding: 1px 6px; }
-.flagBlue { background: #e6eef8; color: #1e3a5f; border-radius: 3px; padding: 1px 6px; }
+.flagRed { background: #f0e6e5; color: #a17d79; border-radius: 3px; padding: 1px 6px; }
+.flagBlue { background: #e7e9eb; color: #8a9096; border-radius: 3px; padding: 1px 6px; }
 .body { flex: 1 1 auto; min-height: 0; display: flex; gap: 8px; padding: 8px var(--widget-pad, 8px) calc(var(--bar-h, 50px) + 80px) 8px; overflow: auto; align-items: flex-start; }
-.nav { flex: 0 0 128px; display: flex; flex-direction: column; background: #fff; border: 1px solid #c9d1dc; }
-.nav span { padding: 8px 10px; border-top: 1px solid #e3e8ee; }
-.nav span:first-child { border-top: 0; background: #d5e1f0; font-weight: 700; color: #1e3a5f; }
-.box { background: #fff; border: 1px solid #c9d1dc; }
-.boxHead { display: flex; align-items: center; gap: 6px; background: #dce4ee; padding: 5px 8px; font-weight: 700; color: #1e3a5f; min-height: 18px; }
+.nav { flex: 0 0 118px; display: flex; flex-direction: column; background: #f6f7f7; border: 1px solid #dcdfe2; color: #9ca1a7; }
+.nav span { padding: 7px 9px; border-top: 1px solid #eaecee; }
+.nav span:first-child { border-top: 0; background: #e3e6e9; font-weight: 700; color: #80868c; }
+.box { background: #f6f7f7; border: 1px solid #dcdfe2; }
+.boxHead { display: flex; align-items: center; gap: 6px; background: #e7e9eb; padding: 4px 8px; font-weight: 700; color: #858b91; min-height: 18px; }
 .boxHead > :first-child { flex: 1 1 auto; }
-.histo { flex: 0 0 178px; }
-.table { width: 100%; border-collapse: collapse; font-size: 11px; }
-.table td { padding: 4px 6px; border-top: 1px solid #eef1f5; }
+.histo { flex: 0 0 168px; }
+.table { width: 100%; border-collapse: collapse; font-size: 10.5px; }
+.table td { padding: 4px 6px; border-top: 1px solid #eceeef; }
 .table tr:first-child td { border-top: 0; }
-.today td { background: #fff7d6; }
-.today td:first-child { color: #9b1c1c; }
+.today td { background: #f2f0e7; }
+.today td:first-child { color: #a17d79; }
 .main { flex: 999 1 380px; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
-.side { flex: 0 1 250px; min-width: 210px; display: flex; flex-direction: column; gap: 8px; }
-.tabs { display: flex; align-items: center; gap: 2px; background: #dce4ee; padding: 4px 4px 0; flex-wrap: wrap; }
-.tabs .tabOn { background: #fff; padding: 4px 10px; font-weight: 700; color: #1e3a5f; border: 1px solid #c9d1dc; border-bottom: 0; }
-.tabs .tab { padding: 4px 10px; color: #5a6b80; }
+.side { flex: 0 1 236px; min-width: 200px; display: flex; flex-direction: column; gap: 8px; }
+.tabs { display: flex; align-items: center; gap: 2px; background: #e7e9eb; padding: 4px 4px 0; flex-wrap: wrap; }
+.tabs .tabOn { background: #f6f7f7; padding: 4px 10px; font-weight: 700; color: #80868c; border: 1px solid #dcdfe2; border-bottom: 0; }
+.tabs .tab { padding: 4px 10px; color: #a3a8ae; }
 .tabs .spacer { flex: 1 1 auto; }
 .note { padding: 8px 10px; display: flex; flex-direction: column; gap: 6px; line-height: 1.5; }
-.note b { color: #1e3a5f; }
-.consts { display: flex; flex-wrap: wrap; gap: 6px 18px; padding-top: 6px; border-top: 1px dotted #c9d1dc; color: #5a6b80; }
+.note b { color: #737a80; }
+.consts { display: flex; flex-wrap: wrap; gap: 6px 18px; padding-top: 6px; border-top: 1px dotted #dcdfe2; color: #9ca1a7; }
 .ordo { width: 100%; border-collapse: collapse; }
-.ordo th { padding: 5px 8px; font-weight: 400; text-align: left; background: #f4f6f9; color: #5a6b80; }
-.ordo td { padding: 6px 8px; border-top: 1px solid #eef1f5; }
+.ordo th { padding: 5px 8px; font-weight: 400; text-align: left; background: #eff0f1; color: #a3a8ae; }
+.ordo td { padding: 5px 8px; border-top: 1px solid #eceeef; }
 .ordo td:first-child { font-weight: 700; }
-.rowFlag td { background: #fff4e5; }
-.signBar { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; background: #e9edf2; border: 1px solid #c9d1dc; padding: 6px 8px; }
-.signStatus { flex: 1 1 auto; color: #5a6b80; }
-.legacyBtn { min-height: 30px; padding: 0 14px; border: 1px solid #9aa8ba; background: #f4f6f9; color: #1e2a38; font: 12px Tahoma, Verdana, sans-serif; cursor: pointer; }
-.validate { min-height: 30px; padding: 0 14px; border: 1px solid #2e4a6e; background: #3d5a80; color: #fff; font: 700 12px Tahoma, Verdana, sans-serif; cursor: pointer; }
-.validate:disabled { background: #a9b6c6; cursor: not-allowed; }
+/* La ligne que Locus signale : la seule chose de MédiCab qui reprend de la couleur. */
+.rowFlag td { background: #fbeedc; color: #7a4b12; }
+.signBar { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; background: #e7e9eb; border: 1px solid #dcdfe2; padding: 6px 8px; }
+.signStatus { flex: 1 1 auto; color: #8a9096; }
+.legacyBtn { min-height: 30px; padding: 0 14px; border: 1px solid #ccd0d4; background: #f1f2f3; color: #80868c; font: 11px Tahoma, Verdana, sans-serif; cursor: pointer; }
+.validate { min-height: 30px; padding: 0 14px; border: 1px solid #8f969d; background: #9da3a9; color: #fff; font: 700 11px Tahoma, Verdana, sans-serif; cursor: pointer; }
+.validate:disabled { background: #cfd3d6; border-color: #c4c8cc; cursor: not-allowed; }
 .list { padding: 6px 8px; display: flex; flex-direction: column; gap: 3px; }
-.allergy { padding: 6px 8px; color: #9b1c1c; font-weight: 700; }
+.allergy { padding: 6px 8px; color: #a17d79; font-weight: 700; }
 .labTable td:last-child { text-align: right; white-space: nowrap; }
-.labSep td { border-top: 1px solid #c9d1dc !important; }
-.status { display: flex; flex-wrap: wrap; gap: 4px 16px; background: #e9edf2; border-top: 1px solid #c9d1dc; padding: 4px 12px; color: #5a6b80; font-size: 11px; flex-shrink: 0; }
+.labSep td { border-top: 1px solid #dcdfe2 !important; }
+.status { display: flex; flex-wrap: wrap; gap: 4px 16px; background: #e7e9eb; border-top: 1px solid #dcdfe2; padding: 4px 12px; color: #a3a8ae; font-size: 10.5px; flex-shrink: 0; }
 .status .spacer { flex: 1 1 auto; }
 .zone { position: relative; flex-shrink: 0; border-radius: 4px; transition: box-shadow .15s, outline-color .15s; }
-.zoneCand { outline: 1px dashed #737373; outline-offset: -1px; }
+.zoneCand { outline: 2px dashed var(--acc); outline-offset: -2px; }
 .zoneSel { outline: 2px solid var(--brand); outline-offset: -2px; box-shadow: inset 0 0 0 6px var(--brand-soft); z-index: 2; }
-.outs { display: flex; flex-direction: column; gap: 10px; padding-top: 4px; }
-.outsPad { padding: 10px; }
+.outs { display: flex; flex-direction: column; gap: 12px; padding-top: 8px; font-size: 14px; }
+.outsPad { padding: 12px; }
 
 @media (min-width: 1180px) and (max-width: 1700px) {
   .win[data-widget] .histo, .win[data-widget] .nav { display: none; }

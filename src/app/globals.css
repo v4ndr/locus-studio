@@ -317,3 +317,110 @@ mark { background: var(--accent); color: var(--ink); border-radius: 3px; padding
  */
 html:has(.shell-pilules) { scroll-padding-top: 80px; }
 /* ---------- Bande des pilules (coque) : fin ---------- */
+
+/* ======================= Locus dans les LGC : début ======================= */
+/*
+ * Dans les deux LGC (MédiCab 7 et le LGC de demain), ce qui est Locus se voit
+ * d'un coup d'œil et ce qui ne l'est pas s'efface. Un seul jeu de classes :
+ *
+ * - `.locus-surface` : un grand bloc Locus (carte, plan, réponse, widget,
+ *   fenêtre). La couverture verte de la landing, halo glow. À l'intérieur,
+ *   les jetons de l'app sont redéfinis « sur vert » : listes, champs et
+ *   boutons du bloc suivent sans être réécrits. Un dialogue ouvert depuis le
+ *   bloc passe par un portail, pour retrouver les jetons de la page.
+ * - `.locus-tint` : un petit élément Locus sur fond clair (suggestion, chip,
+ *   ligne préparée, justification) : lavis sarcelle, filet sarcelle.
+ * - `.locus-btn` : un bouton qui fait travailler Locus : pilule verte.
+ * - `.locus-tag` : l'étiquette « Locus », marque en tête.
+ * - `.ehr-fade` : le LGC lui-même, ce qui n'est pas Locus : neutre, plus fade.
+ */
+:root {
+  --locus-bg: var(--green);
+  --locus-fg: var(--lin);
+  --locus-fg-2: #c3d3cd;
+  --locus-halo: rgba(141,179,171,.5);
+  --locus-drop: 0 22px 48px -18px rgba(22,48,46,.55), 0 6px 16px -8px rgba(22,48,46,.3);
+  --locus-tint-bg: color-mix(in srgb, var(--acc) 11%, var(--card));
+  --locus-tint-line: color-mix(in srgb, var(--acc) 38%, transparent);
+  --locus-tint-fg: var(--green);
+}
+:root[data-mode="dark"] {
+  --locus-bg: #1e4744;
+  --locus-halo: rgba(141,179,171,.55);
+  --locus-drop: 0 26px 56px -18px rgba(0,0,0,.8), 0 0 0 1px rgba(141,179,171,.12);
+  --locus-tint-bg: rgba(141,179,171,.12);
+  --locus-tint-line: rgba(141,179,171,.4);
+  --locus-tint-fg: #c3d9d3;
+}
+
+.locus-surface {
+  /* Les jetons, « sur vert » : du lin pour l'encre, des voiles de lin pour les fonds et les filets. */
+  --background: rgba(10,30,28,.28); --foreground: var(--locus-fg);
+  --card: transparent; --card-foreground: var(--locus-fg);
+  --popover: #234f4c; --popover-foreground: var(--locus-fg);
+  --primary: var(--lin); --primary-foreground: var(--green-ink);
+  --secondary: rgba(243,239,232,.08); --secondary-foreground: var(--locus-fg);
+  --muted: rgba(243,239,232,.08); --muted-foreground: var(--locus-fg-2);
+  --accent: rgba(243,239,232,.12); --accent-foreground: var(--locus-fg);
+  --border: rgba(243,239,232,.16); --input: rgba(243,239,232,.3); --ring: var(--glow);
+  --brand: var(--glow); --brand-soft: rgba(141,179,171,.2);
+  --field: rgba(10,30,28,.28);
+  /* `--paper` sert de fond (boutons secondaires) et d'encre inversée (`bg-ink text-paper`) : un vert plus sombre tient les deux. */
+  --bg: rgba(10,30,28,.22); --paper: #173a38;
+  --ink: var(--locus-fg); --ink-2: #e3ded3; --ink-3: #d0d6cf;
+  --dim: var(--locus-fg-2); --dim-2: var(--locus-fg-2); --dim-3: #a9bfb8;
+  --line: rgba(243,239,232,.16); --line-2: rgba(243,239,232,.14); --line-3: rgba(243,239,232,.14); --line-4: rgba(243,239,232,.1);
+  --hover: rgba(243,239,232,.08); --soft: rgba(243,239,232,.1);
+  --agent: var(--glow); --agent-soft: rgba(141,179,171,.2); --agent-soft-2: rgba(141,179,171,.14); --agent-line: rgba(141,179,171,.5);
+  --gray-dot: var(--glow);
+  --ok: #a7dcb4; --ok-soft: rgba(167,220,180,.14);
+  --warn: #f2c879; --warn-dot: #f2c879;
+  --rec: #f4ab9c; --rec-text: #f6b8aa; --destructive: #f4ab9c;
+  --sh-xs: none; --sh-sm: none; --shadow: none; --shadow-accent: none;
+  --locus-tint-bg: rgba(141,179,171,.16); --locus-tint-line: rgba(141,179,171,.45); --locus-tint-fg: var(--locus-fg);
+  --locus-ring: var(--locus-halo); --locus-shadow: var(--locus-drop);
+  color-scheme: dark;
+}
+
+/* Le rendu, en `components` : une classe utilitaire posée sur le même élément (position, marge, rayon) l'emporte. */
+@layer components {
+.locus-surface {
+  color: var(--locus-fg);
+  background-color: var(--locus-bg);
+  background-image: radial-gradient(ellipse 60% 90% at 92% 0%, rgba(141,179,171,.34), transparent 70%), radial-gradient(ellipse 50% 60% at 0% 110%, rgba(141,179,171,.16), transparent 70%);
+  box-shadow: 0 0 0 1px var(--locus-halo), var(--locus-drop);
+}
+.locus-surface ::selection { background: rgba(141,179,171,.4); }
+.locus-surface input::placeholder, .locus-surface textarea::placeholder { color: #a9bfb8; }
+
+.locus-tint { background: var(--locus-tint-bg); border: 1px solid var(--locus-tint-line); color: var(--locus-tint-fg); }
+a.locus-tint:hover, button.locus-tint:hover { background: color-mix(in srgb, var(--acc) 20%, var(--card)); color: var(--locus-tint-fg); }
+:root[data-mode="dark"] a.locus-tint:hover, :root[data-mode="dark"] button.locus-tint:hover { background: rgba(141,179,171,.2); }
+.locus-surface a.locus-tint:hover, .locus-surface button.locus-tint:hover { background: rgba(141,179,171,.26); }
+
+.locus-btn { background: var(--green); color: var(--lin); border: 1px solid var(--green); }
+.locus-btn:hover { background: var(--acc); border-color: var(--acc); color: var(--lin); }
+:root[data-mode="dark"] .locus-btn { background: var(--glow); border-color: var(--glow); color: #14302d; }
+:root[data-mode="dark"] .locus-btn:hover { background: #a6c6bf; border-color: #a6c6bf; color: #14302d; }
+
+.locus-tag { display: inline-flex; flex-shrink: 0; align-items: center; gap: 6px; border-radius: 999px; padding: 2px 10px 2px 6px; font-size: 12px; font-weight: 600; line-height: 1.4; background: var(--green); color: var(--lin); }
+:root[data-mode="dark"] .locus-tag { background: var(--glow); color: #14302d; }
+.locus-surface .locus-tag { background: rgba(141,179,171,.22); color: var(--locus-fg); }
+.locus-tag > svg { color: var(--glow); }
+:root[data-mode="dark"] .locus-tag > svg { color: #14302d; }
+.locus-surface .locus-tag > svg { color: var(--glow); }
+
+}
+
+/* Le LGC de demain hors Locus : l'encre et les filets baissent d'un cran, le vert ressort. */
+.ehr-fade {
+  --foreground: #434a47; --ink: #434a47; --ink-2: #545b57; --ink-3: #5f6561;
+  --border: #e1dcd2; --line: #e1dcd2; --line-2: #e6e1d8; --line-3: #e6e1d8; --line-4: #ebe6dd;
+  --paper: #f8f5ef; --card: #f8f5ef;
+}
+:root[data-mode="dark"] .ehr-fade {
+  --foreground: #cfd2cc; --ink: #cfd2cc; --ink-2: #c0c4be; --ink-3: #b3b8b2;
+  --border: rgba(243,239,232,.08); --line: rgba(243,239,232,.08); --line-2: rgba(243,239,232,.07); --line-3: rgba(243,239,232,.07); --line-4: rgba(243,239,232,.06);
+  --paper: #19221f; --card: #19221f;
+}
+/* ======================== Locus dans les LGC : fin ======================== */

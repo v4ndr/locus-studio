@@ -19,7 +19,8 @@ import { fetchLive } from "@/lib/live";
  * puis un plan d'actions — pas une réponse rédigée. La carte le montre comme
  * l'écran des actions après la dictée : une ligne par action, éditable,
  * retirable, un geste pour tout valider, puis le compte rendu de ce qui est
- * parti où.
+ * parti où. La carte est une surface Locus (`.locus-surface`) : le vert de la
+ * landing, que tout son contenu suit par ses jetons.
  */
 
 export interface ComposeState { input?: ComposeInput; steps: string[]; actions: ComposeAction[]; tableaux?: Tableau[]; texte?: string; plan?: ComposePlan; error?: string; busy: boolean }
@@ -165,7 +166,7 @@ export function ComposeCard({ state, onClose, onRetry, suivreSeul = true, onVali
     return (
       <>
       <div aria-hidden="true" className="locus-scrim" />
-      <section aria-label={t.locus} className="locus-card flex flex-col gap-3 rounded-[16px] border border-input bg-paper px-5 py-4 sm:px-6" data-etat="valide">
+      <section aria-label={t.locus} className="locus-card locus-surface flex flex-col gap-3 rounded-[20px] px-5 py-4 sm:px-6" data-etat="valide">
         <div className="flex items-center gap-3">
           <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-ok-soft text-ok"><I.check size={14} w={2.5} /></span>
           <span className="text-[15px] font-medium">{t.signedHead(valide.length, valide.some((a) => a.renvoye))}</span>
@@ -188,7 +189,7 @@ export function ComposeCard({ state, onClose, onRetry, suivreSeul = true, onVali
     <>
     {/* Le voile : sous l'omni-saisie, la page s'efface derrière la carte de Locus (rien n'est bloqué, on peut encore lire le dossier). */}
     <div aria-hidden="true" className="locus-scrim" />
-    <section aria-label={t.locus} aria-busy={!done && !state.error} className="locus-card flex flex-col gap-3.5 rounded-[16px] border border-input bg-paper px-5 py-4 sm:px-6 sm:py-5" data-etat={done ? "pret" : "compose"}>
+    <section aria-label={t.locus} aria-busy={!done && !state.error} className="locus-card locus-surface flex flex-col gap-3.5 rounded-[20px] px-5 py-4 sm:px-6 sm:py-5" data-etat={done ? "pret" : "compose"}>
       <div className="flex items-center gap-3">
         {/* Tant que Locus compose, sa marque se bâtit en grand (le loader Locus) ; ensuite, la marque fixe. */}
         <span className="flex h-10 w-10 shrink-0 items-center justify-center text-brand">{done || state.error ? <LocusMark size={24} /> : <LocusMarkMotion size={38} />}</span>

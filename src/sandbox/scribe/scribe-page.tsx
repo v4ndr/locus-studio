@@ -260,7 +260,6 @@ export function ScribePage({ lang }: { lang: Lang }) {
                   <CardIcon><FileAudio aria-hidden="true" /></CardIcon>
                   <CardTitle>{k.motif}</CardTitle>
                   <CardText>{k.patient}</CardText>
-                  <div className="flex flex-wrap gap-1.5"><Badge className="bg-muted font-normal text-muted-foreground">{t.recorded.badge}</Badge><Badge variant="pill">{k.duree}</Badge></div>
                 </CardBody>
                 <CardFooter><CardAction>{t.recorded.open}<ArrowRight aria-hidden="true" /></CardAction></CardFooter>
               </Card>
@@ -272,7 +271,6 @@ export function ScribePage({ lang }: { lang: Lang }) {
                 <CardIcon><Mic aria-hidden="true" /></CardIcon>
                 <CardTitle>{t.live.title}</CardTitle>
                 <CardText>{t.live.text}</CardText>
-                <div><Badge className="bg-muted font-normal text-muted-foreground">{t.live.badge}</Badge></div>
               </CardBody>
               <CardFooter><CardAction>{t.live.open}<ArrowRight aria-hidden="true" /></CardAction></CardFooter>
             </Card>
