@@ -6,6 +6,7 @@ import { cn } from "@/lib/cn";
 import { useLang } from "@/i18n/lang";
 import { common, studio } from "@/i18n";
 import { lbl } from "@/i18n/studio";
+import { LocusMark } from "@/components/shell/locus-mark";
 
 /** La langue de l'interface, son dictionnaire, et la traduction des libellés produits en français par le serveur. */
 export function useT() {
@@ -133,9 +134,11 @@ export function Omni({ placeholder, onSubmit, cta, chips, children, maxWidth = 7
             ))}
           </div>
         )}
-        {chips && chips.length > 0 && !showHints && (
-          <div className="flex flex-wrap gap-2">
-            {chips.map((c) => <button key={c.id} type="button" onClick={c.onClick} className="min-h-10 rounded-full border border-line bg-paper px-3 py-[7px] text-[13px] text-ink hover:bg-hover">{c.label}</button>)}
+        {/* Ce que Locus a préparé : signé de sa marque, contrasté, et qui arrive (une fois) plutôt que d'attendre qu'on le remarque. */}
+        {chips && chips.length > 0 && !showHints && !hasChild && (
+          <div className="flex flex-wrap items-center gap-2" role="group" aria-label={t.omni.prepared}>
+            <span className="flex items-center gap-1.5 pr-1 text-[13px] font-medium text-ink"><LocusMark size={15} />{t.omni.prepared}</span>
+            {chips.map((c, i) => <button key={c.id} type="button" onClick={c.onClick} className="locus-chip min-h-10 rounded-full border border-input bg-accent px-3.5 py-[7px] text-[13px] font-medium text-ink hover:bg-secondary" style={{ animationDelay: `${120 + i * 70}ms` }}>{c.label}</button>)}
           </div>
         )}
         <form onSubmit={(e) => { e.preventDefault(); if (showHints && sel >= 0) { setV(suggestions![sel].t); setSel(-1); return; } envoyer(v); }} className="flex items-center gap-2 rounded-[14px] border border-line bg-paper py-2.5 pl-4 pr-2.5 focus-within:border-agent-line sm:gap-3 sm:py-3 sm:pl-[18px] sm:pr-3" style={{ boxShadow: "var(--shadow)" }}>

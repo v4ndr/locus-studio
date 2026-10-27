@@ -62,8 +62,8 @@ export function listBrouillons(patientId?: string): Brouillon[] {
 const nActions = (b: Brouillon) => (b.plan ? b.plan.actions.filter((a) => a.kind !== "naviguer" && !(b.retires ?? []).includes(a.id)).length : 0);
 
 /** Ce qu'on peut ajouter à la main, sans passer par le composer : une charge vide, le formulaire fait le reste. */
-export type Ajout = "ordonnance" | "examen" | "imagerie" | "paramedical" | "arret" | "courrier" | "message" | "rdv" | "fiche";
-export const AJOUTS: { k: Ajout; label: string }[] = [{ k: "ordonnance", label: "Ordonnance" }, { k: "examen", label: "Biologie" }, { k: "imagerie", label: "Imagerie" }, { k: "paramedical", label: "Kiné, soins" }, { k: "arret", label: "Arrêt de travail" }, { k: "courrier", label: "Courrier" }, { k: "message", label: "Message" }, { k: "rdv", label: "Rendez-vous" }, { k: "fiche", label: "Fiche du patient" }];
+export type Ajout = "ordonnance" | "examen" | "imagerie" | "paramedical" | "arret" | "transport" | "courrier" | "message" | "rdv" | "fiche";
+export const AJOUTS: { k: Ajout; label: string }[] = [{ k: "ordonnance", label: "Ordonnance" }, { k: "examen", label: "Biologie" }, { k: "imagerie", label: "Imagerie" }, { k: "paramedical", label: "Kiné, soins" }, { k: "arret", label: "Arrêt de travail" }, { k: "transport", label: "Bon de transport" }, { k: "courrier", label: "Courrier" }, { k: "message", label: "Message" }, { k: "rdv", label: "Rendez-vous" }, { k: "fiche", label: "Fiche du patient" }];
 export function actionVide(k: Ajout, patient: PatientRendu): ComposeAction {
   const dans7 = new Date(); dans7.setDate(dans7.getDate() + 7);
   const c: Charge =
@@ -72,6 +72,7 @@ export function actionVide(k: Ajout, patient: PatientRendu): ComposeAction {
     k === "imagerie" ? { kind: "ordonnance", type: "imagerie", lignes: [{ libelle: "" }] } :
     k === "paramedical" ? { kind: "ordonnance", type: "paramedical", lignes: [{ libelle: "Kinésithérapie · 10 séances" }] } :
     k === "arret" ? { kind: "arret", jours: 3, sorties: "oui", motif: "" } :
+    k === "transport" ? { kind: "transport", situation: [], mode: "assis-professionnalise", ambulance_motifs: [], depart: "domicile", arrivee: "structure", aller_retour: true, urgence: "non", elements_medicaux: "" } :
     k === "courrier" ? { kind: "courrier", type: "adressage", destinataire: "", titre: "Adressage", corps: `Cher confrère, chère consœur,\n\nJe vous adresse ${patient.nom} pour avis.\n\nBien confraternellement,\nDr Vandepitterie` } :
     k === "message" ? { kind: "message", a: "patient", objet: "", corps: "" } :
     k === "rdv" ? { kind: "rdv", debut: isoParis(dans7.toISOString().slice(0, 10), "09:30"), duree_min: 20, motif: "Consultation" } :

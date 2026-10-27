@@ -7,6 +7,7 @@ import { useRouter } from "./nav";
 import type { PatientView, DocView, DocRow, InboxRow, InboxKind, Urgence } from "@/studio/types";
 import { Header, Omni, Kbd, I, Avatar, useT } from "./chrome";
 import { ComposeCard, useCompose } from "./compose";
+import { LocusMark } from "@/components/shell/locus-mark";
 import { Md } from "../md";
 import { cn } from "@/lib/cn";
 
@@ -106,7 +107,7 @@ function Inner({ v, doc, boite, boiteKind, praticien }: { v: PatientView; doc: D
             <h1 className="m-0 text-[22px] font-medium leading-[1.3] tracking-[-.02em] sm:text-2xl">{doc.titre}</h1>
           </div>
 
-          <div><button type="button" onClick={() => composer.run({ texte: LIRE, patientId: v.ref.id, ecran: "document", docId: doc.id })} disabled={composer.state.busy} className="flex min-h-10 items-center gap-2 rounded-full border border-line bg-paper px-3.5 py-[8px] text-sm text-ink hover:bg-hover disabled:opacity-40"><span className="h-2 w-2 rounded-full" style={{ background: "var(--agent)" }} />{d.doc.read}</button></div>
+          <div><button type="button" onClick={() => composer.run({ texte: LIRE, patientId: v.ref.id, ecran: "document", docId: doc.id })} disabled={composer.state.busy} className="flex min-h-11 items-center gap-2.5 rounded-full bg-ink px-4 py-[9px] text-sm font-medium text-paper hover:text-paper disabled:opacity-40"><LocusMark size={16} />{d.doc.read}</button></div>
 
           {doc.lignes && (
             <section className="card overflow-hidden">

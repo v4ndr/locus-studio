@@ -3,7 +3,9 @@ import { TriangleAlert } from "lucide-react";
 import * as React from "react";
 import Link from "./nav";
 import { useRouter } from "./nav";
-import type { ComposeEvent, ComposeInput, ComposePlan, ComposeAction } from "@/locus/compose/contract";
+import type { ComposeEvent, ComposeInput, ComposePlan, ComposeAction, Tableau } from "@/locus/compose/contract";
+import { LocusMark } from "@/components/shell/locus-mark";
+import { LocusMarkMotion } from "@/components/shell/locus-mark-motion";
 import { readNdjson } from "@/locus/ndjson";
 import { Kbd, I, useT } from "./chrome";
 import type { StudioDict } from "@/i18n/studio";
@@ -20,7 +22,7 @@ import { fetchLive } from "@/lib/live";
  * parti où.
  */
 
-export interface ComposeState { input?: ComposeInput; steps: string[]; actions: ComposeAction[]; texte?: string; plan?: ComposePlan; error?: string; busy: boolean }
+export interface ComposeState { input?: ComposeInput; steps: string[]; actions: ComposeAction[]; tableaux?: Tableau[]; texte?: string; plan?: ComposePlan; error?: string; busy: boolean }
 
 export function useCompose() {
   const [s, setS] = React.useState<ComposeState>({ steps: [], actions: [], busy: false });
@@ -46,9 +48,11 @@ export function useCompose() {
             // Étapes grossières seulement : pas de nom d'outil, pas de reformulation, pas de détail de pipeline.
             case "outil": { const l = ev.nom === "locus" ? "Je consulte Locus" : ev.detail; return p.steps[p.steps.length - 1] === l ? p : { ...p, steps: [...p.steps, l] }; }
             case "action": return { ...p, actions: [...p.actions, ev.action] };
+            case "tableau": return { ...p, tableaux: [...(p.tableaux ?? []).filter((x) => x.id !== ev.tableau.id), ev.tableau] };
             case "texte": return { ...p, texte: ev.texte };
-            case "done": return { ...p, plan: ev.plan, actions: ev.plan.actions, busy: false };
+            case "done": return { ...p, plan: ev.plan, actions: ev.plan.actions, tableaux: ev.plan.tableaux ?? p.tableaux, busy: false };
             case "error": return { ...p, error: ev.detail, busy: false };
+            default: return p;
           }
         });
       }
@@ -110,6 +114,8 @@ export function ComposeCard({ state, onClose, onRetry, suivreSeul = true, onVali
   React.useEffect(() => { if (ouvrirId) setOpen(ouvrirId); }, [ouvrirId]);
   // Le patient vient de l'écran quand il le connaît, sinon du plan (le serveur l'a résolu, depuis l'accueil par exemple).
   const pr: PatientRendu = patient ? { ...state.plan?.patient, ...patient, allergies: patient.allergies ?? state.plan?.patient?.allergies } : state.plan?.patient ?? { nom: "" };
+  // Une requête sur la patientèle prépare pour plusieurs patients : chaque document a l'en-tête du sien.
+  const prDe = (a: ComposeAction): PatientRendu => a.patient ?? pr;
   const [edits, setEdits] = React.useState<Record<string, ComposeAction>>(initialActions?.edits ?? {});
   const [retires, setRetires] = React.useState<Set<string>>(new Set(initialActions?.retires ?? []));
   const [valide, setValide] = React.useState<ComposeAction[] | null>(null);
@@ -157,9 +163,11 @@ export function ComposeCard({ state, onClose, onRetry, suivreSeul = true, onVali
   const resignature = !!state.plan?.actions.some((a) => a.envoyeLe);
   if (valide) {
     return (
-      <div className="flex flex-col gap-3 rounded-[14px] border border-line bg-paper px-[18px] py-4" style={{ boxShadow: "var(--shadow)" }}>
+      <>
+      <div aria-hidden="true" className="locus-scrim" />
+      <section aria-label={t.locus} className="locus-card flex flex-col gap-3 rounded-[16px] border border-input bg-paper px-5 py-4 sm:px-6" data-etat="valide">
         <div className="flex items-center gap-3">
-          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-ok-soft text-ok"><I.check size={13} w={2.5} /></span>
+          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-ok-soft text-ok"><I.check size={14} w={2.5} /></span>
           <span className="text-[15px] font-medium">{t.signedHead(valide.length, valide.some((a) => a.renvoye))}</span>
           <span className="flex-1" />
           <button type="button" onClick={onClose} aria-label={d.close} className="flex h-9 w-9 items-center justify-center rounded-full text-lg text-dim-2 hover:bg-hover hover:text-ink">×</button>
@@ -168,26 +176,31 @@ export function ComposeCard({ state, onClose, onRetry, suivreSeul = true, onVali
           {valide.map((a, i) => <button key={a.id} type="button" onClick={() => setOpen(a.id)} className={cn("flex min-h-11 items-center gap-3 rounded-[8px] px-1 py-2 text-left text-sm hover:bg-hover", i > 0 && "border-t border-line-4")}><span className="d flex h-6 min-w-6 shrink-0 items-center justify-center rounded-[6px] bg-soft px-1 text-[10px] text-ink-3">{a.code}</span><span className="flex min-w-0 flex-1 flex-col"><span className="line-clamp-2 sm:truncate">{a.titre}</span><span className="text-xs text-ok">{fait(t, a, resignature)}</span></span><I.chevron /></button>)}
         </div>
         {apres && <div className="flex flex-wrap items-center gap-2 pt-1">{apres}</div>}
-        {open && valide.find((a) => a.id === open) && <ActionPanel action={valide.find((a) => a.id === open)!} patient={pr} onClose={() => setOpen(null)} />}
-      </div>
+        {open && valide.find((a) => a.id === open) && <ActionPanel action={valide.find((a) => a.id === open)!} patient={prDe(valide.find((a) => a.id === open)!)} onClose={() => setOpen(null)} />}
+      </section>
+      </>
     );
   }
 
+  const tableaux = state.plan?.tableaux ?? state.tableaux ?? [];
+  const demande = state.input ? state.input.texte || state.input.note?.replace(/\s+/g, " ").slice(0, 80) : "";
   return (
-    <div className="flex flex-col gap-3 rounded-[14px] border border-line bg-paper px-[18px] py-4" style={{ boxShadow: "var(--shadow-accent)" }}>
-      <div className="flex items-center gap-2.5">
-        <span className="k whitespace-nowrap" style={{ color: "var(--agent)" }}>{done ? (gardes.length ? d.toValidateN(gardes.length) : docs.length ? t.nothing : state.plan?.references.length || state.plan?.locus ? t.answer : t.composer) : t.composer}</span>
-        {state.input && !done && <span className="truncate text-[13px] text-dim-2">« {state.input.texte || state.input.note?.replace(/\s+/g, " ").slice(0, 80)} »</span>}
-        <span className="flex-1" />
+    <>
+    {/* Le voile : sous l'omni-saisie, la page s'efface derrière la carte de Locus (rien n'est bloqué, on peut encore lire le dossier). */}
+    <div aria-hidden="true" className="locus-scrim" />
+    <section aria-label={t.locus} aria-busy={!done && !state.error} className="locus-card flex flex-col gap-3.5 rounded-[16px] border border-input bg-paper px-5 py-4 sm:px-6 sm:py-5" data-etat={done ? "pret" : "compose"}>
+      <div className="flex items-center gap-3">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent text-foreground">{done || state.error ? <LocusMark size={18} /> : <LocusMarkMotion size={18} />}</span>
+        <span className="flex min-w-0 flex-1 flex-col">
+          <span className="flex items-baseline gap-2"><b className="text-[15px] font-semibold">Locus</b><span className="truncate text-[13px] text-dim-2">{done ? (gardes.length ? d.toValidateN(gardes.length) : docs.length ? t.nothing : tableaux.length ? t.computed : state.plan?.references.length || state.plan?.locus ? t.answer : t.composer) : state.error ? t.composer : last ? L(last) : t.reading}</span></span>
+          {demande && <span className="truncate text-[13px] text-dim-2">« {demande} »</span>}
+        </span>
         <button type="button" onClick={onClose} aria-label={d.close} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-lg text-dim-2 hover:bg-hover hover:text-ink">×</button>
       </div>
-
-      {!done && !state.error && (
-        <div className="flex items-center gap-2.5 text-sm text-dim-2"><span className="h-2 w-2 rounded-full bg-brand animate-pulse-soft" />{last ? L(last) : t.reading}</div>
-      )}
       {state.error && <div className="flex flex-wrap items-center gap-3 text-sm text-rec-text"><span className="flex-1">{state.error}</span>{state.input && onRetry && <button type="button" onClick={() => onRetry(state.input!)} className="rounded-[8px] border border-line bg-paper px-3 py-1.5 text-xs text-ink hover:bg-hover">{t.retry}</button>}</div>}
 
-      {(state.plan?.synthese || state.texte) && <div className="max-h-[32vh] overflow-y-auto text-[15px] leading-relaxed"><Md text={state.plan?.synthese ?? state.texte ?? ""} /></div>}
+      {(state.plan?.synthese || state.texte) && <div className="max-h-[40vh] overflow-y-auto text-base leading-relaxed sm:text-[17px]"><Md text={state.plan?.synthese ?? state.texte ?? ""} /></div>}
+      {tableaux.map((tb) => <TableauCard key={tb.id} tb={tb} onOpen={onClose} />)}
       {state.plan?.locusEnPanne && <div className="flex flex-wrap items-center gap-3 text-sm text-warn"><span className="flex-1">{t.locusDown}</span>{state.input && onRetry && <button type="button" onClick={() => onRetry(state.input!)} className="rounded-[8px] border border-line bg-paper px-3 py-1.5 text-xs text-ink hover:bg-hover">{t.retry}</button>}</div>}
       {(state.plan?.synthese || state.texte) && d.answerInFrench && <span className="d -mt-1 text-[11px]">{d.answerInFrench}</span>}
 
@@ -214,7 +227,7 @@ export function ComposeCard({ state, onClose, onRetry, suivreSeul = true, onVali
           })}
         </div>
       )}
-      {open && docs.find((a) => a.id === open) && <ActionPanel action={docs.find((a) => a.id === open)!} patient={pr} onChange={(na) => setEdits((e) => { const n = { ...e, [na.id]: na }; signal(n, retires); return n; })} onRemove={() => { if (!retires.has(open)) bascule(open); }} onClose={() => setOpen(null)} />}
+      {open && docs.find((a) => a.id === open) && <ActionPanel action={docs.find((a) => a.id === open)!} patient={prDe(docs.find((a) => a.id === open)!)} onChange={(na) => setEdits((e) => { const n = { ...e, [na.id]: na }; signal(n, retires); return n; })} onRemove={() => { if (!retires.has(open)) bascule(open); }} onClose={() => setOpen(null)} />}
 
       {nav.length > 0 && (docs.length > 0 || nav.length > 1) && (
         <div className="flex flex-wrap gap-2">{nav.map((a) => a.href && <Link key={a.id} href={a.href} onClick={onClose} className="flex items-center gap-2 rounded-full border border-line bg-paper px-3 py-[6px] text-[13px] text-ink hover:bg-hover hover:text-ink">→ {a.titre}</Link>)}</div>
@@ -230,6 +243,44 @@ export function ComposeCard({ state, onClose, onRetry, suivreSeul = true, onVali
           {!masquerValider && <button type="button" onClick={onClose} className="flex min-h-11 items-center gap-2 rounded-[10px] px-3 py-[9px] text-sm text-dim-2 hover:bg-hover hover:text-ink">{gardes.length > 0 || docs.length > 0 ? d.cancel : d.close} <Kbd>esc</Kbd></button>}
         </div>
       )}
+    </section>
+    </>
+  );
+}
+
+/** Un tableau calculé par le logiciel (la patientèle) : montré tel quel, chaque patient s'ouvre. */
+function TableauCard({ tb, onOpen }: { tb: Tableau; onOpen: () => void }) {
+  const { L } = useT();
+  const statutIdx = tb.colonnes.indexOf("Statut") - 1;
+  const sous = !!tb.derniereSousLigne;
+  const cols = sous ? tb.colonnes.slice(0, -1) : tb.colonnes;
+  const couleur = { retard: "var(--warn)", bientot: "var(--ink-2)", ok: "var(--ok)", info: "var(--dim-2)" } as const;
+  return (
+    <div className="flex flex-col gap-2 rounded-xl border border-line bg-bg p-3">
+      <span className="text-sm font-medium">{tb.titre}</span>
+      {tb.lignes.length > 0 && (
+        <div className="max-h-[38vh] overflow-auto">
+          <table className="w-full min-w-[520px] border-collapse text-[13px]">
+            <thead><tr>{cols.map((c) => <th key={c} scope="col" className="k whitespace-nowrap border-b border-line px-2 py-1.5 text-left font-normal">{L(c)}</th>)}</tr></thead>
+            <tbody>
+              {tb.lignes.map((l, i) => {
+                const cells = sous ? l.cellules.slice(0, -1) : l.cellules;
+                return (
+                  <React.Fragment key={`${l.patientId}-${i}`}>
+                    <tr className={cn(!sous && "border-b border-line-4 last:border-b-0")}>
+                      <td className="whitespace-nowrap px-2 pt-2 align-top"><Link href={`/p/${l.patientId}`} onClick={onOpen} className="font-medium text-ink underline decoration-line underline-offset-2 hover:text-ink">{l.nom}</Link></td>
+                      {cells.map((c, j) => <td key={j} className={cn("whitespace-nowrap px-2 pt-2 align-top", j === statutIdx ? "font-medium" : "text-ink-2", !sous && "pb-2")} style={j === statutIdx ? { color: couleur[l.statut] } : undefined}>{c}</td>)}
+                    </tr>
+                    {sous && <tr className="border-b border-line-4 last:border-b-0"><td colSpan={cols.length} className="px-2 pb-2 pt-0.5 text-xs text-dim-2">{L(tb.colonnes[tb.colonnes.length - 1])} · {l.cellules[l.cellules.length - 1]}</td></tr>}
+                  </React.Fragment>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {tb.pied?.map((p, i) => <p key={i} className="m-0 text-xs leading-[1.5] text-dim-2">{p}</p>)}
     </div>
   );
 }
+

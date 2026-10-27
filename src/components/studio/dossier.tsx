@@ -78,7 +78,7 @@ export function DossierView({ v, praticien }: { v: PatientView; praticien: { ini
               {v.dossier.suivis.length === 0 && <Li k={t.dossier.nothingOngoing} />}
               {v.dossier.suivis.map((f, i) => <div key={i} className="li"><span className="flex-1"><b className="font-medium">{f.k}</b>{f.v ? ` · ${f.v}` : ""}</span></div>)}
             </Card>
-            <Card id="fiche-depistages" title={t.dossier.screening}>{v.dossier.depistages.map((f, i) => <Li key={i} k={f.k} v={L(f.v)} muted={f.muted} warn={f.v === "dû" || f.v === "en retard"} />)}</Card>
+            <Card id="fiche-depistages" title={t.dossier.screening}>{v.dossier.depistages.map((f, i) => <Li key={i} k={f.k} v={L(f.v)} muted={f.muted} warn={f.warn || f.v === "dû" || f.v === "en retard"} />)}</Card>
           </div>
         )}
         <NotesSession patientId={v.ref.id} patient={{ nom: v.ref.nom, naissance: v.ref.naissance, age: v.ref.age, sexe: v.meta.endsWith("F") ? "F" : "M" }} />
@@ -101,6 +101,7 @@ function exemples(v: PatientView, d: StudioDict): { k: string; t: string }[] {
     { k: d.keys.mail, t: `Mail à ${prenom} : résultats rassurants, on en reparle au prochain rendez-vous` },
     { k: d.keys.courrier, t: "Courrier au cardiologue : avis pour une HTA résistante" },
     { k: d.keys.arret, t: "Arrêt de travail 5 jours, sorties libres" },
+    { k: d.keys.transport, t: "Bon de transport : VSL aller-retour pour son prochain rendez-vous chez le spécialiste" },
     { k: d.keys.question, t: "Quelle est la dernière créatinine et son évolution ?" },
   ];
 }

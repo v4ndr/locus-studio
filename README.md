@@ -89,8 +89,9 @@ boucle d'agent côté serveur (`/api/compose`, NDJSON) donne à un **modèle
 frontière** (côté serveur uniquement, jamais nommé dans l'interface) la demande, l'écran et le dossier (la même projection
 `patient_ehr` que locus-core reçoit), et des **outils** qui sont les actions du
 logiciel : `proposer_ordonnance`, `proposer_rdv`, `proposer_message`,
-`proposer_courrier`, `proposer_arret`, `inscrire_au_dossier`, `ouvrir`,
-`lire_document`. **Locus (locus-core) est un outil parmi eux** (`locus_retrieve`) :
+`proposer_courrier`, `proposer_arret`, `proposer_transport` (la prescription
+médicale de transport, cerfa n° 11574*04, en spécimen fictif),
+`inscrire_au_dossier`, `ouvrir`, `lire_document`, `interroger_patientele`. **Locus (locus-core) est un outil parmi eux** (`locus_retrieve`) :
 toute question clinique passe par lui, et sa réponse alimente la synthèse et les
 actions qu'elle implique. Rien n'est écrit
 ni envoyé par le serveur ; chaque action est une proposition, comme après la
@@ -99,6 +100,15 @@ dictée.
 ```bash
 ANTHROPIC_API_KEY=…   # vide → composeur à règles : même plan, compréhension plus courte
 ```
+
+Une question sur la **patientèle** (« des dépistages en retard sur ma
+patientèle ? », le suivi du diabète) n'est jamais écrite par le modèle : le
+serveur la calcule sur les dossiers (`src/locus/compose/patientele.ts` :
+dépistages organisés colorectal, sein, col de l'utérus ; HbA1c contre
+l'intervalle HAS), avant le modèle quand la demande la vise, et la carte montre
+le tableau tel quel. La palette ⌘K de la coque (hors du LGC) pose la même
+question avec toute la patientèle pour contexte (`?demande=`, portée
+`patientele`). La carte « Dépistages » du dossier lit le même calcul.
 
 Le code : `src/locus/compose/` (contrat, contexte, outils, boucle, règles) et
 `src/components/studio/compose.tsx` (la carte du plan).

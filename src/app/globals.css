@@ -197,6 +197,31 @@ mark { background: var(--accent); color: var(--ink); border-radius: 3px; padding
 .prose-locus sup { color: var(--foreground); font-weight: 500; }
 
 .agent-glow { box-shadow: inset 0 0 0 1px var(--agent-line); }
+
+/*
+ * Les cartes de Locus (le plan du composer, ses réponses) : en évidence. Une
+ * arrivée qui se voit, une ombre portée nette, un liseré teal tout autour
+ * (l'agent est l'état actif de l'écran) qui respire pendant qu'il compose et
+ * s'allume une fois quand le plan est prêt. Sous l'omni-saisie, un voile
+ * efface la page derrière la carte, sans rien bloquer.
+ */
+:root { --locus-ring: color-mix(in srgb, var(--brand) 42%, transparent); --locus-shadow: 0 30px 72px -20px rgba(0,0,0,.8), 0 10px 26px -12px rgba(0,0,0,.65); }
+:root[data-mode="light"] { --locus-ring: color-mix(in srgb, var(--brand) 38%, transparent); --locus-shadow: 0 30px 64px -22px rgba(15,23,42,.3), 0 8px 20px -10px rgba(15,23,42,.16); }
+/* `backwards` et pas `both` : une transformation qui reste appliquée ferait de la carte le bloc conteneur des panneaux fixes qu'elle ouvre. */
+.locus-card { position: relative; box-shadow: 0 0 0 1px var(--locus-ring), var(--locus-shadow); animation: locus-arrive .36s cubic-bezier(.2, .8, .2, 1) backwards; }
+.locus-card::after { content: ""; position: absolute; inset: -1px; border-radius: inherit; pointer-events: none; opacity: 0; box-shadow: 0 0 0 1px var(--brand), 0 0 0 5px var(--brand-soft); }
+.locus-card[data-etat="compose"]::after { animation: locus-respire 1.8s ease-in-out .36s infinite; }
+.locus-card[data-etat="pret"]::after, .locus-card[data-etat="valide"]::after { animation: locus-pret 1.1s ease-out 1; }
+@keyframes locus-arrive { from { opacity: 0; transform: translateY(16px) scale(.98); } to { opacity: 1; transform: none; } }
+@keyframes locus-respire { 0%, 100% { opacity: .15; } 50% { opacity: .9; } }
+@keyframes locus-pret { 0% { opacity: 1; } 100% { opacity: 0; } }
+.locus-scrim { display: none; }
+.sticky-fade:has(.locus-card) { z-index: 30; }
+.sticky-fade .locus-scrim { display: block; position: fixed; inset: 0; z-index: -1; pointer-events: none; background: color-mix(in srgb, var(--background) 64%, transparent); animation: locus-voile .3s ease-out both; }
+@keyframes locus-voile { from { opacity: 0; } to { opacity: 1; } }
+.locus-chip { animation: locus-arrive .32s cubic-bezier(.2, .8, .2, 1) both; }
+@media (prefers-reduced-motion: reduce) { .locus-card, .locus-card::after, .locus-scrim, .locus-chip { animation: none !important; } .locus-card[data-etat="compose"]::after { opacity: .6; } }
+@media print { .locus-scrim { display: none !important; } }
 @keyframes pulse-soft { 0%, 100% { opacity: 1; } 50% { opacity: .45; } }
 .animate-pulse-soft { animation: pulse-soft 1.6s ease-in-out infinite; }
 @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }

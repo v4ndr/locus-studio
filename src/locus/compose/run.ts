@@ -1,9 +1,10 @@
 import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
 import { SYSTEM, buildContext } from "./context";
-import { TOOLS, executeTool, type ToolCtx } from "./tools";
+import { TOOLS, executeTool, ajouteTableau, type ToolCtx } from "./tools";
+import { estPopulation, interrogerPatientele, sujetDe } from "./patientele";
 import { MODELE_ABSENT, erreurModele, modeleConfigure } from "./erreurs";
-import { resolvePatient } from "./patient";
+import { resolvePatient, planPatient } from "./patient";
 import type { ComposeEvent, ComposeInput, ComposePlan } from "./contract";
 
 /**
@@ -23,14 +24,23 @@ export async function* compose(input: ComposeInput): AsyncGenerator<ComposeEvent
   if (!modeleConfigure()) { console.error("[compose] ANTHROPIC_API_KEY absente"); yield { step: "error", detail: MODELE_ABSENT.message }; return; }
 
   const client = new Anthropic();
-  const { contexte } = buildContext(input);
   const queue: ComposeEvent[] = [];
-  const ctx: ToolCtx = { input, actions: [], references: [], locus: 0, patient: resolvePatient(input), emit: (ev) => queue.push(ev) };
+  const ctx: ToolCtx = { input, actions: [], references: [], locus: 0, tableaux: [], patient: input.portee === "patientele" ? undefined : resolvePatient(input), emit: (ev) => queue.push(ev) };
+  // Une demande sur la patientèle (la palette globale, ou une phrase qui la vise) : la requête est calculée AVANT le modèle,
+  // et son tableau part au navigateur tel quel. Le modèle la commente ; il ne peut ni l'oublier ni l'inventer.
+  let population: string | undefined;
+  if (input.ecran !== "note" && (input.portee === "patientele" || estPopulation(input.texte))) {
+    const r = interrogerPatientele(sujetDe(input.texte));
+    population = r.texte;
+    for (const t of r.tableaux) ajouteTableau(ctx, t);
+  }
+  const { contexte } = buildContext(input.portee === "patientele" ? { ...input, patientId: undefined, patient: undefined, docId: undefined } : input, population);
   const demande = input.ecran === "note" ? `## Note de consultation du jour (dictée ou rédigée par le médecin)${input.motif ? `\nMotif de consultation (agenda) : ${input.motif}` : ""}\n${input.note ?? input.texte}\n\n## Consigne\n${input.texte === input.note || !input.texte ? "Décline cette note en actions : prépare ce qu'elle prescrit ou demande (ordonnances, arrêt, courrier, rendez-vous, message) ; ajoute à la fiche seulement un nouvel antécédent, une allergie ou un changement de traitement de fond qu'elle révèle ; et termine par une seule phrase : la conclusion clinique, sans récapituler les actions." : input.texte}` : `## Demande du médecin\n${input.texte}`;
   const messages: Anthropic.MessageParam[] = [{ role: "user", content: `${contexte}\n\n${demande}` }];
   let synthese = "";
 
-  yield { step: "reflexion", titre: "Je lis le dossier et la demande" };
+  yield { step: "reflexion", titre: population ? "Je calcule sur la patientèle" : "Je lis le dossier et la demande" };
+  while (queue.length) yield queue.shift()!;
   for (let tour = 0; tour < MAX_TOURS; tour++) {
     const stream = client.beta.messages.stream({
       model: MODEL,
@@ -71,8 +81,13 @@ export async function* compose(input: ComposeInput): AsyncGenerator<ComposeEvent
   }
 
   const pt = ctx.patient;
-  const plan: ComposePlan = { synthese: (synthese || (ctx.actions.length ? "Prêt à valider." : "Je n'ai rien trouvé à faire avec cette demande.")).slice(0, 600), actions: ctx.actions, references: ctx.references, locus: ctx.locus, locusEnPanne: ctx.locusEnPanne || undefined, patient: pt ? { nom: pt.nom, sexe: pt.sexe, age: pt.age, naissance: pt.naissance, allergies: pt.allergies } : undefined };
+  const plan: ComposePlan = { synthese: renvoisValides((synthese || (ctx.actions.length || ctx.tableaux.length ? "Prêt à valider." : "Je n'ai rien trouvé à faire avec cette demande.")).slice(0, 900), ctx.references.length), actions: ctx.actions, references: ctx.references, locus: ctx.locus, locusEnPanne: ctx.locusEnPanne || undefined, patient: pt ? planPatient(pt) : undefined, tableaux: ctx.tableaux.length ? ctx.tableaux : undefined };
   yield { step: "done", plan };
 }
 
-const LABEL: Record<string, string> = { locus_retrieve: "Je consulte Locus", lire_document: "Je lis le document", proposer_ordonnance: "Je rédige l'ordonnance", proposer_rdv: "Je cherche un créneau", proposer_message: "Je rédige le message", proposer_courrier: "Je rédige le courrier", proposer_arret: "Je prépare l'arrêt", inscrire_au_dossier: "J'inscris au dossier", ouvrir: "J'ouvre l'écran" };
+/** Un renvoi [n] sans la référence n (Locus pas appelé, ou source non gardée) est retiré : la carte ne montre jamais une source qui n'existe pas. */
+function renvoisValides(texte: string, n: number): string {
+  return texte.replace(/\s?\[(\d+)\]/g, (m, k) => (Number(k) >= 1 && Number(k) <= n ? m : ""));
+}
+
+const LABEL: Record<string, string> = { interroger_patientele: "Je calcule sur la patientèle", proposer_transport: "Je prépare le bon de transport", locus_retrieve: "Je consulte Locus", lire_document: "Je lis le document", proposer_ordonnance: "Je rédige l'ordonnance", proposer_rdv: "Je cherche un créneau", proposer_message: "Je rédige le message", proposer_courrier: "Je rédige le courrier", proposer_arret: "Je prépare l'arrêt", inscrire_au_dossier: "J'inscris au dossier", ouvrir: "J'ouvre l'écran" };

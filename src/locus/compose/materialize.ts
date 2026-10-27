@@ -14,6 +14,12 @@ export const MSG_DEST: Record<string, string> = { patient: "patient · messageri
 export const MSG_A: Record<string, string> = { patient: "patient", confrere: "confrère", secretariat: "secrétariat", pharmacie: "pharmacie" };
 export const DOS_LABEL: Record<string, string> = { antecedent: "Antécédent", "antecedent-familial": "Antécédent familial", allergie: "Allergie", traitement: "Traitement de fond" };
 export const CR_TYPE: Record<string, string> = { adressage: "Adressage", certificat: "Certificat", attestation: "Attestation", "reponse-confrere": "Réponse à un confrère", "courrier-patient": "Courrier au patient" };
+/** La prescription médicale de transport (cerfa n° 11574*04), ses rubriques telles que le formulaire les nomme. */
+export const TR_SITUATION: Record<string, string> = { hospitalisation: "Entrée ou sortie d'hospitalisation", "ald-exoneree": "ALD exonérante", "ald-non-exoneree": "ALD non exonérante", "at-mp": "Accident du travail ou maladie professionnelle" };
+export const TR_MODE: Record<string, string> = { ambulance: "Ambulance", "assis-professionnalise": "Transport assis professionnalisé (VSL, taxi conventionné)", "vehicule-personnel": "Moyen de transport individuel", "transport-en-commun": "Transport en commun terrestre" };
+export const TR_MODE_COURT: Record<string, string> = { ambulance: "ambulance", "assis-professionnalise": "VSL ou taxi conventionné", "vehicule-personnel": "véhicule personnel", "transport-en-commun": "transport en commun" };
+export const TR_AMBU: Record<string, string> = { allonge: "position allongée ou demi-assise", surveillance: "surveillance par une personne qualifiée", oxygene: "administration d'oxygène", brancardage: "brancardage ou portage", asepsie: "asepsie rigoureuse" };
+export const TR_LIEU: Record<string, string> = { domicile: "Domicile", autre: "Autre lieu", structure: "Structure de soins" };
 export const SORTIES: Record<string, string> = { non: "non autorisées", oui: "autorisées · présence obligatoire 9 h-11 h et 14 h-16 h", libres: "libres" };
 const MOIS = ["janv", "févr", "mars", "avr", "mai", "juin", "juil", "août", "sept", "oct", "nov", "déc"];
 const JOURS = ["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"];
@@ -92,6 +98,7 @@ export type Charge =
   | { kind: "message"; a: string; nom?: string; objet: string; corps: string; justification?: string }
   | { kind: "courrier"; type: string; destinataire: string; specialite?: string; titre: string; corps: string; justification?: string }
   | { kind: "arret"; jours: number; sorties: string; temps_partiel?: boolean; prolongation?: boolean; motif: string; justification?: string }
+  | { kind: "transport"; situation: string[]; date_atmp?: string; mode: string; ambulance_motifs: string[]; transport_partage?: boolean; accompagnant?: boolean; depart: string; depart_lieu?: string; arrivee: string; arrivee_lieu?: string; aller_retour: boolean; iteratifs?: number; urgence: string; urgence_precision?: string; elements_medicaux: string; justification?: string }
   | { kind: "dossier"; type: string; libelle: string; detail?: string; justification?: string };
 
 /** Lit une charge brute (JSON de l'outil) dans sa forme typée. */
@@ -103,6 +110,11 @@ export function chargeOf(kind: ComposeKind, raw: Record<string, unknown> | undef
     case "message": return { kind, a: s(c.a) || "patient", nom: s(c.nom) || undefined, objet: s(c.objet), corps: s(c.corps), justification: s(c.justification) || undefined };
     case "courrier": return { kind, type: s(c.type) || "adressage", destinataire: s(c.destinataire), specialite: s(c.specialite) || undefined, titre: s(c.titre), corps: s(c.corps), justification: s(c.justification) || undefined };
     case "arret": return { kind, jours: Math.max(1, Math.round(n(c.jours, 3))), sorties: ["non", "oui", "libres"].includes(s(c.sorties)) ? s(c.sorties) : "oui", temps_partiel: !!c.temps_partiel, prolongation: !!c.prolongation, motif: s(c.motif), justification: s(c.justification) || undefined };
+    case "transport": {
+      const liste = (v: unknown, ok: Record<string, string>) => (Array.isArray(v) ? v.map(s).filter((x) => x in ok) : []);
+      const lieu = (v: unknown, d: string) => (s(v) in TR_LIEU ? s(v) : d);
+      return { kind, situation: liste(c.situation, TR_SITUATION), date_atmp: s(c.date_atmp) || undefined, mode: s(c.mode) in TR_MODE ? s(c.mode) : "assis-professionnalise", ambulance_motifs: liste(c.ambulance_motifs, TR_AMBU), transport_partage: !!c.transport_partage, accompagnant: !!c.accompagnant, depart: lieu(c.depart, "domicile"), depart_lieu: s(c.depart_lieu) || undefined, arrivee: lieu(c.arrivee, "structure"), arrivee_lieu: s(c.arrivee_lieu) || undefined, aller_retour: c.aller_retour === undefined ? true : !!c.aller_retour, iteratifs: c.iteratifs ? Math.max(0, Math.round(n(c.iteratifs, 0))) || undefined : undefined, urgence: ["samu", "autre"].includes(s(c.urgence)) ? s(c.urgence) : "non", urgence_precision: s(c.urgence_precision) || undefined, elements_medicaux: s(c.elements_medicaux), justification: s(c.justification) || undefined };
+    }
     case "dossier": return { kind, type: s(c.type) || "antecedent", libelle: s(c.libelle), detail: s(c.detail) || undefined, justification: s(c.justification) || undefined };
     default: return null;
   }
@@ -135,6 +147,11 @@ export function materialize(charge: Charge, prenomNom: string, alerteParam?: str
     }
     case "arret":
       return { kind, code: "AT", titre: `${charge.prolongation ? "Prolongation d'arrêt" : "Arrêt de travail"} · ${charge.jours} jour${charge.jours > 1 ? "s" : ""}`, ligne: `${prenomNom} · sorties ${SORTIES[charge.sorties] ?? charge.sorties}${charge.temps_partiel ? " · temps partiel" : ""}`, destination: "CPAM · télétransmis", statut: "relire", fields: [{ k: "Durée", v: `${charge.jours} jours` }, { k: "Sorties", v: SORTIES[charge.sorties] ?? charge.sorties }, { k: "Motif", v: charge.motif }], ...rest };
+    case "transport": {
+      const ou = (t: string, l?: string) => (t === "domicile" ? "domicile" : l || TR_LIEU[t]?.toLowerCase() || t);
+      const trajet = `${ou(charge.depart, charge.depart_lieu)} → ${ou(charge.arrivee, charge.arrivee_lieu)}${charge.aller_retour ? " · aller-retour" : ""}`;
+      return { kind, code: "TR", titre: `Prescription médicale de transport · ${TR_MODE_COURT[charge.mode] ?? charge.mode}${charge.aller_retour ? " · aller-retour" : ""}`, ligne: `${prenomNom} · ${trajet}${charge.situation.length ? ` · ${charge.situation.map((x) => TR_SITUATION[x] ?? x).join(", ")}` : ""}`, destination: "patient · bon de transport", statut: "relire", fields: [{ k: "Mode", v: TR_MODE[charge.mode] ?? charge.mode }, { k: "Trajet", v: trajet }, ...(charge.iteratifs ? [{ k: "Transports itératifs", v: String(charge.iteratifs) }] : []), { k: "Situation", v: charge.situation.map((x) => TR_SITUATION[x] ?? x).join(", ") || "aucune cochée" }, { k: "Éléments médicaux", v: charge.elements_medicaux }], ...rest };
+    }
     case "dossier":
       return { kind, code: "FI", titre: `Ajouter au dossier · ${charge.libelle}`, ligne: `${DOS_LABEL[charge.type] ?? "Fiche"}${charge.detail ? ` · ${charge.detail}` : ""}`, destination: "fiche", statut: "pret", fields: [{ k: "Rubrique", v: DOS_LABEL[charge.type] ?? charge.type }, { k: "Ligne", v: charge.libelle }, ...(charge.detail ? [{ k: "Détail", v: charge.detail }] : [])], ...rest };
   }
