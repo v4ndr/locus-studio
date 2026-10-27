@@ -1,11 +1,11 @@
 import "server-only";
-import { coreConfig, type CoreConfig } from "@/locus/config";
+import { coreConfig } from "@/locus/config";
 import { locusUserRef } from "@/lib/server/user";
 import { readNdjson } from "@/locus/ndjson";
-import { stripRuleIds } from "@/locus/contract";
 import { chatbot, type Lang } from "@/i18n";
-import { ANSM_SOURCES, APP_SURFACE, APP_VERSION, coreParams, HAS_SOURCES, type LocusSettings } from "@/sandbox/chatbot/request";
-import type { ChatEvent, ChatSource, FormAnswer, FormQuestion } from "@/sandbox/chatbot/events";
+import { APP_SURFACE, APP_VERSION, coreParams, type LocusSettings } from "@/sandbox/chatbot/request";
+import type { ChatEvent, FormAnswer, FormQuestion } from "@/sandbox/chatbot/events";
+import { publier, type Payload as Sources } from "./citations";
 import { ouvrir, scellable, sceller } from "./scelle";
 
 /**
@@ -26,98 +26,25 @@ interface Reprise {
   deduites: unknown[];
 }
 
-/* ---------- Sources HAS connues de core (cache d'une heure) ---------- */
+/* ---------- La payload de `done` ---------- */
 
-type Known = { has: string[]; ansm: string[] };
-let sourcesCache: { at: number; known: Known } | null = null;
-/** Les éditeurs HAS et ANSM que core connaît vraiment (une liste `sources` inconnue de core ne retrouverait rien). */
-async function knownSources(cfg: CoreConfig): Promise<Known> {
-  if (sourcesCache && Date.now() - sourcesCache.at < 3_600_000) return sourcesCache.known;
-  try {
-    const r = await fetch(`${cfg.url}/v2/sources`, { headers: { Authorization: `Bearer ${cfg.key}` }, signal: AbortSignal.timeout(5000), cache: "no-store" });
-    if (r.ok) {
-      const all = ((await r.json()) as { id: string }[]).map((s) => s.id);
-      const garder = (ids: string[]) => ids.filter((id) => all.includes(id));
-      const known = { has: garder(HAS_SOURCES), ansm: garder(ANSM_SOURCES) };
-      if (known.has.length && known.ansm.length) { sourcesCache = { at: Date.now(), known }; return known; }
-    }
-  } catch { /* core lent : on garde la liste par défaut */ }
-  return { has: ["HAS"], ansm: ["ANSM"] };
-}
-
-/* ---------- Citations : identifiants de core → renvois numérotés ---------- */
-
-interface Payload {
-  answer?: string;
-  docs?: { id: string; title?: string; year?: number; url?: string; source_id?: string }[];
-  mkus?: { id: string; doc_id?: string; doc_title?: string }[];
-  tables?: { id: string; doc_id?: string; doc_title?: string }[];
-  rcp?: { id: string; specialite?: string; dci?: string; url?: string }[];
+type DependsOn = { key: string; values?: string[] };
+interface Payload extends Sources {
   orchestration?: {
     decision?: string;
     round?: number;
-    form?: { key: string; question: string; options?: { label: string; value: string }[]; multiple?: boolean; skip?: { label: string; value: string }; depends_on?: { key: string; values: string[] } | null }[];
+    form?: { key: string; question?: string; label?: string; options?: { label: string; value: string }[]; multiple?: boolean; skip?: { label: string; value: string }; depends_on?: DependsOn | null; depends_any?: DependsOn[] }[];
     contexte?: unknown;
     deduites?: unknown[];
+    non_renseignes?: string[];
   };
 }
 
-function editeur(sourceId?: string) {
-  return sourceId?.startsWith("HAS") ? "HAS" : sourceId?.startsWith("ANSM") ? "ANSM" : sourceId || "HAS";
-}
+/** Une clé de pas (`q_91`) ou un identifiant n'est pas une phrase : ce qui reste conditionnel ne se dit qu'en clair. */
+const lisibles = (xs?: string[]) => [...new Set((xs ?? []).map((x) => (x || "").trim()).filter((x) => x && !/^[\w-]*_[\w-]*$/.test(x) && !/[0-9a-f]{16}/.test(x)))];
 
-export function renumeroter(p: Payload, lang: Lang): { markdown: string; sources: ChatSource[] } {
-  const docs = new Map((p.docs ?? []).map((d) => [String(d.id), d]));
-  const sources: ChatSource[] = [];
-  const index = new Map<string, number>();
-  const ref = (key: string, label: string, url?: string) => {
-    let n = index.get(key);
-    if (!n) { n = sources.length + 1; index.set(key, n); sources.push({ n, label, url }); }
-    return n;
-  };
-  const docRef = (docId?: string, fallbackTitle?: string) => {
-    if (!docId) return null;
-    const d = docs.get(String(docId));
-    const title = d?.title ?? fallbackTitle;
-    if (!title) return null;
-    return ref(`doc:${docId}`, `${editeur(d?.source_id)} · ${title}${d?.year ? `, ${d.year}` : ""}`, d?.url);
-  };
-  const mkus = new Map((p.mkus ?? []).map((m) => [m.id, m]));
-  const tables = new Map((p.tables ?? []).map((t) => [t.id, t]));
-  const rcps = new Map((p.rcp ?? []).map((r) => [r.id, r]));
-  const rcpLabel = lang === "en" ? "SmPC" : "RCP";
-
-  let md = p.answer ?? "";
-  // Règles citées « (hex16, hex16) » : remplacées par le document qui les porte.
-  md = md.replace(/\s?\(((?:[0-9a-f]{16})(?:,\s*[0-9a-f]{16})*)\)/g, (_m, ids: string) => {
-    const ns = ids.split(/,\s*/).map((id) => { const m = mkus.get(id); return m ? docRef(m.doc_id, m.doc_title) : null; }).filter((n): n is number => !!n);
-    return ns.length ? " " + [...new Set(ns)].map((n) => `[${n}]`).join("") : "";
-  });
-  // Renvois entre crochets : [rcp:…], [table:…], [doc_id].
-  md = md.replace(/\s?\[([^\]\s]{1,80})\]/g, (whole, tok: string) => {
-    if (/^\d+$/.test(tok) && !docs.has(tok)) return whole; // déjà un renvoi numéroté
-    let n: number | null = null;
-    if (tok.startsWith("rcp:")) {
-      const r = rcps.get(tok.slice(4));
-      if (r) n = ref(`rcp:${r.specialite ?? r.dci}`, `ANSM · ${rcpLabel} ${r.specialite ?? r.dci ?? ""}`.trim(), r.url);
-    } else if (tok.startsWith("table:")) {
-      const t = tables.get(tok.slice(6));
-      n = t ? docRef(t.doc_id, t.doc_title) : null;
-    } else if (docs.has(tok)) {
-      n = docRef(tok);
-    } else {
-      return whole;
-    }
-    return n ? ` [${n}]` : "";
-  });
-  md = md.replace(/(\[\d+\])\s+(?=\[\d+\])/g, "$1");
-  // Renumérotation dans l'ordre de première citation ; les sources jamais citées tombent.
-  const ordre = new Map<number, number>();
-  for (const m of md.matchAll(/\[(\d+)\]/g)) { const n = Number(m[1]); if (n <= sources.length && !ordre.has(n)) ordre.set(n, ordre.size + 1); }
-  md = md.replace(/\[(\d+)\]/g, (w, n: string) => (ordre.has(Number(n)) ? `[${ordre.get(Number(n))}]` : w));
-  const cites = [...ordre.entries()].map(([ancien, n]) => ({ ...sources[ancien - 1], n }));
-  return { markdown: stripRuleIds(md).trim(), sources: cites };
-}
+/** Le délai d'un appel : un peu sous `maxDuration` (300 s, comme B2Pro), pour que la colonne dise le délai au lieu d'être coupée. */
+const DELAI_MS = 290_000;
 
 /* ---------- Le flux ---------- */
 
@@ -126,6 +53,8 @@ export interface LocusInput {
   query?: string;
   settings?: LocusSettings;
   reprise?: { token: string; answers: FormAnswer[] };
+  /** L'annulation du navigateur : couper la colonne coupe l'appel à core. */
+  signal?: AbortSignal;
 }
 
 export async function* locusStream(input: LocusInput): AsyncGenerator<ChatEvent> {
@@ -147,26 +76,31 @@ export async function* locusStream(input: LocusInput): AsyncGenerator<ChatEvent>
       .map((a) => {
         const vals = r.values[a.i] ?? [];
         const values = a.skipped ? [] : (a.values ?? []).map((v) => vals[Number(v)]).filter((v): v is string => typeof v === "string");
-        return a.skipped || !values.length ? { key: r.keys[a.i], values: [r.skip[a.i]].filter(Boolean), skipped: true } : { key: r.keys[a.i], values };
+        // Passée (ou rien de coché) : `skipped` seul, comme B2Pro ; la réponse sera conditionnelle sur ce point.
+        return a.skipped || !values.length ? { key: r.keys[a.i], skipped: true } : { key: r.keys[a.i], values };
       });
-    extra = { slot_answers: [...slot_answers, ...(r.deduites ?? [])], elicitation_round: r.round + 1, contexte: r.contexte ?? undefined };
+    extra = { slot_answers: [...slot_answers, ...(r.deduites ?? [])], elicitation_round: r.round + 1, ...(r.contexte ? { contexte: r.contexte } : {}) };
     yield { t: "step", text: t.steps.reprise };
   } else {
     query = input.query ?? "";
     settings = input.settings!;
-    // Sans clé de scellement, un formulaire ne pourrait pas être repris : refus avant toute dépense chez core.
-    if (settings.elic && !scellable()) { yield { t: "error", detail: t.live.elicOff, code: "elic_off" }; return; }
+    // Sans clé de scellement, un formulaire ne pourrait pas être repris : l'orchestration tourne alors sans formulaire.
+    if (settings.elic && !scellable()) {
+      console.warn("[chatbot/locus] élicitation demandée sans STUDIO_STATE_SECRET : orchestration sans formulaire");
+      settings = { ...settings, elic: false, desamb: true };
+    }
   }
 
   const body = {
     query,
-    ...coreParams(settings, await knownSources(cfg)),
+    ...coreParams(settings),
     ...extra,
     app_surface: APP_SURFACE,
     app_platform: "web",
     app_version: APP_VERSION,
     ...(process.env.VERCEL_GIT_COMMIT_SHA ? { app_build: process.env.VERCEL_GIT_COMMIT_SHA.slice(0, 12) } : {}),
   };
+  const delai = AbortSignal.timeout(DELAI_MS);
 
   let res: Response;
   try {
@@ -174,20 +108,28 @@ export async function* locusStream(input: LocusInput): AsyncGenerator<ChatEvent>
       method: "POST",
       headers: { "Content-Type": "application/json", Accept: "application/x-ndjson", Authorization: `Bearer ${cfg.key}`, "X-Locus-User-Ref": await locusUserRef() },
       body: JSON.stringify(body),
+      // Une redirection n'est jamais suivie : une page de connexion servie en 200 passerait pour un flux muet.
       redirect: "manual",
-      signal: AbortSignal.timeout(55_000),
+      signal: input.signal ? AbortSignal.any([input.signal, delai]) : delai,
     });
   } catch (e) {
+    if (input.signal?.aborted) return;
     console.error("[chatbot/locus] injoignable", e);
-    yield { t: "error", detail: estTimeout(e) ? t.live.timeout : t.live.unavailable, code: estTimeout(e) ? "timeout" : undefined };
+    yield estTimeout(e) ? { t: "error", detail: t.live.timeout, code: "timeout" } : { t: "error", detail: t.live.unavailable };
     return;
   }
-  if (!res.ok || !res.body) {
+  if (!res.ok || !res.body || res.type === "opaqueredirect") {
     const txt = (await res.text().catch(() => "")).slice(0, 300);
-    console.error("[chatbot/locus]", res.status, txt);
+    console.error("[chatbot/locus]", res.status, res.headers.get("location") ?? "", txt);
     // 402 CREDITS_EXHAUSTED : le compte de la clé n'a plus de crédit. Le détail de core ne sort pas.
     if (res.status === 402 || txt.includes("CREDITS_EXHAUSTED")) { yield { t: "error", detail: t.live.credits, code: "credits" }; return; }
-    yield { t: "error", detail: t.live.unavailable };
+    yield { t: "error", detail: t.live.unavailable, code: `http_${res.status}` };
+    return;
+  }
+  const ctype = res.headers.get("content-type") ?? "";
+  if (!/ndjson|\bjson\b|event-stream|text\/plain/i.test(ctype)) {
+    console.error("[chatbot/locus] réponse illisible comme NDJSON :", ctype, (await res.text().catch(() => "")).slice(0, 200));
+    yield { t: "error", detail: t.live.unavailable, code: "not_ndjson" };
     return;
   }
 
@@ -212,8 +154,9 @@ export async function* locusStream(input: LocusInput): AsyncGenerator<ChatEvent>
           yield { t: "step", text: t.steps.redaction };
           break;
         case "error":
-          console.error("[chatbot/locus] erreur de flux", ev.detail);
-          yield { t: "error", detail: t.live.unavailable };
+          // Le détail de core peut nommer un fournisseur ou un modèle : il reste dans les journaux, avec son code.
+          console.error("[chatbot/locus] erreur de flux", JSON.stringify({ code: ev.code ?? null, detail: ev.detail ?? null, known_sources: ev.known_sources ?? undefined, ...coreParams(settings), reprise: !!input.reprise }));
+          yield { t: "error", detail: t.live.unavailable, code: typeof ev.code === "string" ? ev.code : "core_error" };
           return;
         case "done": {
           const p = (ev.payload ?? {}) as Payload;
@@ -223,22 +166,33 @@ export async function* locusStream(input: LocusInput): AsyncGenerator<ChatEvent>
             const values = o.form.map((q) => (q.options ?? []).map((x) => x.value));
             const reprise: Reprise = { query, settings, round: o.round ?? 0, keys, values, skip: o.form.map((q) => q.skip?.value ?? "__passer__"), contexte: o.contexte ?? null, deduites: o.deduites ?? [] };
             const token = sceller(reprise);
-            if (!token) { yield { t: "error", detail: t.live.unavailable }; return; }
+            if (!token) { yield { t: "error", detail: t.live.unavailable, code: "scelle" }; return; }
+            // Les branches qui mènent à une question, en indices du formulaire : `depends_any` prime sur `depends_on`.
+            const branche = (d: DependsOn) => {
+              const i = keys.indexOf(d.key);
+              return i < 0 ? null : { i, values: (d.values ?? []).map((v) => String(values[i].indexOf(v))).filter((v) => v !== "-1") };
+            };
             const questions: FormQuestion[] = o.form.map((q, i) => {
-              const dep = q.depends_on ? keys.indexOf(q.depends_on.key) : -1;
+              const deps = (q.depends_any?.length ? q.depends_any : q.depends_on ? [q.depends_on] : []).map(branche).filter((d): d is { i: number; values: string[] } => !!d);
               return {
                 i,
-                question: q.question,
+                question: q.question || q.label || "",
                 options: (q.options ?? []).map((x, j) => ({ v: String(j), label: x.label })),
                 multiple: !!q.multiple,
                 skip: q.skip?.label ?? t.locus.skip,
-                dependsOn: dep >= 0 ? { i: dep, values: (q.depends_on!.values ?? []).map((v) => String(values[dep].indexOf(v))).filter((v) => v !== "-1") } : undefined,
+                dependsOn: deps.length ? deps : undefined,
               };
             });
             yield { t: "form", token, questions };
-          } else {
-            yield { t: "answer", ...renumeroter(p, lang) };
+            return;
           }
+          const pub = publier(p);
+          if (!pub.markdown) {
+            console.error("[chatbot/locus] ligne done sans réponse", JSON.stringify({ decision: o?.decision ?? null, form: o?.form?.length ?? 0 }));
+            yield { t: "error", detail: t.live.unavailable, code: "empty_answer" };
+            return;
+          }
+          yield { t: "answer", ...pub, conditional: lisibles(o?.non_renseignes) };
           return;
         }
         default:
@@ -247,11 +201,14 @@ export async function* locusStream(input: LocusInput): AsyncGenerator<ChatEvent>
       }
     }
   } catch (e) {
+    if (input.signal?.aborted) return;
     console.error("[chatbot/locus] flux interrompu", e);
     if (estTimeout(e)) { yield { t: "error", detail: t.live.timeout, code: "timeout" }; return; }
   }
+  if (input.signal?.aborted) return;
   // Flux coupé avant la ligne `done` (NDJSON tronqué, connexion perdue).
-  yield { t: "error", detail: t.live.unavailable };
+  console.error("[chatbot/locus] flux terminé sans ligne done");
+  yield { t: "error", detail: t.live.unavailable, code: "truncated" };
 }
 
 const estTimeout = (e: unknown) => e instanceof Error && (e.name === "TimeoutError" || (e.cause instanceof Error && e.cause.name === "TimeoutError"));
