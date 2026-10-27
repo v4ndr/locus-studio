@@ -308,3 +308,12 @@ mark { background: var(--accent); color: var(--ink); border-radius: 3px; padding
 .locus-motion > * { transform-box: fill-box; transform-origin: center; animation: locus-build 2.6s ease-in-out infinite backwards; }
 @keyframes locus-build { 0% { opacity: 0; transform: scale(0); } 50%, 100% { opacity: 1; transform: scale(1); } }
 @media (prefers-reduced-motion: reduce) { .locus-motion > * { animation: none; opacity: 1; transform: none; } }
+
+/* ---------- Bande des pilules (coque) : début ---------- */
+/*
+ * Les pilules flottantes occupent les 68 px du haut ; la coque y pose une
+ * bande pleine dès que la page défile (`app-shell.tsx`). Une ancre, un focus
+ * au clavier ou un `scrollIntoView` s'arrêtent sous cette bande, pas dessous.
+ */
+html:has(.shell-pilules) { scroll-padding-top: 80px; }
+/* ---------- Bande des pilules (coque) : fin ---------- */

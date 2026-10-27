@@ -13,6 +13,8 @@ import { SUGGESTIONS } from "@/data/chatbot/suggestions";
 import type { ChatEvent, ChatSource, Confiance, FormQuestion } from "./events";
 import { APP_SURFACE, APP_VERSION, coreParams, DEFAULT_SETTINGS, locusOf, type LocusSettings, type Settings } from "./request";
 import { chatStream, formatCourt, sansRenvois, type StreamErrors } from "./stream";
+import { ecarts as calculerEcarts } from "./ecarts";
+import { Ecarts, type Survol } from "./ecarts-ui";
 import { AskChips, ColumnHead, ConfidenceBar, ErrorNote, Panel, SettingsPanel, SourceList, StatusPill, Steps, type Phase } from "./parts";
 
 /**
@@ -41,12 +43,14 @@ interface LocusState extends ColState {
   form?: { token: string; questions: FormQuestion[] };
   answers: Record<number, string[] | "skip">;
   round: number;
+  /** Les précisions demandées par le formulaire, tous tours confondus. */
+  precisions: number;
   /** Les réglages de la requête en cours : les changer propose de relancer. */
   ranWith: LocusSettings;
 }
 
 const ragInit = (): ColState => ({ phase: "waiting", text: "", sources: [] });
-const locusInit = (s: LocusSettings): LocusState => ({ phase: "waiting", text: "", sources: [], conditional: [], steps: [], answers: {}, round: 0, ranWith: s });
+const locusInit = (s: LocusSettings): LocusState => ({ phase: "waiting", text: "", sources: [], conditional: [], steps: [], answers: {}, round: 0, precisions: 0, ranWith: s });
 const same = (a: LocusSettings, b: LocusSettings) => (Object.keys(a) as (keyof LocusSettings)[]).every((k) => a[k] === b[k]);
 /** Un flux fini sans réponse ni erreur (connexion coupée) : une erreur, pas un silence. */
 const inacheve = (p: Phase) => p === "waiting" || p === "streaming";
@@ -63,6 +67,7 @@ export function ChatbotPage({ lang }: { lang: Lang }) {
   const [rag, setRag] = React.useState<ColState>({ phase: "idle", text: "", sources: [] });
   const [locus, setLocus] = React.useState<LocusState>({ ...locusInit(locusOf(DEFAULT_SETTINGS)), phase: "idle" });
   const [tab, setTab] = React.useState<"rag" | "locus">("locus");
+  const [survol, setSurvol] = React.useState<Survol | null>(null);
   const ragAbort = React.useRef<AbortController | null>(null);
   const locusAbort = React.useRef<AbortController | null>(null);
 
@@ -112,8 +117,8 @@ export function ChatbotPage({ lang }: { lang: Lang }) {
 
   const repondreFormulaire = async (token: string, answers: LocusState["answers"]) => {
     const ctrl = nouveau(locusAbort);
-    setLocus((loc) => ({ ...loc, phase: "waiting", round: loc.round + 1 }));
     const payload = Object.entries(answers).map(([i, v]) => (v === "skip" ? { i: Number(i), values: [], skipped: true } : { i: Number(i), values: v }));
+    setLocus((loc) => ({ ...loc, phase: "waiting", round: loc.round + 1, precisions: loc.precisions + payload.length }));
     await consommer(chatStream("/api/chatbot/locus", { lang, reprise: { token, answers: payload } }, ctrl.signal, msg), ctrl);
   };
 
@@ -139,6 +144,11 @@ export function ChatbotPage({ lang }: { lang: Lang }) {
   const mode = settings.deep ? t.locus.deep : t.locus.fast;
   const locusMeta = `${t.locus.meta} · ${mode}`;
   const ragMd = settings.court ? formatCourt(rag.text) : rag.text;
+  // Les écarts à regarder : seulement quand les deux réponses sont là, calculés sur ce qu'elles contiennent.
+  const lesEcarts = React.useMemo(
+    () => (rag.phase === "done" && locus.phase === "done" ? calculerEcarts({ text: locus.text, sources: locus.sources, confidence: locus.confidence, conditional: locus.conditional, precisions: locus.precisions }, { text: rag.text, sources: rag.sources }) : []),
+    [rag.phase, rag.text, rag.sources, locus.phase, locus.text, locus.sources, locus.confidence, locus.conditional, locus.precisions],
+  );
   const changed = !!question && !same(locus.ranWith, locusOf(settings)) && !inacheve(locus.phase);
 
   return (
@@ -179,8 +189,9 @@ export function ChatbotPage({ lang }: { lang: Lang }) {
           <Column kind="rag" lang={lang} meta={t.rag.meta} phase={rag.phase} hidden={tab !== "rag"}>
             {rag.phase === "idle" ? <Idle text={t.rag.idle} />
               : rag.phase === "error" ? <ErrorNote detail={rag.error ?? t.live.error} retry={t.retry} onRetry={question ? () => void lancerRag(question) : undefined} />
-              : rag.text ? <Md text={settings.inline ? ragMd : sansRenvois(ragMd)} />
+              : rag.text ? <Md text={settings.inline ? ragMd : sansRenvois(ragMd)} className="text-foreground/80" />
               : <PlainLoader />}
+            <Ecarts lang={lang} cote="rag" items={lesEcarts} hot={survol} onHot={setSurvol} />
             {rag.phase === "done" && <SourceList lang={lang} sources={rag.sources} numbered={settings.inline} />}
             {rag.phase === "done" && <p className="m-0 text-xs leading-relaxed text-muted-foreground">{t.rag.corpus}</p>}
           </Column>
@@ -193,6 +204,7 @@ export function ChatbotPage({ lang }: { lang: Lang }) {
               onAnswer={(i, v) => setLocus((l) => ({ ...l, answers: { ...l.answers, [i]: v } }))}
               onSubmit={repondreFormulaire}
               onRetry={question ? () => void lancerLocus(question, settings) : undefined}
+              ecarts={<Ecarts lang={lang} cote="locus" items={lesEcarts} hot={survol} onHot={setSurvol} />}
             />
             {changed && <Button size="sm" className="self-start" onClick={() => void lancerLocus(question!, settings)}><RotateCw aria-hidden="true" />{t.locus.rerun}</Button>}
           </Column>
@@ -243,7 +255,13 @@ function Column({ kind, lang, meta, phase, hidden, children }: { kind: "rag" | "
       id={`chatbot-col-${kind}`}
       role="tabpanel"
       aria-labelledby={`chatbot-tab-${kind}`}
-      className={cn("min-w-0 flex-col gap-4 rounded-xl border border-border bg-card px-5 py-[18px] shadow-sm min-[821px]:flex min-[821px]:px-6", hidden ? "hidden" : "flex")}
+      className={cn(
+        "min-w-0 flex-col gap-4 rounded-xl border px-5 py-[18px] min-[821px]:flex min-[821px]:px-6",
+        kind === "locus"
+          ? "border-transparent bg-card shadow-[0_0_0_1px_var(--locus-ring),0_24px_48px_-30px_rgba(34,48,45,.5)] dark:shadow-[0_0_0_1px_var(--locus-ring),0_24px_48px_-24px_rgba(0,0,0,.7)]"
+          : "border-border bg-card/45",
+        hidden ? "hidden" : "flex",
+      )}
     >
       <ColumnHead kind={kind} title={title} meta={meta} phase={phase} lang={lang} />
       <div aria-live="polite" aria-busy={phase === "waiting" || phase === "streaming"} className="flex min-w-0 flex-col gap-4">{children}</div>
@@ -255,7 +273,7 @@ function Idle({ text }: { text: string }) {
   return <p className="m-0 text-sm leading-relaxed text-muted-foreground">{text}</p>;
 }
 
-function LocusBody({ lang, st, settings, onAnswer, onSubmit, onRetry }: { lang: Lang; st: LocusState; settings: Settings; onAnswer: (i: number, v: string[] | "skip") => void; onSubmit: (token: string, answers: LocusState["answers"]) => void; onRetry?: () => void }) {
+function LocusBody({ lang, st, settings, onAnswer, onSubmit, onRetry, ecarts }: { lang: Lang; st: LocusState; settings: Settings; onAnswer: (i: number, v: string[] | "skip") => void; onSubmit: (token: string, answers: LocusState["answers"]) => void; onRetry?: () => void; ecarts: React.ReactNode }) {
   const t = chatbot[lang];
   const questions = st.form?.questions ?? [];
   // Une question dépendante est posée si l'une de ses branches est prise, et que la question dont elle dépend est elle-même posée.
@@ -326,6 +344,7 @@ function LocusBody({ lang, st, settings, onAnswer, onSubmit, onRetry }: { lang: 
                 <span>{st.conditional.join(" · ")}</span>
               </div>
             )}
+            {st.phase === "done" && ecarts}
           </>
         )
         : <LocusLoader size="card" label={t.locus.thinking} />}

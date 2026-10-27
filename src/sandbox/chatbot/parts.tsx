@@ -28,7 +28,7 @@ export function Panel({ className, ...rest }: React.HTMLAttributes<HTMLDivElemen
 
 export function ColumnIcon({ kind }: { kind: "rag" | "locus" }) {
   return (
-    <span className="grid size-7 shrink-0 place-items-center rounded-md border border-border bg-muted text-foreground">
+    <span className={cn("grid size-7 shrink-0 place-items-center rounded-md border", kind === "locus" ? "border-transparent bg-brand-soft text-brand" : "border-border bg-muted text-muted-foreground")}>
       {kind === "rag" ? <BookOpen size={16} aria-hidden="true" /> : <LocusMark size={16} />}
     </span>
   );

@@ -22,8 +22,11 @@ import { AccountFooter } from "@/sandbox/acces/account";
  * et un menu (ressources, thème, compte). Sous 820 px, la pilule se réduit à
  * la recherche et au menu, qui reprend alors les sandbox et la langue.
  *
- * Les pages remplissent la zone principale, sous une bande de 64 px laissée
+ * Les pages remplissent la zone principale, sous une bande de 68 px laissée
  * aux pilules ; `PageInner` (dans `./page-inner`) donne la colonne standard.
+ * Dès que la page défile, cette bande devient une bande pleine, au fond de la
+ * page et sous les pilules : le contenu passe derrière elle, jamais sous les
+ * pilules.
  */
 
 /** Les routes plein écran : pas de coque, la page porte son propre chrome. */
@@ -33,6 +36,18 @@ const NUES: RouteKey[] = ["landing", "acces"];
 
 /** La pilule flottante : papier translucide, filet, flou derrière. */
 const FLOAT = "shell-float fixed top-3 z-40 flex h-12 items-center rounded-full border border-border bg-card/85 shadow-[0_8px_24px_-14px_rgba(34,48,45,.35)] backdrop-blur-md";
+
+/** Vrai dès que la page a défilé : la bande du haut se remplit. */
+function useDefile() {
+  const [defile, setDefile] = React.useState(false);
+  React.useEffect(() => {
+    const lire = () => setDefile(window.scrollY > 0);
+    lire();
+    window.addEventListener("scroll", lire, { passive: true });
+    return () => window.removeEventListener("scroll", lire);
+  }, []);
+  return defile;
+}
 
 /** Le chemin courant dans l'autre langue (le préfixe change, le reste non). */
 function autreLangue(pathname: string, to: Lang) {
@@ -157,6 +172,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const t = common[lang];
   const pathname = usePathname() ?? `/${lang}`;
   const [palette, setPalette] = React.useState(false);
+  const defile = useDefile();
   // ⌘K ouvre la palette, sauf dans le LGC natif IA qui a son propre ⌘K (le composer).
   const dansStudio = pathname.startsWith(route(lang, "lgcNatif"));
   React.useEffect(() => {
@@ -184,10 +200,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <>
+      {/* La bande des pilules, pleine dès que la page défile : le contenu passe dessous, les pilules restent dessus. */}
+      <div aria-hidden="true" className={cn("shell-float fixed inset-x-0 top-0 z-30 h-[68px] border-b bg-background transition-[opacity,border-color] duration-200", defile ? "border-border opacity-100" : "pointer-events-none border-transparent opacity-0")} />
       <Brand lang={lang} />
       <Actions lang={lang} pathname={pathname} onSearch={() => setPalette(true)} />
       {/* La bande du haut est laissée aux pilules : rien ne passe dessous au chargement. */}
-      <div className="shell-main flex min-h-dvh flex-col pt-[68px]">
+      <div className="shell-main shell-pilules flex min-h-dvh flex-col pt-[68px]">
         <div className="min-w-0 flex-1">{children}</div>
       </div>
       {palette && <CommandPalette items={items} lang={lang} onClose={() => setPalette(false)} />}
