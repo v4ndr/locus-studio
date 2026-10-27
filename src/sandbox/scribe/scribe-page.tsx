@@ -12,6 +12,7 @@ import { CONSULTATIONS, consultation, transcriptTexte, type Consultation, type R
 import type { DecisionReponse, ErreurReponse, LiveProbe, ModeleNote, NoteReponse } from "@/data/scribe/live";
 import { ActionRow, AideCard, NoteTable, Player, Provenance, Recap, Stepper, TranscriptLines, type EtatGen, type LigneVue } from "./parts";
 import { useDictee } from "./dictee";
+import { LocusLoader } from "@/components/shell/locus-loader";
 
 /**
  * Scribe + aide à la décision (maquette Scribe.dc.html, spec §6).
@@ -259,7 +260,6 @@ export function ScribePage({ lang }: { lang: Lang }) {
                   <CardIcon><FileAudio aria-hidden="true" /></CardIcon>
                   <CardTitle>{k.motif}</CardTitle>
                   <CardText>{k.patient}</CardText>
-                  <div className="flex flex-wrap gap-1.5"><Badge className="bg-muted font-normal text-muted-foreground">{t.recorded.badge}</Badge><Badge variant="pill">{k.duree}</Badge></div>
                 </CardBody>
                 <CardFooter><CardAction>{t.recorded.open}<ArrowRight aria-hidden="true" /></CardAction></CardFooter>
               </Card>
@@ -271,7 +271,6 @@ export function ScribePage({ lang }: { lang: Lang }) {
                 <CardIcon><Mic aria-hidden="true" /></CardIcon>
                 <CardTitle>{t.live.title}</CardTitle>
                 <CardText>{t.live.text}</CardText>
-                <div><Badge className="bg-muted font-normal text-muted-foreground">{t.live.badge}</Badge></div>
               </CardBody>
               <CardFooter><CardAction>{t.live.open}<ArrowRight aria-hidden="true" /></CardAction></CardFooter>
             </Card>
@@ -319,7 +318,7 @@ export function ScribePage({ lang }: { lang: Lang }) {
       <PageInner className="flex-1 grid-cols-[minmax(0,1fr)] content-start gap-5">
         <div className="flex flex-wrap items-end gap-x-5 gap-y-3">
           <div className="flex min-w-0 flex-[1_1_auto] flex-col gap-0.5">
-            <h1 className="m-0 text-[26px] font-semibold leading-[1.15] tracking-[-.03em]">{titre}</h1>
+            <h1 className="m-0 text-[30px] font-extrabold leading-[1.08] tracking-[-.03em] min-[821px]:text-[38px]">{titre}</h1>
             <span className="text-muted-foreground">{sousTitre}</span>
           </div>
           {t.frenchContent && <Badge variant="pill">{t.frenchContent}</Badge>}
@@ -466,10 +465,11 @@ function Genere({ texte }: { texte: string }) {
   return <span className="inline-flex items-center gap-1.5 text-[13px] text-muted-foreground"><StatusDot />{texte}</span>;
 }
 
+/** Locus génère : son loader, en grand, à la place du contenu attendu. */
 function Attente({ texte }: { texte: string }) {
   return (
-    <Box className="flex items-center gap-2.5 px-5 py-6 text-muted-foreground" aria-live="polite">
-      <StatusDot className="animate-pulse" />{texte}
+    <Box className="px-5 py-6" aria-live="polite">
+      <LocusLoader size="card" label={texte} />
     </Box>
   );
 }

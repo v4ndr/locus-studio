@@ -5,17 +5,21 @@ import { cn } from "@/lib/cn";
 import { lgc } from "@/i18n";
 import { useLang } from "@/i18n/lang";
 import { buttonClass } from "@/components/ui/button";
+import { LocusMark } from "@/components/shell/locus-mark";
+import { LocusMarkMotion } from "@/components/shell/locus-mark-motion";
+import { LocusLoader } from "@/components/shell/locus-loader";
 import type { LocusOut, OutAction } from "@/data/integration-lgc/blocks";
 import { blockOutput, errorText } from "./api";
 import type { Brick } from "./model";
 import s from "./locus.module.css";
 
 /**
- * Les surfaces Locus injectées dans MédiCab 7 : elles suivent l'identité
- * Noir (fond de carte, typo Studio), pas le style legacy, et elles se
- * détachent nettement de l'écran (contour Locus, ombre, arrivée animée :
- * `locus.module.css`). Le contenu clinique reste en français ; les boutons
- * suivent la langue. L'étiquette Locus dit où en est le calcul.
+ * Les surfaces Locus injectées dans MédiCab 7 : le vert de la landing
+ * (`.locus-surface`, partagé avec le LGC de demain), DM Sans, un corps plus
+ * grand que MédiCab, une arrivée animée (`locus.module.css`). Elles sont ce
+ * qu'on voit d'abord ; MédiCab, délavé, reste derrière. Le contenu clinique
+ * reste en français ; les boutons suivent la langue. L'étiquette Locus dit où
+ * en est le calcul.
  */
 
 export type CardAction = OutAction;
@@ -23,15 +27,18 @@ export type Variant = "card" | "panel" | "widget" | "modal";
 
 export type LiveState = "computing" | "done" | "error";
 
-/** La classe d'une surface Locus : contour, ombre et arrivée. `arrive` rejoue l'animation quand la clé React change. */
-export const surface = (arrive = true) => cn(s.surface, arrive && s.arrive, "rounded-xl bg-card font-sans text-card-foreground");
+/** La classe d'une surface Locus : le vert, le halo et l'arrivée. `arrive` rejoue l'animation quand la clé React change. */
+export const surface = (arrive = true) => cn("locus-surface", arrive && s.arrive, "rounded-2xl font-sans text-[15px] leading-normal");
 
-/** L'étiquette Locus ; avec `state`, elle dit aussi l'état du calcul en direct. */
+/**
+ * L'étiquette Locus, sa marque en tête ; avec `state`, elle dit aussi l'état
+ * du calcul en direct : pendant le calcul, la marque se bâtit (le loader Locus).
+ */
 export function LocusTag({ state }: { state?: LiveState }) {
   const lang = useLang();
   return (
-    <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-primary px-2.5 py-0.5 text-xs font-semibold text-primary-foreground">
-      <i aria-hidden="true" className={cn("block size-1.5 rounded-full", state === "error" ? "bg-muted-foreground" : "bg-brand", state === "computing" && "animate-pulse")} />Locus
+    <span className="locus-tag">
+      {state === "computing" ? <LocusMarkMotion size={16} /> : <LocusMark size={14} className={cn(state === "error" && "opacity-50")} />}Locus
       {state && state !== "done" && <span className="font-normal opacity-75">· {lgc[lang].out.state[state]}</span>}
     </span>
   );
@@ -77,18 +84,18 @@ export function AskBox({ brick, sugg = [], court = true }: { brick: Brick; sugg?
   return (
     <div className="grid gap-2">
       <form onSubmit={(e) => { e.preventDefault(); void ask(q); }} className="flex gap-1.5">
-        <input value={q} onChange={(e) => setQ(e.target.value)} aria-label={t.askAria} placeholder={t.ask} maxLength={300} className="h-10 min-w-0 flex-1 rounded-md border border-input bg-background px-3 text-sm text-foreground shadow-xs placeholder:text-muted-foreground focus:outline-2 focus:outline-offset-1 focus:outline-ring" />
+        <input value={q} onChange={(e) => setQ(e.target.value)} aria-label={t.askAria} placeholder={t.ask} maxLength={300} className="h-10 min-w-0 flex-1 rounded-full border border-input bg-background px-4 text-sm text-foreground shadow-xs placeholder:text-muted-foreground focus:outline-2 focus:outline-offset-1 focus:outline-ring" />
         <button type="submit" aria-label={t.send} className={buttonClass({ variant: "primary", size: "icon", className: "size-10" })}><ArrowUp aria-hidden="true" /></button>
       </form>
       {sugg.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
-          {sugg.map((x) => <button key={x} type="button" onClick={() => void ask(x)} className="rounded-full border border-border bg-background px-2.5 py-1 text-[13px] text-foreground hover:bg-accent">{x}</button>)}
+          {sugg.map((x) => <button key={x} type="button" onClick={() => void ask(x)} className="locus-tint rounded-full px-3 py-1 text-[13px]">{x}</button>)}
         </div>
       )}
       {state && (
-        <div className="grid gap-1.5 rounded-lg border border-border bg-muted px-3 py-2.5 text-sm" aria-live="polite">
-          <span className="flex items-start gap-2"><span className="flex-1 font-semibold">{state.q}</span>{live && live !== "done" && <LocusTag state={live} />}</span>
-          {state.busy && <span className="text-muted-foreground">{t.loading}</span>}
+        <div className="grid gap-1.5 rounded-xl border border-border bg-background px-3.5 py-3 text-sm" aria-live="polite">
+          <span className="flex items-start gap-2"><span className="flex-1 font-semibold">{state.q}</span>{live === "error" && <LocusTag state={live} />}</span>
+          {state.busy && <LocusLoader px={28} label={t.loading} />}
           {state.error && (
             <span className="flex flex-wrap items-center gap-2"><span className="flex-1 text-muted-foreground" role="alert">{state.error}</span><RetryButton onRetry={() => void ask(state.q)} /></span>
           )}
@@ -122,7 +129,7 @@ export function LocusBody({ brick, out, variant, onAction }: { brick: Brick; out
   const t = lgc[lang].out;
   return (
     <>
-      {variant !== "modal" && variant !== "card" && <span className="flex flex-wrap items-center gap-2"><span className="text-[15px] font-semibold tracking-[-.01em]">{out.title}</span>{out.alert !== undefined && <Verdict alert={out.alert} />}</span>}
+      {variant !== "modal" && variant !== "card" && <span className="flex flex-wrap items-center gap-2"><span className="text-[17px] font-bold tracking-[-.015em]">{out.title}</span>{out.alert !== undefined && <Verdict alert={out.alert} />}</span>}
       {out.lines.length > 0 && <div className="grid gap-1">{out.lines.map((l, i) => <p key={i} className="m-0 leading-normal">{l}</p>)}</div>}
       {out.question && <AskBox brick={brick} sugg={out.sugg} court={brick.settings.court !== false} />}
       {(out.fromRecord || out.sources?.length || out.actions?.length) && (
@@ -139,27 +146,32 @@ export function LocusBody({ brick, out, variant, onAction }: { brick: Brick; out
 /** La carte Locus posée dans une zone de MédiCab (affichage « carte dans la zone »). */
 export function LocusCard({ brick, out, onAction, className }: { brick: Brick; out: LocusOut; onAction: (a: CardAction) => void; className?: string }) {
   return (
-    <section aria-label={`Locus · ${out.title}`} className={cn(surface(), "grid gap-2.5 px-4 py-3.5 text-sm", className)}>
-      <div className="flex flex-wrap items-center gap-2"><LocusTag state="done" /><span className="text-[15px] font-semibold tracking-[-.01em]">{out.title}</span>{out.alert !== undefined && <Verdict alert={out.alert} />}</div>
+    <section aria-label={`Locus · ${out.title}`} className={cn(surface(), "grid gap-3 px-5 py-4", className)}>
+      <div className="flex flex-wrap items-center gap-2.5"><LocusTag state="done" /><span className="text-[17px] font-bold tracking-[-.015em]">{out.title}</span>{out.alert !== undefined && <Verdict alert={out.alert} />}</div>
       <LocusBody brick={brick} out={out} variant="card" onAction={onAction} />
     </section>
   );
 }
 
-/** En attente de la réponse de la brique. */
+/** En attente de la réponse de la brique : le loader Locus, en grand, dans la surface Locus. */
 export function LocusLoading({ className }: { className?: string }) {
   const lang = useLang();
   return (
-    <div aria-live="polite" className={cn(surface(), "flex flex-wrap items-center gap-2.5 px-4 py-3.5 text-sm text-muted-foreground", className)}>
-      <LocusTag state="computing" />{lgc[lang].out.loading}
+    <div aria-live="polite" className={cn(surface(), "px-5 py-4", className)}>
+      <LocusWorking label={lgc[lang].out.loading} />
     </div>
   );
+}
+
+/** Le loader Locus d'une brique en calcul (bandeau, panneau, widget, carte). */
+export function LocusWorking({ label }: { label: string }) {
+  return <LocusLoader size="card" px={40} label={label} />;
 }
 
 /** Une brique dont le calcul a échoué : le message, et « Réessayer ». Jamais de sortie de remplacement. */
 export function LocusFailed({ message, onRetry, className }: { message: string; onRetry: () => void; className?: string }) {
   return (
-    <div role="alert" className={cn(surface(), "flex flex-wrap items-center gap-2.5 px-4 py-3.5 text-sm", className)}>
+    <div role="alert" className={cn(surface(), "flex flex-wrap items-center gap-2.5 px-5 py-4", className)}>
       <LocusTag state="error" /><span className="min-w-[min(100%,200px)] flex-1">{message}</span><RetryButton onRetry={onRetry} />
     </div>
   );

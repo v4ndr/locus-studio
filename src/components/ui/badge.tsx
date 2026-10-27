@@ -10,7 +10,7 @@ export function Badge({ variant = "chip", className, ...rest }: React.HTMLAttrib
     <span
       className={cn(
         "inline-flex items-center gap-1 whitespace-nowrap",
-        variant === "chip" && "rounded-md border border-border px-2 py-0.5 text-xs font-medium text-foreground",
+        variant === "chip" && "rounded-full border border-border px-2 py-0.5 text-xs font-medium text-foreground",
         variant === "pill" && "rounded-full border border-input px-[7px] py-px font-mono text-[11px] font-medium text-muted-foreground",
         variant === "active" && "rounded-full border border-brand/40 bg-brand-soft px-[7px] py-px font-mono text-[11px] font-medium text-brand",
         variant === "secondary" && "rounded-md border border-border bg-secondary px-[7px] text-[11px] font-medium text-secondary-foreground",

@@ -1,6 +1,7 @@
 "use client";
 import { TriangleAlert } from "lucide-react";
 import * as React from "react";
+import { createPortal } from "react-dom";
 import type { ComposeAction } from "@/locus/compose/contract";
 import { chargeOf, materialize, alerteAllergie, isoParis, type Charge, type RxLigne, RX_LABEL, CR_TYPE, DOS_LABEL, MSG_A, SORTIES, TR_SITUATION, TR_MODE, TR_AMBU, TR_LIEU, jourFr, heureFr } from "@/locus/compose/materialize";
 import { CABINET, DR_LAURENT } from "@/data/cabinet";
@@ -361,8 +362,9 @@ export function ActionPanel({ action, patient, onChange, onClose, onRemove, titr
     const m = materialize(nc, patient.nom, alerte);
     onChange({ ...action, ...m, justification: action.justification, statut: alerte ? "relire" : "pret" });
   };
-  return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-6" onClick={onClose} role="dialog" aria-modal="true" aria-label={titre ?? action.titre}>
+  // Par un portail : ouvert depuis une carte Locus (`.locus-surface`, ses jetons « sur vert »), le dialogue garde ceux de la page.
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-green-ink/45 p-0 sm:items-center sm:p-6" onClick={onClose} role="dialog" aria-modal="true" aria-label={titre ?? action.titre}>
       <div ref={boite} onClick={(e) => e.stopPropagation()} className="flex max-h-[94dvh] w-full max-w-[1100px] flex-col overflow-hidden rounded-t-[16px] border border-border bg-bg sm:rounded-[16px]" style={{ boxShadow: "var(--shadow-sm)" }}>
         <div className="flex items-center gap-3 border-b border-line-2 px-5 py-3">
           <span className="d flex h-6 min-w-6 items-center justify-center rounded-[6px] bg-soft px-1 text-[10px] text-ink-3">{action.code}</span>
@@ -376,7 +378,7 @@ export function ActionPanel({ action, patient, onChange, onClose, onRemove, titr
           {onChange && c && (
             <div className={cn("flex flex-col gap-4 border-line-2 px-5 py-5 lg:border-r", onglet !== "modifier" && "hidden lg:flex")}>
               <Form c={c} onChange={update} />
-              {action.justification && <div className="rounded-[10px] bg-agent-soft-2 px-3.5 py-2.5 text-[13px] leading-[1.5]"><span className="k" style={{ color: "var(--agent)" }}>{t.why}</span><br />{action.justification}</div>}
+              {action.justification && <div className="locus-tint rounded-[12px] px-3.5 py-2.5 text-[13px] leading-[1.5]"><span className="k" style={{ color: "var(--brand)" }}>{t.why}</span><br />{action.justification}</div>}
               <span className="text-xs text-dim-2">{action.kind === "ordonnance" ? t.otherRx : ""}{action.envoyeLe ? t.resendNote : action.kind === "dossier" ? t.ficheNote : t.nothingBefore}</span>
             </div>
           )}
@@ -386,6 +388,7 @@ export function ActionPanel({ action, patient, onChange, onClose, onRemove, titr
         </div>
         {onChange && <div className="flex items-center gap-2 border-t border-line-2 px-5 py-3">{onRemove && <button type="button" onClick={() => { onRemove(); onClose(); }} className="min-h-11 rounded-[10px] px-3 py-[9px] text-sm text-dim-2 hover:text-rec-text">{d.remove}</button>}<span className="flex-1" /><button type="button" onClick={onClose} className="flex min-h-11 items-center gap-2 rounded-[10px] bg-ink px-4 py-[9px] text-sm text-paper"><I.check size={13} color="var(--paper)" w={2.5} /> {t.done}</button></div>}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

@@ -38,7 +38,7 @@ export function CommandPalette({ items, lang, onClose }: { items: PaletteItem[];
     else router.push(`${route(lang, "lgcNatif")}?demande=${encodeURIComponent(texte.slice(0, 500))}`);
   };
   return (
-    <div role="dialog" aria-modal="true" aria-label={t.nav.search} className="fixed inset-0 z-[80] flex items-start justify-center bg-black/50 px-4 pt-[12vh]" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+    <div role="dialog" aria-modal="true" aria-label={t.nav.search} className="fixed inset-0 z-[80] flex items-start justify-center bg-green-ink/45 px-4 pt-[12vh]" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="w-full max-w-[560px] overflow-hidden rounded-xl border border-border bg-popover text-popover-foreground shadow-sm">
         <div className="flex items-center gap-2 border-b border-border px-3">
           <Search size={16} aria-hidden="true" className="text-muted-foreground" />

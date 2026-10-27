@@ -243,7 +243,7 @@ export function DocsPage({ lang }: { lang: Lang }) {
           </section>
         </article>
 
-        <nav aria-label={t.toc} className="sticky top-9 hidden gap-1 min-[1101px]:grid">
+        <nav aria-label={t.toc} className="sticky top-20 hidden gap-1 min-[1101px]:grid">
           <span className="px-2 pb-1 text-xs font-medium text-muted-foreground">{t.toc}</span>
           {ids.map((id) => <a key={id} href={`#${id}`} className="rounded-md px-2 py-1 text-[13px] text-muted-foreground hover:bg-accent hover:text-foreground">{s[id]}</a>)}
         </nav>

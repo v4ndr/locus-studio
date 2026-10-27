@@ -38,6 +38,8 @@ const fr = {
     waitVerdict: "En attente de précisions.",
     waitWhy: "Répondez aux questions ci-dessus pour obtenir la réponse.",
     submit: "Obtenir la réponse",
+    /** Sous le loader Locus, tant que la réponse n'a pas commencé. */
+    thinking: "Locus raisonne sur les sources…",
     skip: "Passer",
     rerun: "Relancer avec ces réglages",
     sources: "Sources",
@@ -63,6 +65,54 @@ const fr = {
       "Réponse riche en références vérifiées",
       "Réponse entièrement appuyée par des références issues de sources différentes",
     ],
+  },
+  /**
+   * Les écarts à regarder, en fin de réponse, une fois les deux colonnes
+   * terminées : le repère court dans chaque colonne, l'infobulle qui compare.
+   */
+  ecarts: {
+    title: "À regarder",
+    locus: "Locus",
+    rag: "RAG simple",
+    editeurs: {
+      titre: "Éditeurs cités",
+      locus: (n: number) => (n > 1 ? `${n} éditeurs` : "1 éditeur"),
+      rag: (n: number) => (n > 1 ? `${n} éditeurs` : n ? "1 éditeur" : "Aucun éditeur"),
+    },
+    medicament: {
+      titre: "Données du médicament",
+      locus: (rcp: number, drug: number) => [rcp ? `${rcp} RCP` : "", drug ? (drug > 1 ? `${drug} médicaments` : "1 médicament") : ""].filter(Boolean).join(" · "),
+      rag: "Aucune donnée médicament",
+    },
+    instruments: {
+      titre: "Arbres décisionnels et scores",
+      locus: (tree: number, score: number) => [tree ? (tree > 1 ? `${tree} arbres décisionnels` : "1 arbre décisionnel") : "", score ? (score > 1 ? `${score} scores` : "1 score") : ""].filter(Boolean).join(" · "),
+      rag: "Aucun arbre ni score",
+    },
+    precisions: {
+      titre: "Questions de clarification",
+      locus: (n: number) => (n > 1 ? `${n} précisions demandées` : "1 précision demandée"),
+      locusDetail: (n: number) => (n > 1 ? `${n} questions posées avant de répondre.` : "1 question posée avant de répondre."),
+      rag: "Aucune précision demandée",
+      ragDetail: "Répond à la question telle qu'elle est posée.",
+    },
+    conditions: {
+      titre: "Ce qui reste conditionnel",
+      locus: "Réponse conditionnelle",
+      rag: "Aucune condition signalée",
+    },
+    confiance: {
+      titre: "Degré de confiance",
+      locus: (n: number) => `Confiance ${n}/5`,
+      rag: "Pas de degré de confiance",
+      ragDetail: "Ne dit rien de sa fiabilité.",
+    },
+    renvois: {
+      titre: "Affirmations sans renvoi vers une source",
+      locus: (sans: number, total: number) => (sans ? `${sans} sur ${total} sans source` : "Chaque affirmation sourcée"),
+      rag: (sans: number, total: number) => `${sans} sur ${total} sans source`,
+      detail: (sans: number, total: number) => `${total} affirmation${total > 1 ? "s" : ""}, dont ${sans} sans renvoi.`,
+    },
   },
   retry: "Réessayer",
   steps: {
@@ -151,6 +201,7 @@ const en: typeof fr = {
     waitVerdict: "Waiting for details.",
     waitWhy: "Answer the questions above to get the answer.",
     submit: "Get the answer",
+    thinking: "Locus is reasoning over the sources…",
     skip: "Skip",
     rerun: "Run again with these settings",
     sources: "Sources",
@@ -176,6 +227,50 @@ const en: typeof fr = {
       "Answer rich in verified references",
       "Answer fully backed by references from different sources",
     ],
+  },
+  ecarts: {
+    title: "Worth a look",
+    locus: "Locus",
+    rag: "Basic RAG",
+    editeurs: {
+      titre: "Publishers cited",
+      locus: (n: number) => (n > 1 ? `${n} publishers` : "1 publisher"),
+      rag: (n: number) => (n > 1 ? `${n} publishers` : n ? "1 publisher" : "No publisher"),
+    },
+    medicament: {
+      titre: "Drug data",
+      locus: (rcp: number, drug: number) => [rcp ? `${rcp} SmPC` : "", drug ? (drug > 1 ? `${drug} drugs` : "1 drug") : ""].filter(Boolean).join(" · "),
+      rag: "No drug data",
+    },
+    instruments: {
+      titre: "Decision trees and scores",
+      locus: (tree: number, score: number) => [tree ? (tree > 1 ? `${tree} decision trees` : "1 decision tree") : "", score ? (score > 1 ? `${score} scores` : "1 score") : ""].filter(Boolean).join(" · "),
+      rag: "No tree or score",
+    },
+    precisions: {
+      titre: "Clarifying questions",
+      locus: (n: number) => (n > 1 ? `${n} details asked` : "1 detail asked"),
+      locusDetail: (n: number) => (n > 1 ? `${n} questions asked before answering.` : "1 question asked before answering."),
+      rag: "No detail asked",
+      ragDetail: "Answers the question as it is asked.",
+    },
+    conditions: {
+      titre: "What remains conditional",
+      locus: "Conditional answer",
+      rag: "No condition flagged",
+    },
+    confiance: {
+      titre: "Confidence level",
+      locus: (n: number) => `Confidence ${n}/5`,
+      rag: "No confidence level",
+      ragDetail: "Says nothing about its reliability.",
+    },
+    renvois: {
+      titre: "Statements with no reference to a source",
+      locus: (sans: number, total: number) => (sans ? `${sans} of ${total} unsourced` : "Every statement sourced"),
+      rag: (sans: number, total: number) => `${sans} of ${total} unsourced`,
+      detail: (sans: number, total: number) => `${total} statement${total > 1 ? "s" : ""}, ${sans} with no reference.`,
+    },
   },
   retry: "Try again",
   steps: {

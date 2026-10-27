@@ -1,83 +1,69 @@
 import Link from "next/link";
-import { ArrowRight, BookOpen, Globe, KeyRound, Library, Zap } from "lucide-react";
+import { ArrowRight, ArrowUpRight, BookOpen } from "lucide-react";
 import { common, home, route, TOOLS, type Lang } from "@/i18n";
 import { TOOL_ICONS } from "@/components/shell/tool-icons";
-import { PageHead, PageInner } from "@/components/shell/page-inner";
-import { buttonClass } from "@/components/ui/button";
-import { Box, Card, CardAction, CardBody, CardFooter, CardIcon, CardText, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { LocusMarkMotion } from "@/components/shell/locus-mark-motion";
 
-/** L'accueil (Main.dc.html) : quatre cartes à égalité, nouveautés, ressources. */
+/** L'adresse de l'équipe, pour une clé d'API ou un accès MCP. */
+const CONTACT = "contact@locusmedical.fr";
+
+/**
+ * L'accueil des sandbox, au DS de la landing : la couverture verte avec la
+ * marque en mouvement, les quatre sandbox en cartes papier (un nom, quelques
+ * mots), puis un seul appel : intégrer (la documentation), et pour une clé
+ * d'API ou un accès MCP, nous écrire. Rien d'autre.
+ */
 export function HomePage({ lang }: { lang: Lang }) {
   const t = home[lang];
   const c = common[lang];
-  const updIcons = [Zap, Globe, Library];
   return (
-    <PageInner>
-      <PageHead title={t.title}>
-        <Link href={route(lang, "documentation")} aria-label={t.docs} title={t.docs} className={buttonClass({ size: "icon", className: "max-[560px]:hidden" })}><BookOpen aria-hidden="true" /></Link>
-      </PageHead>
-
-      <section>
-        <div className="mb-3 flex items-baseline justify-between gap-3">
-          <h2 className="m-0 text-[15px] font-semibold tracking-[-.01em]">{t.sandbox.title}</h2>
-          <span className="text-[13px] text-muted-foreground">{t.sandbox.note}</span>
+    <main className="mx-auto grid w-full max-w-[1272px] gap-4 px-4 pb-12 pt-2 min-[821px]:gap-5 min-[821px]:px-8 min-[821px]:pt-4">
+      <section className="cover grid items-center gap-8 rounded-[20px] px-6 py-10 min-[821px]:grid-cols-[minmax(0,1fr)_auto] min-[821px]:px-12 min-[821px]:py-14">
+        <div className="grid gap-5">
+          <p className="eyebrow m-0">{t.eyebrow}</p>
+          <h1 className="m-0 text-[52px] leading-[1.02] tracking-[-.03em] min-[821px]:text-[88px]">{t.title.a} <span className="lt">{t.title.b}</span></h1>
         </div>
-        <div className="grid grid-cols-1 gap-3 min-[641px]:grid-cols-2 min-[1720px]:grid-cols-4">
-          {TOOLS.map((k) => {
-            const Icon = TOOL_ICONS[k];
-            const card = t.cards[k];
-            return (
-              <Link key={k} href={route(lang, k)} className="flex">
-                <Card interactive className="w-full">
-                  <CardBody>
-                    <CardIcon><Icon aria-hidden="true" /></CardIcon>
-                    <CardTitle>{c.tools[k]}</CardTitle>
-                    <CardText>{card.text}</CardText>
-                    <div className="flex flex-wrap gap-[5px]">{card.chips.map((x) => <Badge key={x}>{x}</Badge>)}</div>
-                  </CardBody>
-                  <CardFooter><CardAction>{card.cta}<ArrowRight aria-hidden="true" /></CardAction></CardFooter>
-                </Card>
-              </Link>
-            );
-          })}
-        </div>
+        <LocusMarkMotion size={168} className="text-glow max-[820px]:justify-self-center min-[821px]:mr-4" />
       </section>
 
-      <div className="grid items-start gap-3 min-[1101px]:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
-        <Box>
-          <div className="flex items-center justify-between gap-2.5 border-b border-border px-6 pb-4 pt-5"><h2 className="m-0 text-[15px] font-semibold tracking-[-.01em]">{t.updates.title}</h2></div>
-          <ul className="m-0 list-none py-1 pl-0">
-            {t.updates.items.map((u, i) => {
-              const Icon = updIcons[i] ?? Zap;
-              return (
-                <li key={u.title} className="grid grid-cols-[28px_minmax(0,1fr)] gap-3 px-6 py-3.5 [&+&]:border-t [&+&]:border-border">
-                  <span className="grid size-7 place-items-center rounded-[7px] border border-input text-muted-foreground"><Icon size={16} aria-hidden="true" /></span>
-                  <div><time className="font-mono text-[11.5px] text-muted-foreground">{u.date}</time><b className="block font-medium">{u.title}</b><p className="m-0 mt-0.5 text-[13px] text-muted-foreground">{u.text}</p></div>
-                </li>
-              );
-            })}
-          </ul>
-        </Box>
-        <section className="grid gap-3">
-          <Box className="grid content-start gap-1.5 px-5 py-[18px]">
-            <h3 className="m-0 flex items-center gap-2 text-sm font-semibold"><Library size={16} aria-hidden="true" />{c.nav.sources}</h3>
-            <p className="m-0 text-[13px] text-muted-foreground">{t.resources.sources.text}</p>
-            <Link href={route(lang, "sources")} className={buttonClass({ size: "sm", className: "mt-1 justify-self-start" })}>{t.resources.sources.cta}</Link>
-          </Box>
-          <Box className="grid content-start gap-1.5 px-5 py-[18px]">
-            <h3 className="m-0 flex items-center gap-2 text-sm font-semibold"><BookOpen size={16} aria-hidden="true" />{c.nav.docs}</h3>
-            <p className="m-0 text-[13px] text-muted-foreground">{t.resources.docs.text}</p>
-            <Link href={route(lang, "documentation")} className={buttonClass({ size: "sm", className: "mt-1 justify-self-start" })}>{t.resources.docs.cta}</Link>
-          </Box>
-          <Box className="grid content-start gap-1.5 px-5 py-[18px]">
-            <h3 className="m-0 flex items-center gap-2 text-sm font-semibold"><KeyRound size={16} aria-hidden="true" />{c.nav.keys}</h3>
-            <p className="m-0 text-[13px] text-muted-foreground">{t.resources.keys.text}</p>
-            <Link href={route(lang, "clesApi")} className={buttonClass({ size: "sm", className: "mt-1 justify-self-start" })}>{t.resources.keys.cta}</Link>
-          </Box>
-        </section>
-      </div>
+      <section aria-labelledby="home-sandbox">
+        <h2 id="home-sandbox" className="sr-only">{t.sandbox}</h2>
+        <ul className="m-0 grid list-none grid-cols-1 gap-4 p-0 min-[641px]:grid-cols-2 min-[1101px]:grid-cols-4 min-[821px]:gap-5">
+          {TOOLS.map((k) => {
+            const Icon = TOOL_ICONS[k];
+            return (
+              <li key={k} className="flex">
+                <Link href={route(lang, k)} className="group flex w-full flex-col gap-7 rounded-[20px] border border-border bg-card p-5 min-[641px]:gap-12 min-[641px]:p-6 transition-colors hover:border-brand min-[821px]:p-7">
+                  <span className="flex items-center justify-between">
+                    <span className="tileico"><Icon aria-hidden="true" /></span>
+                    <ArrowUpRight size={20} aria-hidden="true" className="text-muted-foreground transition-colors group-hover:text-brand" />
+                  </span>
+                  <span className="grid gap-1.5">
+                    <span className="text-[22px] font-extrabold leading-[1.15] tracking-[-.015em] text-foreground">{c.tools[k]}</span>
+                    <span className="text-[15px] text-muted-foreground">{t.cards[k]}</span>
+                  </span>
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      </section>
 
-    </PageInner>
+      <section aria-labelledby="home-integrer" className="grid gap-10 rounded-[20px] bg-green-ink px-6 py-9 text-on-green min-[821px]:grid-cols-2 min-[821px]:items-end min-[821px]:px-12 min-[821px]:py-12 dark:border dark:border-border dark:bg-[#1c2f2c]">
+        <div className="grid justify-items-start gap-6">
+          <p className="eyebrow m-0 text-glow">{t.integrate.eyebrow}</p>
+          <h2 id="home-integrer" className="m-0 text-[36px] leading-[1.06] min-[821px]:text-[52px]">{t.integrate.title.a} <span className="lt text-glow">{t.integrate.title.b}</span></h2>
+          <Link href={route(lang, "documentation")} className="inline-flex h-12 items-center gap-2.5 rounded-full bg-lin px-[22px] text-[15px] font-semibold text-green-ink transition-colors hover:bg-white [&_svg]:size-[17px]">
+            <BookOpen aria-hidden="true" />{t.integrate.docs}<ArrowRight aria-hidden="true" />
+          </Link>
+        </div>
+        <div className="grid min-w-0 justify-items-start gap-3">
+          <p className="eyebrow m-0 text-glow">{t.integrate.access}</p>
+          <a href={`mailto:${CONTACT}?subject=${encodeURIComponent(t.integrate.subject)}`} className="inline-flex max-w-full items-center gap-3 border-b border-on-green/35 pb-1.5 text-[20px] font-extrabold tracking-[-.02em] text-on-green [overflow-wrap:anywhere] hover:border-on-green min-[821px]:text-[34px]">
+            {CONTACT}<ArrowUpRight aria-hidden="true" className="size-[.8em] shrink-0 text-glow" />
+          </a>
+        </div>
+      </section>
+    </main>
   );
 }

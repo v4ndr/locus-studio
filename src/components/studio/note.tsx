@@ -10,6 +10,7 @@ import { materialize, isoParis, type Charge } from "@/locus/compose/materialize"
 import type { ComposeAction, ComposePlan, ComposeInput, ComposeKind } from "@/locus/compose/contract";
 import { cn } from "@/lib/cn";
 import { fetchLive } from "@/lib/live";
+import { LocusLoader } from "@/components/shell/locus-loader";
 
 /**
  * La consultation : un seul éditeur qui cumule trois sources — la dictée au
@@ -246,7 +247,7 @@ export function NoteEditor({ patientId, local, nom, retour, onSaved, script, mot
 
   return (
     <div className="flex flex-col gap-4">
-      {repris && !signee && <div className="flex items-center gap-2.5 rounded-[10px] bg-agent-soft-2 px-3.5 py-2.5 text-sm"><span className="h-2 w-2 shrink-0 rounded-full bg-brand" /><span className="flex-1">{noteId ? t.resumedEdit : t.resumedConsult}{plan ? ` · ${d.toValidateN(aValider)}` : ""}.</span><button type="button" onClick={nouvelle} className="min-h-9 text-xs text-dim-2 hover:text-ink">{noteId ? t.abandon : t.restart}</button></div>}
+      {repris && !signee && <div className="locus-tint flex items-center gap-2.5 rounded-[12px] px-3.5 py-2.5 text-sm"><span className="h-2 w-2 shrink-0 rounded-full bg-brand" /><span className="flex-1">{noteId ? t.resumedEdit : t.resumedConsult}{plan ? ` · ${d.toValidateN(aValider)}` : ""}.</span><button type="button" onClick={nouvelle} className="min-h-9 text-xs text-dim-2 hover:text-ink">{noteId ? t.abandon : t.restart}</button></div>}
       {signee && <div className="flex items-center gap-2.5 rounded-[10px] bg-ok-soft px-3.5 py-2.5 text-sm text-ok"><I.check size={14} w={2.5} /><span className="flex-1">{signee.modifieLe ? t.signedEdited : t.signed}</span></div>}
       {micro === "absent" && !signee && <p className="m-0 text-xs text-dim-2">{t.noMic(!!script)}</p>}
       <div className="flex flex-wrap items-center gap-2.5">
@@ -263,8 +264,8 @@ export function NoteEditor({ patientId, local, nom, retour, onSaved, script, mot
           <div className="flex flex-wrap items-center gap-2 px-3.5 py-2">
             <button type="button" onClick={() => setTranscriptOuvert((o) => !o)} aria-expanded={transcriptOuvert || micro === "ecoute" || scriptEtat === "en-cours"} className="flex min-h-9 items-center gap-2 text-sm text-ink-2 hover:text-ink"><I.chevron open={transcriptOuvert || micro === "ecoute" || scriptEtat === "en-cours"} /> {t.transcript} <span className="d">{t.words(transcript.trim().split(/\s+/).filter(Boolean).length)}</span></button>
             <span className="flex-1" />
-            {synth.busy && <span className="flex items-center gap-2 text-xs text-dim-2"><span className="h-2 w-2 rounded-full bg-brand animate-pulse-soft" /> {t.synthBusy}</span>}
-            {!synth.busy && !signee && transcript.trim() && micro !== "ecoute" && scriptEtat !== "en-cours" && <button type="button" onClick={() => void synthetiser()} className="min-h-9 rounded-[8px] border border-line bg-paper px-3 py-1.5 text-xs text-ink hover:bg-hover">{texte.trim() ? t.regenNote : t.synthNote}</button>}
+            {synth.busy && <LocusLoader px={22} label={t.synthBusy} className="text-[13px]" />}
+            {!synth.busy && !signee && transcript.trim() && micro !== "ecoute" && scriptEtat !== "en-cours" && <button type="button" onClick={() => void synthetiser()} className="locus-tint min-h-9 rounded-full px-3.5 py-1.5 text-xs font-medium">{texte.trim() ? t.regenNote : t.synthNote}</button>}
           </div>
           {(transcriptOuvert || micro === "ecoute" || scriptEtat === "en-cours") && <div className="border-t border-line-4 px-3.5 py-3 text-[14px] leading-[1.6] text-ink-2"><span className="whitespace-pre-wrap">{transcript}</span>{interim && <span className="text-dim-3"> {interim}</span>}{(micro === "ecoute" || scriptEtat === "en-cours") && <span className="caret" />}</div>}
           {synth.erreur && <div className="flex flex-wrap items-center gap-3 border-t border-line-4 px-3.5 py-2 text-xs text-rec-text"><span className="flex-1">{synth.erreur}</span>{!signee && <button type="button" onClick={() => void synthetiser()} className="min-h-9 rounded-[8px] border border-line bg-paper px-3 py-1.5 text-xs text-ink hover:bg-hover">{d.compose.retry}</button>}</div>}
@@ -277,7 +278,7 @@ export function NoteEditor({ patientId, local, nom, retour, onSaved, script, mot
       {!signee && <p className="-mt-2 text-xs text-dim-2">{d.noRealData}</p>}
       <div className="flex flex-wrap items-center gap-2.5">
         {!signee && noteId && <><button type="button" onClick={enregistrer} className="flex min-h-11 items-center gap-2 rounded-[10px] bg-ink px-4 py-[9px] text-sm text-paper">{inchangee ? t.back : d.save} {!inchangee && <Kbd dark>⌘⏎</Kbd>}</button><button type="button" onClick={nouvelle} className="min-h-11 rounded-[10px] px-3 py-[9px] text-sm text-dim-2 hover:bg-hover hover:text-ink">{d.cancel}</button>{modifiee && <button type="button" onClick={() => generer()} disabled={composer.state.busy} className="min-h-11 rounded-[10px] border border-line bg-paper px-3 py-[9px] text-sm text-ink hover:bg-hover disabled:opacity-40">{t.regen}</button>}</>}
-        {!signee && !noteId && <button type="button" onClick={() => generer()} disabled={!texte.trim() || composer.state.busy} className={cn("flex min-h-11 items-center gap-2 rounded-[10px] px-4 py-[9px] text-sm disabled:opacity-40", modifiee ? "border border-agent-line bg-agent-soft-2 text-ink" : plan ? "border border-line bg-paper text-ink" : "bg-ink text-paper")}>{modifiee ? t.regenChanged : plan ? t.regen : t.generate} {(!plan || modifiee) && <Kbd dark={!plan}>⌘⏎</Kbd>}</button>}
+        {!signee && !noteId && <button type="button" onClick={() => generer()} disabled={!texte.trim() || composer.state.busy} className={cn("flex min-h-11 items-center gap-2 rounded-[10px] px-4 py-[9px] text-sm disabled:opacity-40", modifiee ? "locus-tint" : plan ? "border border-line bg-paper text-ink" : "locus-btn")}>{modifiee ? t.regenChanged : plan ? t.regen : t.generate} {(!plan || modifiee) && <Kbd dark={!plan}>⌘⏎</Kbd>}</button>}
         {!signee && <div className="relative"><button type="button" onClick={() => setMenu((m) => !m)} aria-expanded={menu} aria-haspopup="menu" className="min-h-11 rounded-[10px] border border-line bg-paper px-3 py-[9px] text-sm text-ink hover:bg-hover">{t.add}</button>{menu && <div role="menu" className="absolute bottom-full left-0 z-20 mb-1 flex min-w-[200px] flex-col rounded-[12px] border border-line bg-paper p-1" style={{ boxShadow: "var(--shadow)" }}>{AJOUTS.map((a) => <button key={a.k} type="button" role="menuitem" onClick={() => ajouter(a.k)} className="min-h-10 rounded-[8px] px-3 py-2 text-left text-sm text-ink hover:bg-hover">{t.ajouts[a.k] ?? a.label}</button>)}</div>}</div>}
         {signee && <button type="button" onClick={nouvelle} className="min-h-11 rounded-[10px] border border-line bg-paper px-4 py-[9px] text-sm text-ink hover:bg-hover">{d.newConsult}</button>}
         <span className="text-xs text-dim-2">{nom}</span>
@@ -346,11 +347,11 @@ export function BrouillonBanner({ patientId, href, onOpen, version }: { patientI
       {list.map((b) => {
         const n = nActions(b);
         const inner = (<>
-          <span className="h-2 w-2 shrink-0 rounded-full bg-brand animate-pulse-soft" />
+          <span className="h-2 w-2 shrink-0 rounded-full bg-brand" />
           <span className="flex min-w-0 flex-1 flex-col"><span className="font-medium">{b.noteId ? d.note.editing(b.noteDate ? new Date(b.noteDate).toLocaleDateString(d.dateLocale) : undefined) : b.plan ? d.toValidateN(n) : d.note.ongoing}</span><span className="truncate text-[13px] text-dim-2">{b.motif ? `${b.motif} · ` : ""}{b.texte.replace(/\s+/g, " ").slice(0, 90) || d.note.emptyNote}</span></span>
           <span className="shrink-0 text-[13px]">{d.note.resume}</span>
         </>);
-        const cls = "flex min-h-12 w-full items-center gap-3 rounded-[12px] border border-line bg-agent-soft-2 px-4 py-3 text-left text-sm text-ink hover:text-ink";
+        const cls = "locus-tint flex min-h-12 w-full items-center gap-3 rounded-[12px] px-4 py-3 text-left text-sm";
         const jeter = <Suppr label={d.remove} onClick={() => { clearBrouillon(b.patientId, b.noteId); setSuppr((x) => x + 1); }} />;
         return <div key={b.noteId ?? "nouvelle"} className="flex items-center gap-1">{onOpen ? <button type="button" onClick={() => onOpen(b)} className={cls} style={{ boxShadow: "var(--shadow-accent)" }}>{inner}</button> : <Link href={b.noteId ? `${href}?modifie=${b.noteId}` : href} className={cls} style={{ boxShadow: "var(--shadow-accent)" }}>{inner}</Link>}{jeter}</div>;
       })}
@@ -384,7 +385,7 @@ export function BrouillonsAccueil() {
   if (!rows.length) return null;
   return (
     <section className="flex flex-col gap-1">
-      <div className="k px-3.5 pb-2" style={{ color: "var(--agent)" }}>{d.note.toValidate(rows.length)}</div>
+      <div className="k px-3.5 pb-2" style={{ color: "var(--brand)" }}>{d.note.toValidate(rows.length)}</div>
       {rows.map((b) => { const n = nActions(b); return (
         <div key={`${b.patientId}-${b.noteId ?? ""}`} className="flex items-center rounded-[10px] hover:bg-hover">
         <Link href={b.noteId && !b.patientId.startsWith("loc_") ? `${b.href}?modifie=${b.noteId}` : b.href} className="flex min-h-12 min-w-0 flex-1 items-center gap-3 px-3.5 py-3 text-ink hover:text-ink sm:gap-4">

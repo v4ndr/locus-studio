@@ -96,7 +96,7 @@ function Inner({ v, doc, boite, boiteKind, praticien }: { v: PatientView; doc: D
     <div className="flex min-h-dvh flex-col">
       <Header praticien={praticien} patient={{ id: v.ref.id, nom: v.ref.nom, initials: v.ref.initials, meta: v.meta }} back={back} />
       <div className="mx-auto flex w-full max-w-[1180px] flex-1 gap-8 px-4 pb-8 pt-6 sm:px-6 lg:pt-10">
-        <aside className="sticky top-6 hidden w-[272px] shrink-0 self-start lg:block">{sidebar}</aside>
+        <aside className="sticky top-20 hidden w-[272px] shrink-0 self-start lg:block">{sidebar}</aside>
         <main className="flex min-w-0 flex-1 flex-col gap-6">
           <div className="lg:hidden">
             <button type="button" onClick={() => setListOpen((o) => !o)} aria-expanded={listOpen} className="flex items-center gap-2 rounded-full border border-line bg-paper px-3 py-[7px] text-[13px] text-ink"><I.chevron open={listOpen} color="currentColor" />{inBox ? BOX_LABEL[from as InboxKind] : d.doc.record} · {ids.length}</button>
@@ -104,10 +104,10 @@ function Inner({ v, doc, boite, boiteKind, praticien }: { v: PatientView; doc: D
           </div>
           <div className="flex flex-col gap-2">
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1"><span className="k">{L(doc.type)}</span><span className="d">{doc.date}</span><span className="d">·</span><span className="text-[13px] text-dim-2">{doc.de}</span></div>
-            <h1 className="m-0 text-[22px] font-medium leading-[1.3] tracking-[-.02em] sm:text-2xl">{doc.titre}</h1>
+            <h1 className="m-0 text-[24px] font-extrabold leading-[1.2] tracking-[-.025em] sm:text-[28px]">{doc.titre}</h1>
           </div>
 
-          <div><button type="button" onClick={() => composer.run({ texte: LIRE, patientId: v.ref.id, ecran: "document", docId: doc.id })} disabled={composer.state.busy} className="flex min-h-11 items-center gap-2.5 rounded-full bg-ink px-4 py-[9px] text-sm font-medium text-paper hover:text-paper disabled:opacity-40"><LocusMark size={16} />{d.doc.read}</button></div>
+          <div><button type="button" onClick={() => composer.run({ texte: LIRE, patientId: v.ref.id, ecran: "document", docId: doc.id })} disabled={composer.state.busy} className="locus-btn flex min-h-11 items-center gap-2.5 rounded-full px-4 py-[9px] text-sm font-medium disabled:opacity-40"><LocusMark size={16} />{d.doc.read}</button></div>
 
           {doc.lignes && (
             <section className="card overflow-hidden">

@@ -9,11 +9,12 @@ import { useLang } from "@/i18n/lang";
 import { Button, buttonClass } from "@/components/ui/button";
 import { Segmented } from "@/components/ui/segmented";
 import { LocusMark } from "@/components/shell/locus-mark";
+import { LocusMarkMotion } from "@/components/shell/locus-mark-motion";
 import { useTheme, type Mode } from "@/components/shell/theme";
 import { ANCHOR_IDS, defaultFields, type AnchorId } from "@/data/integration-lgc/fournier";
 import { TOOLS, defaultSettings, type LocusOut, type ToolId } from "@/data/integration-lgc/blocks";
 import { Medicab, type ZoneProps } from "./medicab";
-import { AskBox, LocusBody, LocusCard, LocusFailed, LocusLoading, LocusTag, RetryButton, Verdict, surface, type CardAction } from "./locus-card";
+import { AskBox, LocusBody, LocusCard, LocusFailed, LocusLoading, LocusTag, LocusWorking, RetryButton, Verdict, surface, type CardAction } from "./locus-card";
 import { Wizard } from "./wizard";
 import { useDialogFocus } from "./use-dialog";
 import { MyBricks } from "./my-bricks";
@@ -36,7 +37,7 @@ interface OutState { key: string; loading: boolean; out: LocusOut | null; error?
 const isFailed = (s: Shown | null): s is Failed => !!s && typeof s === "object" && "failed" in s;
 
 const brickKey = (b: Brick) => JSON.stringify([b.tool, b.settings, b.fields, b.anchor]);
-const POP = "rounded-xl border border-border bg-popover text-popover-foreground shadow-[0_16px_40px_rgba(0,0,0,.45)] font-sans";
+const POP = "rounded-[26px] border border-border bg-card/90 text-card-foreground shadow-[0_12px_32px_-14px_rgba(34,48,45,.45)] backdrop-blur-md font-sans";
 
 function autreLangue(pathname: string, to: Lang) {
   const parts = pathname.split("/");
@@ -189,17 +190,17 @@ export function IntegrationLgc() {
     } else if (b.display === "inline" || b.display === "banner" || (b.display === "modal" && isFailed(s))) {
       // Une fenêtre bloquante en échec ne bloque rien : son erreur passe en bandeau.
       banners.push(
-        <div key={key} className="shrink-0 bg-[#e9edf2] px-2 pt-2">
-          <div key={s === "loading" ? "l" : isFailed(s) ? "e" : "o"} role={isFailed(s) ? "alert" : undefined} className={cn(surface(), "flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3 text-sm")}>
-            <LocusTag state={s === "loading" ? "computing" : isFailed(s) ? "error" : "done"} />
-            {s === "loading" ? <span className="text-muted-foreground">{t.out.loading}</span> : isFailed(s) ? (
+        <div key={key} className="shrink-0 bg-[#ebeced] px-2 pt-2.5">
+          <div key={s === "loading" ? "l" : isFailed(s) ? "e" : "o"} role={isFailed(s) ? "alert" : undefined} className={cn(surface(), "flex flex-wrap items-center gap-x-3 gap-y-2 px-5 py-3.5")}>
+            {s !== "loading" && <LocusTag state={isFailed(s) ? "error" : "done"} />}
+            {s === "loading" ? <LocusWorking label={t.out.loading} /> : isFailed(s) ? (
               <>
                 <span className="min-w-[min(100%,260px)] flex-1">{s.failed}</span>
                 <RetryButton onRetry={() => retry(b.id)} />
               </>
             ) : (
               <>
-                <b className="text-[15px] font-semibold tracking-[-.01em]">{s.title}</b>
+                <b className="text-[17px] font-bold tracking-[-.015em]">{s.title}</b>
                 {s.alert !== undefined && <Verdict alert={s.alert} />}
                 <span className="min-w-[min(100%,260px)] flex-1">{s.lines[0]}</span>
                 {s.sources?.[0] && <span className="rounded-full border border-border bg-background px-2 py-0.5 text-xs text-muted-foreground">{s.sources[0]}</span>}
@@ -213,9 +214,9 @@ export function IntegrationLgc() {
       );
     } else if (b.display === "panel") {
       panels.push(
-        <div key={key} className="flex flex-col gap-2.5 text-sm">
-          <span className="flex"><LocusTag state={s === "loading" ? "computing" : isFailed(s) ? "error" : "done"} /></span>
-          {s === "loading" ? <span className="text-muted-foreground">{t.out.loading}</span> : isFailed(s) ? (
+        <div key={key} className="flex flex-col gap-2.5">
+          {s !== "loading" && <span className="flex"><LocusTag state={isFailed(s) ? "error" : "done"} /></span>}
+          {s === "loading" ? <LocusWorking label={t.out.loading} /> : isFailed(s) ? (
             <>
               <span role="alert">{s.failed}</span>
               <span className="flex"><RetryButton onRetry={() => retry(b.id)} /></span>
@@ -228,7 +229,7 @@ export function IntegrationLgc() {
   }
 
   const panel = panels.length ? (
-    <aside aria-label={t.out.panel} className={cn(surface(), "flex min-w-0 flex-[0_0_320px] flex-col gap-4 self-stretch p-4 max-[760px]:flex-[1_1_100%] [&>*+*]:border-t [&>*+*]:border-border [&>*+*]:pt-4")}>
+    <aside aria-label={t.out.panel} className={cn(surface(), "flex min-w-0 flex-[0_0_340px] flex-col gap-4 self-stretch p-5 max-[760px]:flex-[1_1_100%] [&>*+*]:border-t [&>*+*]:border-border [&>*+*]:pt-4")}>
       {panels}
     </aside>
   ) : null;
@@ -265,8 +266,8 @@ export function IntegrationLgc() {
     // Pendant le choix de l'ancrage, seules les zones où l'outil a un sens proposent « Injecter ici ».
     const cand = !!wiz && wiz.step === 2 && !sel && !!wiz.draft.tool && TOOLS[wiz.draft.tool].anchors.includes(a);
     const slot = sel
-      ? <span className="rounded-md bg-primary px-2 py-[3px] font-sans text-xs font-medium text-primary-foreground">{t.wizard.anchorTag}</span>
-      : cand ? <button type="button" onClick={() => pickAnchor(a)} className="min-h-[26px] rounded-md border border-dashed border-ring bg-background px-2.5 font-sans text-xs font-medium text-foreground hover:bg-accent">{t.wizard.inject}</button> : null;
+      ? <span className="locus-tag font-sans">{t.wizard.anchorTag}</span>
+      : cand ? <button type="button" onClick={() => pickAnchor(a)} className="locus-tint min-h-[28px] rounded-full px-3 font-sans text-xs font-semibold">{t.wizard.inject}</button> : null;
     return [a, { mode: sel ? "sel" : cand ? "cand" : "idle", slot } satisfies ZoneProps];
   })) as Record<AnchorId, ZoneProps>;
 
@@ -312,17 +313,17 @@ export function IntegrationLgc() {
 
       {/* Widget Locus ancré */}
       {widgets.length > 0 && (
-        <section aria-label={t.out.widget} className={cn(surface(), "absolute bottom-[calc(var(--bar-h)+48px)] right-4 z-[15] max-h-[calc(100%-var(--bar-h)-150px)] w-[min(388px,calc(100%-32px))] overflow-auto text-sm")}>
-          <div className="sticky top-0 z-[1] flex items-center gap-2 border-b border-border bg-card py-2 pl-3.5 pr-2">
+        <section aria-label={t.out.widget} className={cn(surface(), "absolute bottom-[calc(var(--bar-h)+48px)] right-4 z-[15] max-h-[calc(100%-var(--bar-h)-150px)] w-[min(400px,calc(100%-32px))] overflow-auto")}>
+          <div className="sticky top-0 z-[1] flex items-center gap-2 border-b border-border bg-[var(--locus-bg)] py-2.5 pl-4 pr-2">
             {/* Une seule étiquette pour le widget : l'état le moins avancé de ses briques. */}
             <span className="flex-1"><LocusTag state={widgets.some(({ s }) => s === "loading") ? "computing" : widgets.some(({ s }) => isFailed(s)) ? "error" : "done"} /></span>
             <button type="button" onClick={() => setWidgetMin((m) => !m)} aria-label={widgetMin ? t.out.expand : t.out.minimize} aria-expanded={!widgetMin} className={buttonClass({ variant: "ghost", size: "icon", className: "size-8" })}>{widgetMin ? <Plus aria-hidden="true" /> : <Minus aria-hidden="true" />}</button>
           </div>
           {!widgetMin && (
-            <div className="flex flex-col gap-3.5 p-4">
+            <div className="flex flex-col gap-4 p-5">
               {widgets.map(({ b, s }) => (
                 <div key={b.id} className="flex flex-col gap-2">
-                  {s === "loading" ? <span className="text-muted-foreground">{t.out.loading}</span> : isFailed(s) ? (
+                  {s === "loading" ? <LocusWorking label={t.out.loading} /> : isFailed(s) ? (
                     <span className="flex flex-wrap items-center gap-2"><span role="alert" className="flex-1">{s.failed}</span><RetryButton onRetry={() => retry(b.id)} /></span>
                   ) : <LocusBody brick={b} out={{ ...s, question: false }} variant="widget" onAction={(a) => act(b, s, a)} />}
                 </div>
@@ -414,15 +415,15 @@ function LocusDialog({ mode, items, alert, onAction, onClose, onValidate, onOver
   const ok = (motif ?? "").trim().length >= 3;
   const label = mode === "override" ? t.overrideTitle : `Locus · ${t.before}`;
   return (
-    <div className="absolute inset-0 z-40 grid place-items-center bg-black/50 p-4">
-      <section ref={ref} role="dialog" aria-modal="true" aria-label={label} className={cn(surface(), "flex max-h-[90dvh] w-[min(520px,100%)] flex-col gap-3.5 overflow-auto p-5 text-sm")}>
+    <div className="absolute inset-0 z-40 grid place-items-center bg-[#2a2f2e]/40 p-4">
+      <section ref={ref} role="dialog" aria-modal="true" aria-label={label} className={cn(surface(), "flex max-h-[90dvh] w-[min(560px,100%)] flex-col gap-4 overflow-auto p-6")}>
         <div className="flex items-center gap-2">
           <LocusTag /><span className="flex-1 text-[13px] text-muted-foreground">{mode === "override" ? t.overrideTitle : t.before}</span>
           <button type="button" onClick={onClose} aria-label={mode === "show" ? t.close : t.editOrder} className={buttonClass({ variant: "ghost", size: "icon", className: "size-8" })}><X aria-hidden="true" /></button>
         </div>
         {items.map(({ b, out }) => (
           <div key={b.id} className="flex flex-col gap-2">
-            <span className="flex flex-wrap items-center gap-2"><span className="text-base font-semibold tracking-[-.01em]">{out.title}</span>{out.alert !== undefined && <Verdict alert={out.alert} />}</span>
+            <span className="flex flex-wrap items-center gap-2"><span className="text-[19px] font-bold tracking-[-.015em]">{out.title}</span>{out.alert !== undefined && <Verdict alert={out.alert} />}</span>
             {/* Avant validation, « Ignorer » cède la place à « Passer outre, avec motif ». */}
             <LocusBody brick={b} out={mode === "show" ? out : { ...out, actions: asking ? [] : out.actions?.filter((a) => a !== "ignore") }} variant="modal" onAction={(a) => onAction(b, out, a)} />
           </div>
@@ -458,20 +459,20 @@ function StudioBar({ lang, mode, setMode, setLang, count, list, status, barRef, 
   const c = common[lang];
   return (
     <div ref={barRef} className={cn(POP, "absolute bottom-9 left-4 z-20 flex max-w-[calc(100%-32px)] flex-wrap items-center gap-1.5 p-1.5 text-sm")}>
-      <Link href={route(lang, "home")} aria-label={t.bar.home} className="flex h-9 items-center gap-2 rounded-md pl-2 pr-2.5 text-foreground hover:bg-accent">
-        <LocusMark size={20} />
-        <span className="text-[17px] tracking-[-.01em] max-[640px]:hidden">{c.brand.wordmarkA}<span className="text-muted-foreground">{c.brand.wordmarkB}</span></span>
+      <Link href={route(lang, "home")} aria-label={t.bar.home} className="flex h-9 items-center gap-2 rounded-full pl-2 pr-3 text-foreground hover:bg-accent">
+        <LocusMark size={20} className="text-brand" />
+        <span className="whitespace-nowrap text-[17px] font-extrabold tracking-[-.01em] max-[640px]:hidden">{c.brand.wordmarkA}<span className="font-light italic text-brand">{c.brand.wordmarkB}</span></span>
       </Link>
       <span aria-hidden="true" className="h-5 w-px bg-border max-[640px]:hidden" />
       <span className="px-2 font-medium max-[1100px]:hidden">{c.tools.integration}</span>
-      <Button variant="primary" onClick={onAdd}><Plus aria-hidden="true" />{t.bar.addBrick}</Button>
+      <Button onClick={onAdd} className="locus-btn"><Plus aria-hidden="true" />{t.bar.addBrick}</Button>
       <Button onClick={onList} aria-pressed={list} className={list ? "bg-accent" : undefined}><Layers aria-hidden="true" />{t.bar.myBricks}<span className="font-mono text-xs text-muted-foreground">{count}</span></Button>
       <span aria-hidden="true" className="mx-0.5 h-5 w-px bg-border max-[640px]:hidden" />
       <Segmented<Mode> label={t.bar.theme} value={mode} onChange={setMode} options={[{ value: "dark", label: <Moon aria-hidden="true" />, aria: t.bar.dark }, { value: "light", label: <Sun aria-hidden="true" />, aria: t.bar.light }]} />
       <Segmented<Lang> label={t.bar.language} value={lang} onChange={setLang} options={LANGS.map((l) => ({ value: l, label: l.toUpperCase() }))} />
       {status && (
         <span role="status" className="flex items-center gap-1.5 px-1.5 text-xs text-muted-foreground max-[1100px]:hidden">
-          <i aria-hidden="true" className={cn("block size-1.5 rounded-full", status.kind === "error" ? "bg-muted-foreground" : "bg-brand", status.kind === "computing" && "animate-pulse")} />
+          {status.kind === "computing" ? <LocusMarkMotion size={18} className="text-brand" /> : <i aria-hidden="true" className={cn("block size-1.5 rounded-full", status.kind === "error" ? "bg-muted-foreground" : "bg-brand")} />}
           {status.kind === "computing" ? t.bar.computing : status.kind === "error" ? t.bar.failed(status.n) : t.bar.live}
         </span>
       )}

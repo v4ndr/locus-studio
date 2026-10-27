@@ -36,7 +36,7 @@ function Inner({ v, praticien }: { v: PatientView; praticien: { initials: string
       <Header praticien={praticien} patient={{ id: v.ref.id, nom: v.ref.nom, initials: v.ref.initials, meta: v.meta }} back={`/p/${v.ref.id}`} />
       <main className="mx-auto flex w-full max-w-[1040px] flex-1 flex-col gap-5 px-4 pb-8 pt-8 sm:px-6 sm:pt-10">
         <div className="flex items-center gap-3">
-          <h1 className="m-0 text-2xl font-medium tracking-[-.02em]">{d.docs.all}</h1>
+          <h1 className="m-0 text-[28px] font-extrabold tracking-[-.03em]">{d.docs.all}</h1>
           <span className="d">{d.docs.of(rows.length, v.documents.length)}</span>
         </div>
         <div className="flex flex-wrap items-center gap-2.5">

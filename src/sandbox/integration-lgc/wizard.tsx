@@ -180,7 +180,8 @@ function DisplayStep({ draft, setDraft }: { draft: Draft; setDraft: (p: Partial<
   const lang = useLang();
   const t = lgc[lang];
   const d = draft.display;
-  const ring = "border-2 border-brand";
+  // La miniature parle comme l'écran : MédiCab délavé, la brique en vert Locus.
+  const ring = "bg-green shadow-[0_0_0_1px_var(--glow)]";
   return (
     <div className="flex flex-col gap-3 pt-3">
       <div role="radiogroup" aria-label={t.wizard.steps[3]} className="grid grid-cols-2 gap-1.5">
@@ -189,19 +190,19 @@ function DisplayStep({ draft, setDraft }: { draft: Draft; setDraft: (p: Partial<
         ))}
       </div>
       <span className="text-xs font-medium text-muted-foreground">{t.wizard.preview}</span>
-      <div aria-hidden="true" className="relative h-[140px] overflow-hidden rounded-lg border border-[#c9d1dc] bg-[#eef1f5]">
-        <div className="h-3.5 bg-[#24364f]" />
+      <div aria-hidden="true" className="relative h-[140px] overflow-hidden rounded-lg border border-[#dcdfe2] bg-[#ebeced]">
+        <div className="h-3.5 bg-[#b4b9bf]" />
         <div className="flex gap-1.5 p-2">
-          <div className="h-[90px] w-10 border border-[#c9d1dc] bg-white" />
+          <div className="h-[90px] w-10 border border-[#dcdfe2] bg-[#f6f7f7]" />
           <div className="flex flex-1 flex-col gap-1.5">
-            <div className="h-[34px] border border-[#c9d1dc] bg-white" />
-            <div className="h-[46px] border border-[#c9d1dc] bg-white p-1.5">{d === "inline" && <div className={cn("h-full rounded bg-card", ring)} />}</div>
+            <div className="h-[34px] border border-[#dcdfe2] bg-[#f6f7f7]" />
+            <div className="h-[46px] border border-[#dcdfe2] bg-[#f6f7f7] p-1.5">{d === "inline" && <div className={cn("h-full rounded", ring)} />}</div>
           </div>
-          {d === "panel" && <div className={cn("h-[90px] w-[54px] rounded bg-card", ring)} />}
+          {d === "panel" && <div className={cn("h-[90px] w-[54px] rounded", ring)} />}
         </div>
-        {d === "banner" && <div className="absolute inset-x-0 top-3.5 h-3 border-b border-ring bg-card" />}
-        {d === "widget" && <div className={cn("absolute bottom-2 right-2 h-[50px] w-16 rounded-md bg-popover shadow-sm", ring)} />}
-        {d === "modal" && <div className="absolute inset-0 grid place-items-center bg-black/35"><div className={cn("h-[60px] w-[110px] rounded-md bg-popover", ring)} /></div>}
+        {d === "banner" && <div className="absolute inset-x-1 top-[18px] h-3 rounded-sm bg-green shadow-[0_0_0_1px_var(--glow)]" />}
+        {d === "widget" && <div className={cn("absolute bottom-2 right-2 h-[50px] w-16 rounded-md", ring)} />}
+        {d === "modal" && <div className="absolute inset-0 grid place-items-center bg-black/25"><div className={cn("h-[60px] w-[110px] rounded-md", ring)} /></div>}
       </div>
     </div>
   );

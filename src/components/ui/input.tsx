@@ -1,7 +1,7 @@
 import * as React from "react";
 import { cn } from "@/lib/cn";
 
-const champ = "w-full min-w-0 rounded-md border border-input bg-field px-3 text-sm text-foreground shadow-xs placeholder:text-muted-foreground focus:border-ring focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--ring)_50%,transparent)] disabled:opacity-50";
+const champ = "w-full min-w-0 rounded-[10px] border border-input bg-field px-3 text-sm text-foreground shadow-xs placeholder:text-muted-foreground focus:border-ring focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--ring)_50%,transparent)] disabled:opacity-50";
 
 export function Input({ className, ...rest }: React.InputHTMLAttributes<HTMLInputElement>) {
   return <input className={cn(champ, "h-9", className)} {...rest} />;
