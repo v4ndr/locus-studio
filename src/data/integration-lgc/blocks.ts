@@ -3,12 +3,12 @@ import { dossier, type AnchorId, type FieldKey } from "./fournier";
 /**
  * Le catalogue des briques Locus de MédiCab 7 (ancrages, outils, affichages)
  * et ce que chaque outil demande. Les libellés d'UI sont dans
- * `src/i18n/lgc.ts` ; ici, seulement les identifiants, les noms de l'API
- * Briques (aperçu) et les gabarits de question, en français.
+ * `src/i18n/lgc.ts` ; ici, seulement les identifiants, les noms des routes
+ * Studio de chaque brique et les gabarits de question, en français.
  *
  * Trois outils, retenus parce qu'ils répondent juste à chaque fois sur le
  * dossier fictif ; chacun a son chemin :
- * - `controle` et `question` interrogent core (`/v2/retrieve`) : une
+ * - `controle` et `question` interrogent core (`POST /v2/retrieve/stream`) : une
  *   question clinique, une réponse appuyée sur les recommandations, et
  *   seulement les sources que la réponse cite ;
  * - `synthese` n'interroge pas core : c'est le dossier transmis remis en
@@ -32,7 +32,6 @@ export type Settings = Record<string, boolean | string>;
 
 export const DISPLAY_IDS = ["inline", "banner", "panel", "modal", "widget"] as const;
 export type DisplayId = (typeof DISPLAY_IDS)[number];
-export const DISPLAY_API: Record<DisplayId, string> = { inline: "inline-card", banner: "banner", panel: "side-panel", modal: "modal", widget: "widget" };
 
 export interface ToolDef {
   api: string;

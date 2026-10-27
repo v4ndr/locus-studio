@@ -1,7 +1,7 @@
 "use client";
 import * as React from "react";
-import { fieldsFor, patientEhr, FIELDS, FIELD_KEYS, ANCHOR_IDS, type AnchorId, type FieldKey } from "@/data/integration-lgc/fournier";
-import { DISPLAY_API, DISPLAY_IDS, HOOKS, TOOLS, cleanSettings, defaultSettings, isToolId, questionControle, type DisplayId, type Settings, type ToolId } from "@/data/integration-lgc/blocks";
+import { fieldsFor, patientEhr, FIELD_KEYS, ANCHOR_IDS, type AnchorId, type FieldKey } from "@/data/integration-lgc/fournier";
+import { DISPLAY_IDS, TOOLS, cleanSettings, defaultSettings, isToolId, questionControle, type DisplayId, type Settings, type ToolId } from "@/data/integration-lgc/blocks";
 
 /** Une brique posée dans MédiCab 7 : outil, point d'injection, données, affichage. */
 export interface Brick {
@@ -82,32 +82,20 @@ export function useBricks() {
 
 export const nextId = (bricks: Brick[]) => `b${bricks.reduce((m, b) => Math.max(m, Number(b.id.slice(1)) || 0), 0) + 1}`;
 
-/* ---------- L'appel « API Briques (aperçu) » ---------- */
+/* ---------- L'appel à l'API Locus ---------- */
 
-const head = (path: string) => `POST ${path}\nAuthorization: Bearer lsk_…\nX-Locus-User-Ref: <compte sandbox>\nContent-Type: application/json\n\n`;
-
-/**
- * La requête équivalente sur la façade proposée `POST /v2/blocks` : elle
- * n'existe pas dans core. `comment` (« API Briques (aperçu) ») ouvre le
- * code, pour qu'un copier-coller ne la fasse pas passer pour une route réelle.
- * L'identifiant patient est un pseudonyme : ni nom, ni numéro de dossier.
- */
-export function apiCall(b: Brick, comment: string): string {
-  const data: Record<string, string> = {};
-  for (const k of b.fields) data[FIELDS[k].api] = FIELDS[k].value;
-  const body = { hook: HOOKS[b.anchor], context: { patient: "pseudo-7f3a91", data }, settings: b.settings, display: DISPLAY_API[b.display] };
-  return `${comment}\n${head(`/v2/blocks/${TOOLS[b.tool].api}`)}${JSON.stringify(body, null, 2)}`;
-}
+const head = (path: string) => `POST ${path}\nAuthorization: Bearer lsk_…\nX-Locus-User-Ref: <compte sandbox>\nContent-Type: application/json\nAccept: application/x-ndjson\n\n`;
 
 /**
- * L'appel que la route Studio fait vraiment aujourd'hui : `POST /v2/retrieve/stream`
- * de core, avec les paramètres de `RetrieveRequest` qu'elle remplit (`query`,
+ * L'appel que la route Studio fait vraiment : `POST /v2/retrieve/stream` de
+ * core, avec les paramètres de `RetrieveRequest` qu'elle remplit (`query`,
  * `patient_ehr` pseudonymisé, `mode`, `app_platform`, `app_surface`).
- * `null` pour la synthèse, qui n'appelle pas core.
+ * `null` pour la synthèse, qui n'appelle pas core. Déclencheur et affichage
+ * restent dans le logiciel : core n'a pas d'endpoint de brique.
  */
 export function coreCall(b: Brick, placeholder: string): string | null {
   if (TOOLS[b.tool].path === "dossier") return null;
   const query = b.tool === "question" ? placeholder : questionControle();
   const body = { query, patient_ehr: patientEhr(b.fields), mode: "rapide", app_platform: "web", app_surface: "studio-ehr" };
-  return head("/v2/retrieve/stream").replace("Content-Type: application/json", "Content-Type: application/json\nAccept: application/x-ndjson") + JSON.stringify(body, null, 2);
+  return head("/v2/retrieve/stream") + JSON.stringify(body, null, 2);
 }

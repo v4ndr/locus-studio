@@ -11,10 +11,9 @@ export const maxDuration = 60;
  * Une brique Locus de MédiCab 7 : `POST /api/integration-lgc/blocks/<brique>`
  * (`prescription-check`, `clinical-question`, `record-summary`).
  *
- * C'est la route BFF qui porte, pour l'instant, la façade proposée
- * « API Briques (aperçu) » `POST /v2/blocks/<brique>` : elle n'existe pas
- * dans core. Un chemin par outil :
- * - contrôle d'ordonnance et question : core `/v2/retrieve` avec le dossier
+ * Une route de Studio, pas de core : core n'a pas d'endpoint de brique. Un
+ * chemin par outil, et c'est lui que le panneau « Appel API » affiche :
+ * - contrôle d'ordonnance et question : core `POST /v2/retrieve/stream` avec le dossier
  *   transmis ; sous la réponse, seulement les documents qu'elle cite ;
  * - synthèse du dossier : les données transmises remises en lignes, sans
  *   appel à core ni source (un résumé de dossier n'est pas une question de
