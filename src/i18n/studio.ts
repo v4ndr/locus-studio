@@ -32,6 +32,7 @@ const fr = {
   toValidateN: (n: number) => `${n} action${s(n)} à valider`,
 
   omni: {
+    prepared: "Préparé par Locus",
     examples: "Exemples de demandes",
     forExample: "Par exemple",
     ask: "Demander",
@@ -75,7 +76,7 @@ const fr = {
   },
 
   /** Les étiquettes courtes des exemples de demande (colonne de gauche). */
-  keys: { ordo: "ordo", rdv: "rdv", courriers: "courriers", bio: "bio", message: "message", mail: "mail", courrier: "courrier", arret: "arrêt", question: "question", repondre: "répondre", dossier: "dossier", ouvrir: "ouvrir", fiche: "fiche", comparer: "comparer", chercher: "chercher", envoyer: "envoyer", resumer: "résumer", dmp: "dmp", ajouter: "ajouter", modifier: "modifier", retirer: "retirer" },
+  keys: { ordo: "ordo", rdv: "rdv", courriers: "courriers", bio: "bio", message: "message", mail: "mail", courrier: "courrier", arret: "arrêt", transport: "transport", question: "question", repondre: "répondre", dossier: "dossier", ouvrir: "ouvrir", fiche: "fiche", comparer: "comparer", chercher: "chercher", envoyer: "envoyer", resumer: "résumer", dmp: "dmp", ajouter: "ajouter", modifier: "modifier", retirer: "retirer" },
 
   dossier: {
     overview: "Overview",
@@ -111,15 +112,17 @@ const fr = {
     offline: "Pas de réseau : le composer est injoignable. Réessayez.",
     ready: "prêt",
     toReview: "à relire",
-    done: { ordonnance: "signée, envoyée en e-ordo", rdv: "réservé, SMS envoyé", message: "envoyé", courrier: "signé, envoyé par MSSanté", arret: "signé, télétransmis à la CPAM", dossier: "ajouté à la fiche", naviguer: "ouvert" } as Record<string, string>,
+    done: { ordonnance: "signée, envoyée en e-ordo", rdv: "réservé, SMS envoyé", message: "envoyé", courrier: "signé, envoyé par MSSanté", arret: "signé, télétransmis à la CPAM", transport: "signée, remise au patient", dossier: "ajouté à la fiche", naviguer: "ouvert" } as Record<string, string>,
     resent: "renvoyé, remplace le précédent",
     unchanged: "inchangé, déjà envoyé",
     handedOver: "signé, remis au patient",
     doneDefault: "fait",
     signedHead: (n: number, renvoi: boolean) => `${n} action${s(n)} signée${s(n)}${renvoi ? " · les documents modifiés sont renvoyés" : " · envoyées et inscrites au dossier"}`,
     nothing: "rien à valider",
-    answer: "réponse de Locus",
-    composer: "locus · composer",
+    answer: "réponse",
+    composer: "composition",
+    computed: "calculé sur vos dossiers",
+    locus: "Locus",
     reading: "Je lis la demande…",
     retry: "Réessayer",
     locusDown: "Locus n'a pas répondu : ce plan est fait sans ses sources. Réessayez pour l'avoir.",
@@ -192,7 +195,7 @@ const fr = {
   },
 
   note: {
-    ajouts: { ordonnance: "Ordonnance", examen: "Biologie", imagerie: "Imagerie", paramedical: "Kiné, soins", arret: "Arrêt de travail", courrier: "Courrier", message: "Message", rdv: "Rendez-vous", fiche: "Fiche du patient" } as Record<string, string>,
+    ajouts: { ordonnance: "Ordonnance", examen: "Biologie", imagerie: "Imagerie", paramedical: "Kiné, soins", arret: "Arrêt de travail", transport: "Bon de transport", courrier: "Courrier", message: "Message", rdv: "Rendez-vous", fiche: "Fiche du patient" } as Record<string, string>,
     synthFailed: "La synthèse n'a pas abouti.",
     confirmRegen: "Régénérer les actions remplace le plan actuel, y compris ce que vous avez modifié ou retiré à la main. Continuer ?",
     resumedEdit: "Modification reprise là où vous l'aviez laissée",
@@ -299,6 +302,25 @@ const fr = {
     ficheLine: "Ligne",
     ficheLinePh: "Telle qu'elle apparaîtra dans la fiche",
     detail: "Détail (facultatif)",
+    // La prescription médicale de transport.
+    trSituation: "Situation de prise en charge",
+    trAtmpDate: "Date de l'AT ou de la MP",
+    trMode: "Mode de transport",
+    trAmbulance: "Ce qui justifie l'ambulance",
+    trShared: "Transport partagé possible",
+    trEscort: "Personne accompagnante nécessaire",
+    trFrom: "Départ",
+    trTo: "Arrivée",
+    trPlacePh: "Structure ou adresse",
+    trReturn: "Aller-retour",
+    trIterative: "Transports itératifs",
+    trUrgency: "Urgence",
+    trUrgencyNone: "Non",
+    trUrgencySamu: "Appel du SAMU-centre 15",
+    trUrgencyOther: "Autre",
+    trUrgencyPh: "Préciser",
+    trMedical: "Éléments d'ordre médical",
+    trMedicalPh: "L'examen ou les soins qui justifient le déplacement, et le mode de transport",
   },
 
   local: {
@@ -376,6 +398,7 @@ const en: typeof fr = {
   toValidateN: (n: number) => `${n} action${s(n)} to approve`,
 
   omni: {
+    prepared: "Prepared by Locus",
     examples: "Example requests",
     forExample: "For example",
     ask: "Ask",
@@ -417,7 +440,7 @@ const en: typeof fr = {
     exMessage: "Reply to the pharmacy about Mr Bernard",
   },
 
-  keys: { ordo: "rx", rdv: "appt", courriers: "letters", bio: "labs", message: "message", mail: "email", courrier: "letter", arret: "sick leave", question: "question", repondre: "reply", dossier: "record", ouvrir: "open", fiche: "record", comparer: "compare", chercher: "find", envoyer: "send", resumer: "summarise", dmp: "dmp", ajouter: "add", modifier: "change", retirer: "remove" },
+  keys: { ordo: "rx", rdv: "appt", courriers: "letters", bio: "labs", message: "message", mail: "email", courrier: "letter", arret: "sick leave", transport: "transport", question: "question", repondre: "reply", dossier: "record", ouvrir: "open", fiche: "record", comparer: "compare", chercher: "find", envoyer: "send", resumer: "summarise", dmp: "dmp", ajouter: "add", modifier: "change", retirer: "remove" },
 
   dossier: {
     overview: "Overview",
@@ -453,15 +476,17 @@ const en: typeof fr = {
     offline: "No network: the composer cannot be reached. Try again.",
     ready: "ready",
     toReview: "to review",
-    done: { ordonnance: "signed, sent as e-prescription", rdv: "booked, SMS sent", message: "sent", courrier: "signed, sent via MSSanté", arret: "signed, e-filed with the CPAM", dossier: "added to the record", naviguer: "opened" },
+    done: { ordonnance: "signed, sent as e-prescription", rdv: "booked, SMS sent", message: "sent", courrier: "signed, sent via MSSanté", arret: "signed, e-filed with the CPAM", transport: "signed, handed to the patient", dossier: "added to the record", naviguer: "opened" },
     resent: "resent, replaces the previous one",
     unchanged: "unchanged, already sent",
     handedOver: "signed, handed to the patient",
     doneDefault: "done",
     signedHead: (n: number, renvoi: boolean) => `${n} action${s(n)} signed${renvoi ? " · edited documents are resent" : " · sent and filed in the record"}`,
     nothing: "nothing to approve",
-    answer: "Locus answer",
-    composer: "locus · composer",
+    answer: "answer",
+    composer: "composing",
+    computed: "computed from your records",
+    locus: "Locus",
     reading: "Reading the request…",
     retry: "Retry",
     locusDown: "Locus did not answer: this plan has no sources. Try again to get them.",
@@ -534,7 +559,7 @@ const en: typeof fr = {
   },
 
   note: {
-    ajouts: { ordonnance: "Prescription", examen: "Labs", imagerie: "Imaging", paramedical: "Physio, nursing", arret: "Sick leave", courrier: "Letter", message: "Message", rdv: "Appointment", fiche: "Patient record" },
+    ajouts: { ordonnance: "Prescription", examen: "Labs", imagerie: "Imaging", paramedical: "Physio, nursing", arret: "Sick leave", transport: "Transport prescription", courrier: "Letter", message: "Message", rdv: "Appointment", fiche: "Patient record" },
     synthFailed: "The summary did not complete.",
     confirmRegen: "Regenerating the actions replaces the current plan, including what you edited or removed by hand. Continue?",
     resumedEdit: "Edit resumed where you left it",
@@ -640,6 +665,24 @@ const en: typeof fr = {
     ficheLine: "Line",
     ficheLinePh: "As it will appear in the record",
     detail: "Detail (optional)",
+    trSituation: "Coverage situation",
+    trAtmpDate: "Date of the work accident or occupational disease",
+    trMode: "Mode of transport",
+    trAmbulance: "What justifies the ambulance",
+    trShared: "Shared transport possible",
+    trEscort: "Escort needed",
+    trFrom: "From",
+    trTo: "To",
+    trPlacePh: "Facility or address",
+    trReturn: "Return trip",
+    trIterative: "Repeated trips",
+    trUrgency: "Emergency",
+    trUrgencyNone: "No",
+    trUrgencySamu: "SAMU-centre 15 call",
+    trUrgencyOther: "Other",
+    trUrgencyPh: "Specify",
+    trMedical: "Medical grounds",
+    trMedicalPh: "The test or care that justifies the trip, and the mode of transport",
   },
 
   local: {
@@ -725,15 +768,23 @@ const EN_LABELS: Record<string, string> = {
   Motif: "Reason", Histoire: "History", Examen: "Examination", Conclusion: "Conclusion", "Conduite à tenir": "Plan", Codes: "Codes", Actes: "Procedures",
   // Types d'ordonnance et de fiche (formulaire).
   "Ordonnance de biologie": "Lab order", "Demande d'imagerie": "Imaging request", "Ordonnance paramédicale": "Allied health prescription", "Prescription de transport": "Transport prescription", "Dispositif médical": "Medical device",
+  // La prescription médicale de transport (formulaire).
+  "Entrée ou sortie d'hospitalisation": "Hospital admission or discharge", "ALD exonérante": "Exempt long-term condition (ALD)", "ALD non exonérante": "Non-exempt long-term condition (ALD)", "Accident du travail ou maladie professionnelle": "Work accident or occupational disease",
+  Ambulance: "Ambulance", "Transport assis professionnalisé (VSL, taxi conventionné)": "Seated professional transport (VSL, approved taxi)", "Moyen de transport individuel": "Own vehicle", "Transport en commun terrestre": "Public transport",
+  "position allongée ou demi-assise": "lying or half-sitting position", "surveillance par une personne qualifiée": "monitoring by a qualified person", "administration d'oxygène": "oxygen administration", "brancardage ou portage": "stretcher or carrying", "asepsie rigoureuse": "strict asepsis",
+  Domicile: "Home", "Autre lieu": "Other place", "Structure de soins": "Care facility",
+  // Les tableaux calculés sur la patientèle.
+  Patient: "Patient", "Âge": "Age", "Dépistage": "Screening", "Dernier test": "Last test", Statut: "Status", "À proposer": "To offer", "Dernière HbA1c": "Last HbA1c", Le: "On", Intervalle: "Interval",
+  "Cancer colorectal": "Colorectal cancer", "Cancer du sein": "Breast cancer", "Cancer du col de l'utérus": "Cervical cancer", "jamais fait": "never done", "risque élevé": "high risk", "suivi spécifique": "specific follow-up", "non concerné": "not applicable", "refusé": "declined", "à faire sous 3 mois": "due within 3 months",
   "Antécédent": "History", "Antécédent familial": "Family history", Allergie: "Allergy", "Traitement de fond": "Long-term treatment",
   patient: "patient", "confrère": "colleague", "secrétariat": "front desk", pharmacie: "pharmacy",
   "autorisées · présence obligatoire 9 h-11 h et 14 h-16 h": "allowed · must be home 9–11 am and 2–4 pm",
   // Destinations.
-  agenda: "calendar", dossier: "record", "patient · messagerie": "patient · messaging", "patient · remis": "patient · handed over", "patient · e-ordo": "patient · e-prescription", "CPAM · télétransmis": "CPAM · e-filed", "dossier · DMP": "record · DMP", interne: "internal", "MSSanté · pharmacie": "MSSanté · pharmacy",
+  agenda: "calendar", dossier: "record", "patient · messagerie": "patient · messaging", "patient · remis": "patient · handed over", "patient · e-ordo": "patient · e-prescription", "patient · bon de transport": "patient · transport form", "CPAM · télétransmis": "CPAM · e-filed", "dossier · DMP": "record · DMP", interne: "internal", "MSSanté · pharmacie": "MSSanté · pharmacy",
   // En-tête de la signature.
   "clôturée": "closed", validation: "approval",
   // Étapes du composer.
-  "Je lis le dossier et la demande": "Reading the record and the request", "J'ouvre le dossier": "Opening the record", "Je lis la note": "Reading the note", "Je rédige l'ordonnance": "Drafting the prescription", "Je prépare la biologie": "Preparing the lab order", "Je prépare la demande d'imagerie": "Preparing the imaging request", "Je rédige l'ordonnance paramédicale": "Drafting the allied health prescription", "Je cherche un créneau": "Looking for a slot", "Je rédige le message": "Drafting the message", "Je rédige le courrier": "Drafting the letter", "Je rédige le certificat": "Drafting the certificate", "Je prépare le certificat de maladie professionnelle": "Preparing the occupational disease certificate", "Je prépare l'arrêt": "Preparing the sick leave", "Je consulte Locus": "Consulting Locus", "Je lis le document": "Reading the document", "J'inscris au dossier": "Filing in the record", "J'ouvre l'écran": "Opening the screen", "Je reformule la question": "Rephrasing the question",
+  "Je lis le dossier et la demande": "Reading the record and the request", "J'ouvre le dossier": "Opening the record", "Je lis la note": "Reading the note", "Je rédige l'ordonnance": "Drafting the prescription", "Je prépare la biologie": "Preparing the lab order", "Je prépare la demande d'imagerie": "Preparing the imaging request", "Je rédige l'ordonnance paramédicale": "Drafting the allied health prescription", "Je cherche un créneau": "Looking for a slot", "Je rédige le message": "Drafting the message", "Je rédige le courrier": "Drafting the letter", "Je rédige le certificat": "Drafting the certificate", "Je prépare le certificat de maladie professionnelle": "Preparing the occupational disease certificate", "Je prépare l'arrêt": "Preparing the sick leave", "Je consulte Locus": "Consulting Locus", "Je lis le document": "Reading the document", "Je calcule sur la patientèle": "Computing across the patient list", "Je prépare le bon de transport": "Preparing the transport prescription", "J'inscris au dossier": "Filing in the record", "J'ouvre l'écran": "Opening the screen", "Je reformule la question": "Rephrasing the question",
 };
 
 const EN_PATTERNS: [RegExp, (...m: string[]) => string][] = [
@@ -749,6 +800,7 @@ const EN_PATTERNS: [RegExp, (...m: string[]) => string][] = [
   [/^(\d+) · (\d+) hors norme$/, (_, n, k) => `${n} · ${k} out of range`],
   [/^(.+) · HPRIM$/, (_, d) => `${d} · HPRIM`],
   [/^Je lis le dossier : (.+)$/, (_, x) => `Reading the record: ${x}`],
+  [/^à jour · (\d{4})$/, (_, y) => `up to date · ${y}`],
 ];
 
 /** Un libellé produit en français par le serveur ou les données, affiché dans la langue de l'interface. */

@@ -38,6 +38,7 @@ const Input = z.object({
   motif: z.string().trim().max(200).optional(),
   patientId: z.string().regex(/^(pat|loc)_[a-z0-9_]{1,40}$/).optional(),
   ecran: z.enum(["home", "dossier", "documents", "document", "inbox", "actions", "note"]).default("home"),
+  portee: z.enum(["patientele"]).optional(),
   docId: z.string().max(80).optional(),
   boite: z.enum(["courriers", "bio", "messages"]).optional(),
   patient: Patient.optional(),
@@ -60,7 +61,7 @@ export async function POST(req: Request) {
   const note = b.note?.trim() || undefined;
   if (!texte && !note) return Response.json({ error: "Rien à composer : la demande est vide." }, { status: 400 });
   if (b.patient && b.patientId && b.patient.id !== b.patientId) return Response.json({ error: "Le patient local ne correspond pas à l'identifiant." }, { status: 400 });
-  return ndjsonResponse(compose({ texte, patientId: b.patientId, ecran: b.ecran, docId: b.docId, boite: b.boite, patient: b.patient, note, motif: b.motif || undefined }));
+  return ndjsonResponse(compose({ texte, patientId: b.patientId, ecran: b.ecran, docId: b.docId, boite: b.boite, patient: b.patient, note, motif: b.motif || undefined, portee: b.portee }));
 }
 
 export async function GET(req: Request) {

@@ -2,7 +2,7 @@ import "server-only";
 import { getDossier, displayName, recordsOf } from "@/data";
 import { now } from "@/data/clock";
 import { toPatientEhr, ageAt } from "@/locus/ehr";
-import type { ComposeInput, PatientLocalPayload } from "./contract";
+import type { ComposeInput, PatientLocalPayload, PatientPlan } from "./contract";
 
 /**
  * Le patient tel que le composer le voit, d'où qu'il vienne : du jeu de
@@ -24,6 +24,14 @@ export interface PatientCtx {
   meds: { dci: string; dosage?: string; posologie: string; chronique: boolean }[];
   chronique?: string;
   lastLabNormal?: boolean;
+  /** Identité administrative (fictive), pour les formulaires qui la demandent. */
+  matricule?: string;
+  adresse?: string;
+}
+
+/** Le patient tel que la carte rend ses documents. */
+export function planPatient(pt: PatientCtx): PatientPlan {
+  return { id: pt.id, nom: pt.nom, sexe: pt.sexe, age: pt.age, naissance: pt.naissance, allergies: pt.allergies, matricule: pt.matricule, adresse: pt.adresse };
 }
 
 function fr(iso: string) { const [y, m, d] = iso.slice(0, 10).split("-"); return `${d}/${m}/${y}`; }
@@ -52,6 +60,8 @@ export function fromDataset(id: string): PatientCtx | undefined {
     meds: recordsOf(d, "medication").filter((m) => m.status === "actif").map((m) => ({ dci: m.dci, dosage: m.dosage, posologie: m.posologie, chronique: m.type === "chronique" })),
     chronique: recordsOf(d, "problem").find((x) => x.enAvant && x.evolution === "chronique")?.libelle,
     lastLabNormal: lab ? lab.resultats.every((r) => r.flag === "normal") : undefined,
+    matricule: p.ins.matricule,
+    adresse: p.contact.adresse ? `${p.contact.adresse.ligne1}, ${p.contact.adresse.codePostal} ${p.contact.adresse.ville}` : undefined,
   };
 }
 

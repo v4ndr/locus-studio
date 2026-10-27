@@ -48,7 +48,10 @@ export function toPatientEhr(d: Dossier, now = new Date()): string {
     lines.push(`Dernière biologie (${labs.prelevementLe}) : ${txt}.`);
   }
 
-  if (p.ins.sexe === "F" && age >= 15 && age <= 50) lines.push("Statut grossesse : non renseigné.");
+  // Une grossesse au dossier (active, ou proposée par l'agent et pas encore validée) se dit ; « non renseigné » seulement sans elle.
+  const grossesse = d.records.find((r): r is Problem => r.kind === "problem" && (r.status === "actif" || r.status === "propose") && (/^Z3[34]/.test(r.cim10 ?? "") || /^grossesse\b/i.test(r.libelle)));
+  if (grossesse) lines.push(`Statut grossesse : enceinte · ${grossesse.libelle}${grossesse.status === "propose" ? " (à confirmer)" : ""}.`);
+  else if (p.ins.sexe === "F" && age >= 15 && age <= 50) lines.push("Statut grossesse : non renseigné.");
   return lines.join("\n");
 }
 

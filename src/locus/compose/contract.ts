@@ -34,9 +34,15 @@ export interface ComposeInput {
   note?: string;
   /** En écran « note » : le motif (agenda ou saisi), à part de la note pour ne pas être lu comme une prescription. */
   motif?: string;
+  /**
+   * « patientele » : la demande porte sur toute la patientèle (la palette ⌘K
+   * globale l'envoie ainsi). Le serveur calcule alors la requête de population
+   * avant le modèle, et n'ouvre aucun dossier.
+   */
+  portee?: "patientele";
 }
 
-export type ComposeKind = "ordonnance" | "rdv" | "message" | "courrier" | "arret" | "dossier" | "naviguer";
+export type ComposeKind = "ordonnance" | "rdv" | "message" | "courrier" | "arret" | "transport" | "dossier" | "naviguer";
 
 export interface ComposeRef { titre: string; editeur: string; annee?: number; url?: string }
 
@@ -62,10 +68,19 @@ export interface ComposeAction {
   renvoye?: boolean;
   /** Une ligne de l'ordonnance croise une allergie du dossier : à relire, jamais masqué. */
   alerte?: string;
+  /** Le patient de CETTE action quand il diffère de celui du plan (une requête sur la patientèle prépare pour plusieurs patients). */
+  patient?: PatientPlan;
 }
 
 /** Le patient tel que la carte le rend (en-tête du document) : porté par le plan pour que chaque écran l'ait. */
-export interface PatientPlan { nom: string; naissance?: string; sexe?: "F" | "M"; age?: number; allergies?: string[] }
+export interface PatientPlan { nom: string; id?: string; naissance?: string; sexe?: "F" | "M"; age?: number; allergies?: string[]; /** Fictif, pour les formulaires qui le demandent (bon de transport). */ matricule?: string; adresse?: string }
+
+/**
+ * Un tableau calculé par le logiciel (une requête sur la patientèle), montré
+ * tel quel à côté de la synthèse : le modèle le commente, il ne l'écrit pas.
+ */
+export interface TableauLigne { patientId: string; nom: string; cellules: string[]; statut: "retard" | "bientot" | "ok" | "info" }
+export interface Tableau { id: string; titre: string; colonnes: string[]; lignes: TableauLigne[]; /** La dernière colonne (un texte long : ce qu'il y a à proposer) se lit sous la ligne plutôt qu'en colonne étroite. */ derniereSousLigne?: boolean; /** Ce qui n'est pas listé (à jour, hors programme) et les règles appliquées. */ pied?: string[] }
 
 export interface ComposePlan {
   /** Une à trois phrases, avec renvois [n] vers `references` quand Locus a été consulté. */
@@ -78,12 +93,15 @@ export interface ComposePlan {
   locusEnPanne?: boolean;
   /** Le patient de la composition, pour le rendu des documents. */
   patient?: PatientPlan;
+  /** Les requêtes sur la patientèle faites pendant la composition, calculées sur les dossiers. */
+  tableaux?: Tableau[];
 }
 
 export type ComposeEvent =
   | { step: "reflexion"; titre: string }
   | { step: "outil"; nom: string; detail: string }
   | { step: "action"; action: ComposeAction }
+  | { step: "tableau"; tableau: Tableau }
   | { step: "texte"; texte: string }
   | { step: "done"; plan: ComposePlan }
   | { step: "error"; detail: string };

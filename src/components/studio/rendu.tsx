@@ -2,7 +2,7 @@
 import { TriangleAlert } from "lucide-react";
 import * as React from "react";
 import type { ComposeAction } from "@/locus/compose/contract";
-import { chargeOf, materialize, alerteAllergie, isoParis, type Charge, type RxLigne, RX_LABEL, CR_TYPE, DOS_LABEL, MSG_A, SORTIES, jourFr, heureFr } from "@/locus/compose/materialize";
+import { chargeOf, materialize, alerteAllergie, isoParis, type Charge, type RxLigne, RX_LABEL, CR_TYPE, DOS_LABEL, MSG_A, SORTIES, TR_SITUATION, TR_MODE, TR_AMBU, TR_LIEU, jourFr, heureFr } from "@/locus/compose/materialize";
 import { CABINET, DR_LAURENT } from "@/data/cabinet";
 import { Md } from "../md";
 import { I, Kbd, useT } from "./chrome";
@@ -16,8 +16,85 @@ import { cn } from "@/lib/cn";
  * place : un document modifié est renvoyé et remplace le précédent.
  */
 
-export interface PatientRendu { nom: string; naissance?: string; sexe?: "F" | "M"; age?: number; /** Pour recalculer le garde-fou allergie quand une ligne change. */ allergies?: string[] }
-const PRAT = { nom: `Dr ${DR_LAURENT.prenom} ${DR_LAURENT.nom}`, rpps: DR_LAURENT.rpps, specialite: DR_LAURENT.specialite, adresse: CABINET.adresse, cabinet: CABINET.nom, mssante: DR_LAURENT.mssante };
+export interface PatientRendu { nom: string; naissance?: string; sexe?: "F" | "M"; age?: number; /** Pour recalculer le garde-fou allergie quand une ligne change. */ allergies?: string[]; /** Fictifs, pour les formulaires administratifs (bon de transport). */ matricule?: string; adresse?: string }
+const PRAT = { nom: `Dr ${DR_LAURENT.prenom} ${DR_LAURENT.nom}`, rpps: DR_LAURENT.rpps, specialite: DR_LAURENT.specialite, adresse: CABINET.adresse, cabinet: CABINET.nom, mssante: DR_LAURENT.mssante, finess: CABINET.finess };
+
+/** Une case du formulaire, cochée ou non, et son libellé. */
+function Case({ on, children }: { on: boolean; children: React.ReactNode }) {
+  return <span className="inline-flex items-start gap-1.5"><span aria-hidden="true" className={cn("mt-[2px] flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-[2px] border", on ? "border-ink bg-ink text-paper" : "border-dim-2")}>{on && <I.check size={10} color="var(--paper)" w={3.5} />}</span><span className={on ? "font-medium" : "text-dim-2"}>{children}<span className="sr-only">{on ? " : coché" : " : non coché"}</span></span></span>;
+}
+/** Le bandeau noir des rubriques du cerfa. */
+const Bandeau = ({ children }: { children: React.ReactNode }) => <div className="bg-ink px-2 py-[3px] text-center text-[11px] font-semibold text-paper">{children}</div>;
+const Champ = ({ k, children }: { k: string; children: React.ReactNode }) => <div className="flex flex-col border-b border-line px-2 py-1"><span className="text-[10px] text-dim-2">{k}</span><span className="min-h-[18px] text-[12.5px]">{children}</span></div>;
+
+/**
+ * La prescription médicale de transport, rubrique par rubrique comme le cerfa
+ * n° 11574*04 (S3138d) : bénéficiaire et assuré, situation de prise en charge,
+ * mode de transport, trajet, urgence, éléments médicaux, prescripteur. Un
+ * spécimen fictif, marqué comme tel sur le papier.
+ */
+function BonDeTransport({ c, patient, quand, signe }: { c: Extract<Charge, { kind: "transport" }>; patient: PatientRendu; quand: string; signe: boolean }) {
+  const lieu = (t: string, l?: string) => (t === "domicile" ? "domicile" : l || "à préciser");
+  return (
+    <div className="relative flex flex-col gap-2.5 overflow-hidden text-[12px] leading-[1.45]">
+      <span aria-hidden="true" className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-[28deg] select-none whitespace-nowrap text-[64px] font-bold tracking-[.12em] text-dim-2 opacity-[.12]">SPÉCIMEN</span>
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex flex-col"><span className="text-[11px] italic">cerfa</span><span className="text-[11px] text-dim-2">n° 11574*04</span></div>
+        <div className="flex flex-1 flex-col items-center text-center"><h2 className="m-0 text-[16px] font-semibold">Prescription médicale de transport</h2><span className="text-[10px] text-dim-2">articles L. 162-4-1 2°, L. 321-1 2°, L. 322-5, L. 432-1, R. 322-2 du code de la sécurité sociale</span></div>
+        <span className="max-w-[120px] text-right text-[10px] text-dim-2">Volet 1 à adresser au contrôle médical</span>
+      </div>
+      <div className="rounded-[4px] border border-dashed border-line px-2 py-1 text-center text-[11px] font-medium">Spécimen fictif · patient fictif · sans valeur de prescription</div>
+
+      <Bandeau>la personne bénéficiaire du transport et l'assuré(e)</Bandeau>
+      <div className="grid grid-cols-1 border-l border-r border-t border-line sm:grid-cols-2">
+        <Champ k="nom et prénom">{patient.nom}</Champ>
+        <Champ k="date de naissance">{patient.naissance ?? ""}</Champ>
+        <Champ k="numéro d'immatriculation (fictif)">{patient.matricule ?? "non renseigné"}</Champ>
+        <Champ k="organisme de rattachement">caisse primaire (fictive)</Champ>
+        <div className="sm:col-span-2"><Champ k="adresse">{patient.adresse ?? ""}</Champ></div>
+      </div>
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1"><span>Assuré(e) : la personne bénéficiaire</span><span className="text-dim-2">Transport en rapport avec un accident causé par un tiers :</span><Case on={false}>oui</Case><Case on>non</Case></div>
+
+      <Bandeau>la prescription médicale</Bandeau>
+      <div className="flex flex-col gap-1"><b className="font-semibold">1 · Situation permettant la prise en charge du transport</b>
+        <div className="flex flex-col gap-1 pl-2">
+          <Case on={c.situation.includes("hospitalisation")}>entrée ou sortie d'hospitalisation (complète, partielle, ambulatoire), y compris séances de chimiothérapie, radiothérapie et hémodialyse</Case>
+          <span className="flex flex-wrap gap-x-4 gap-y-1"><span className="text-dim-2">transport en lien avec une affection de longue durée avec déficience ou incapacité :</span><Case on={c.situation.includes("ald-exoneree")}>ALD exonérante</Case><Case on={c.situation.includes("ald-non-exoneree")}>ALD non exonérante</Case></span>
+          <span className="flex flex-wrap gap-x-4"><Case on={c.situation.includes("at-mp")}>transport lié à un accident du travail ou à une maladie professionnelle</Case>{c.situation.includes("at-mp") && <span>date de l'AT/MP : {c.date_atmp ? frDate(c.date_atmp) : "à préciser"}</span>}</span>
+        </div>
+      </div>
+      <div className="flex flex-col gap-1"><b className="font-semibold">2 · Mode de transport au regard de l'état de santé et de l'autonomie</b>
+        <div className="flex flex-col gap-1 pl-2">
+          <Case on={c.mode === "ambulance"}>transport en ambulance, justifié par la nécessité :</Case>
+          <span className="flex flex-wrap gap-x-4 gap-y-1 pl-5">{Object.entries(TR_AMBU).map(([k, v]) => <Case key={k} on={c.mode === "ambulance" && c.ambulance_motifs.includes(k)}>{v}</Case>)}</span>
+          <span className="flex flex-wrap gap-x-4"><Case on={c.mode === "assis-professionnalise"}>transport assis professionnalisé (VSL, taxi conventionné)</Case><Case on={c.mode === "assis-professionnalise" && !!c.transport_partage}>l'état du patient permet un transport partagé</Case></span>
+          <span className="flex flex-wrap gap-x-4"><Case on={c.mode === "vehicule-personnel"}>moyen de transport individuel</Case><Case on={c.mode === "transport-en-commun"}>transport en commun terrestre</Case><Case on={(c.mode === "vehicule-personnel" || c.mode === "transport-en-commun") && !!c.accompagnant}>personne accompagnante nécessaire</Case></span>
+        </div>
+      </div>
+      <div className="flex flex-col gap-1"><b className="font-semibold">Trajet</b>
+        <div className="grid grid-cols-1 gap-2 pl-2 sm:grid-cols-2">
+          <div className="flex flex-col gap-0.5"><span className="text-dim-2">départ</span>{Object.entries(TR_LIEU).map(([k, v]) => <Case key={k} on={c.depart === k}>{v.toLowerCase()}{c.depart === k && k !== "domicile" ? ` : ${lieu(k, c.depart_lieu)}` : ""}</Case>)}</div>
+          <div className="flex flex-col gap-0.5"><span className="text-dim-2">arrivée</span>{Object.entries(TR_LIEU).map(([k, v]) => <Case key={k} on={c.arrivee === k}>{v.toLowerCase()}{c.arrivee === k && k !== "domicile" ? ` : ${lieu(k, c.arrivee_lieu)}` : ""}</Case>)}</div>
+        </div>
+        <span className="flex flex-wrap gap-x-5 pl-2"><Case on={c.aller_retour}>transport aller-retour</Case><span><b className="font-semibold">3 ·</b> nombre de transports itératifs : {c.iteratifs ?? "—"}</span></span>
+      </div>
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1"><b className="font-semibold">4 · Urgence :</b><Case on={c.urgence === "samu"}>appel du SAMU-centre 15</Case><Case on={c.urgence === "autre"}>autres{c.urgence === "autre" && c.urgence_precision ? ` : ${c.urgence_precision}` : ""}</Case></div>
+      <div className="flex flex-col gap-1"><b className="font-semibold">5 · Éléments d'ordre médical</b><div className="min-h-[40px] whitespace-pre-line rounded-[3px] border border-line px-2 py-1.5 text-[12.5px]">{c.elements_medicaux}</div></div>
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1"><b className="font-semibold">6 · Exonération du ticket modérateur, cas particuliers :</b><Case on={false}>oui</Case><Case on>non</Case><span className="text-dim-2">pension militaire d'invalidité :</span><Case on={false}>oui</Case><Case on>non</Case></div>
+
+      <Bandeau>Identification du prescripteur et de la structure dans laquelle il exerce</Bandeau>
+      <div className="grid grid-cols-1 border-l border-r border-t border-line sm:grid-cols-2">
+        <Champ k="nom et prénom">{PRAT.nom}</Champ>
+        <Champ k="raison sociale · adresse">{PRAT.cabinet} · {PRAT.adresse}</Champ>
+        <Champ k="identifiant (n° RPPS, fictif)">{PRAT.rpps}</Champ>
+        <Champ k="n° structure (FINESS, fictif)">{PRAT.finess}</Champ>
+        <Champ k="date">{frDate(quand)}</Champ>
+        <Champ k="signature">{signe ? "Signé e-CPS" : "à la signature e-CPS"}</Champ>
+      </div>
+      <span className="text-right text-[10px] text-dim-2">S3138d · reproduction fictive</span>
+    </div>
+  );
+}
 function frDate(iso?: string) { if (!iso) return ""; const d = new Date(iso); return isNaN(d.getTime()) ? iso : d.toLocaleDateString("fr-FR"); }
 function finArret(debut: string, jours: number) { const d = new Date(debut); d.setDate(d.getDate() + Math.max(1, jours) - 1); return d.toLocaleDateString("fr-FR"); }
 
@@ -92,6 +169,14 @@ export function DocumentRendu({ action, patient, date, compact }: { action: Comp
         </>
       );
       break;
+    case "transport":
+      corps = (
+        <>
+          <BonDeTransport c={c} patient={patient} quand={quand} signe={!!action.envoyeLe} />
+          {signature(action.envoyeLe ? "Signée · remise au patient pour le transporteur" : "Remise au patient après signature · volets 1 et 2")}
+        </>
+      );
+      break;
     case "dossier":
       corps = (
         <>
@@ -104,9 +189,10 @@ export function DocumentRendu({ action, patient, date, compact }: { action: Comp
   }
   return (
     <div className={cn("papier flex min-h-[420px] w-full flex-col gap-5 rounded-md border border-line bg-paper text-ink", compact ? "px-5 py-5" : "px-7 py-7 sm:px-9 sm:py-8")} style={{ boxShadow: "var(--shadow)" }}>
-      {entete}
-      {bloc}
-      <div className="flex flex-1 flex-col gap-3.5 border-t border-line-4 pt-4">{corps}</div>
+      {/* Le cerfa porte lui-même le bénéficiaire et le prescripteur : pas d'en-tête de cabinet par-dessus. */}
+      {c?.kind !== "transport" && entete}
+      {c?.kind !== "transport" && bloc}
+      <div className={cn("flex flex-1 flex-col gap-3.5", c?.kind !== "transport" && "border-t border-line-4 pt-4")}>{corps}</div>
     </div>
   );
 }
@@ -195,6 +281,36 @@ function Form({ c, onChange }: { c: Charge; onChange: (c: Charge) => void }) {
           <Lbl l={t.medicalReason} wide><input autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck={false} data-1p-ignore data-lpignore="true" value={c.motif} onChange={(e) => onChange({ ...c, motif: e.target.value })} className={inp} /></Lbl>
         </div>
       );
+    case "transport": {
+      const bascule = (liste: string[], k: string) => (liste.includes(k) ? liste.filter((x) => x !== k) : [...liste, k]);
+      const lieux = (k: "depart" | "arrivee") => {
+        const lk = k === "depart" ? "depart_lieu" : "arrivee_lieu";
+        return (
+          <Lbl l={k === "depart" ? t.trFrom : t.trTo}>
+            <select value={c[k]} onChange={(e) => onChange({ ...c, [k]: e.target.value })} className={inp}>{Object.entries(TR_LIEU).map(([v, l]) => <option key={v} value={v}>{L(l)}</option>)}</select>
+            {c[k] !== "domicile" && <input autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck={false} data-1p-ignore data-lpignore="true" value={c[lk] ?? ""} onChange={(e) => onChange({ ...c, [lk]: e.target.value || undefined })} placeholder={t.trPlacePh} aria-label={`${k === "depart" ? t.trFrom : t.trTo} · ${t.trPlacePh}`} className={inp} />}
+          </Lbl>
+        );
+      };
+      return (
+        <div className="flex flex-col gap-3">
+          <fieldset className="flex flex-col gap-1.5"><legend className="k pb-1">{t.trSituation}</legend>{Object.entries(TR_SITUATION).map(([k, v]) => <label key={k} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={c.situation.includes(k)} onChange={() => onChange({ ...c, situation: bascule(c.situation, k) })} /> {L(v)}</label>)}</fieldset>
+          {c.situation.includes("at-mp") && <Lbl l={t.trAtmpDate}><input type="date" value={c.date_atmp ?? ""} onChange={(e) => onChange({ ...c, date_atmp: e.target.value || undefined })} className={inp} /></Lbl>}
+          <Lbl l={t.trMode}><select value={c.mode} onChange={(e) => onChange({ ...c, mode: e.target.value })} className={inp}>{Object.entries(TR_MODE).map(([k, v]) => <option key={k} value={k}>{L(v)}</option>)}</select></Lbl>
+          {c.mode === "ambulance" && <fieldset className="flex flex-col gap-1.5"><legend className="k pb-1">{t.trAmbulance}</legend>{Object.entries(TR_AMBU).map(([k, v]) => <label key={k} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={c.ambulance_motifs.includes(k)} onChange={() => onChange({ ...c, ambulance_motifs: bascule(c.ambulance_motifs, k) })} /> {L(v)}</label>)}</fieldset>}
+          {c.mode === "assis-professionnalise" && <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={!!c.transport_partage} onChange={(e) => onChange({ ...c, transport_partage: e.target.checked })} /> {t.trShared}</label>}
+          {(c.mode === "vehicule-personnel" || c.mode === "transport-en-commun") && <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={!!c.accompagnant} onChange={(e) => onChange({ ...c, accompagnant: e.target.checked })} /> {t.trEscort}</label>}
+          <div className="grid gap-3 sm:grid-cols-2">{lieux("depart")}{lieux("arrivee")}</div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="flex items-center gap-2 self-end pb-2 text-sm"><input type="checkbox" checked={c.aller_retour} onChange={(e) => onChange({ ...c, aller_retour: e.target.checked })} /> {t.trReturn}</label>
+            <Lbl l={t.trIterative}><input autoComplete="off" type="number" min={0} max={99} value={c.iteratifs ?? ""} onChange={(e) => onChange({ ...c, iteratifs: Number(e.target.value) > 0 ? Math.round(Number(e.target.value)) : undefined })} className={inp} /></Lbl>
+          </div>
+          <Lbl l={t.trUrgency}><select value={c.urgence} onChange={(e) => onChange({ ...c, urgence: e.target.value })} className={inp}><option value="non">{t.trUrgencyNone}</option><option value="samu">{t.trUrgencySamu}</option><option value="autre">{t.trUrgencyOther}</option></select></Lbl>
+          {c.urgence === "autre" && <input autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck={false} data-1p-ignore data-lpignore="true" value={c.urgence_precision ?? ""} onChange={(e) => onChange({ ...c, urgence_precision: e.target.value || undefined })} placeholder={t.trUrgencyPh} aria-label={`${t.trUrgency} · ${t.trUrgencyPh}`} className={inp} />}
+          <Lbl l={t.trMedical}><textarea autoComplete="off" autoCorrect="off" spellCheck={false} value={c.elements_medicaux} rows={4} placeholder={t.trMedicalPh} onChange={(e) => onChange({ ...c, elements_medicaux: e.target.value })} className={cn(inp, "resize-y leading-[1.5]")} /></Lbl>
+        </div>
+      );
+    }
     case "dossier":
       return (
         <div className="flex flex-col gap-3">

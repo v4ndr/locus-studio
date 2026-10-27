@@ -8,6 +8,7 @@ import { fmtTime, fmtRelative, initials } from "@/lib/format";
 import type { Dossier, Proposal, LabReport, ClinicalDocument, Prescription, SickLeave, Letter, Encounter } from "@/domain/types";
 import type { HomeData, PatientRef, PatientView, Note, NoteAction, Fiche, Chip, DocRow, AgendaSlot, DocView, DocLine, InboxKind, InboxRow, InboxView, Urgence } from "./types";
 import { norm } from "@/lib/norm";
+import { ficheDepistages } from "@/locus/compose/patientele";
 
 const PRATICIEN = { initials: `${DR_LAURENT.prenom[0]}${DR_LAURENT.nom[0]}`, nom: `Dr ${DR_LAURENT.prenom} ${DR_LAURENT.nom}` };
 
@@ -68,7 +69,8 @@ export function patientView(id: string): PatientView | undefined {
   const traitements: Fiche[] = meds.map((m) => ({ k: `${cap(m.dci)}${m.dosage ? " " + m.dosage : ""} · ${m.posologie}`, v: m.debut ? `depuis ${yr(m.debut)}` : m.dernierRenouvellement ? m.dernierRenouvellement.slice(5, 7) + "/" + yr(m.dernierRenouvellement) : undefined }));
   const suivis: Fiche[] = chron.filter((x) => x.note).map((x) => ({ k: x.libelle, v: x.note }));
   const depistages: Fiche[] = [
-    ...recordsOf(d, "screening").map((s) => ({ k: s.libelle.replace(/ \(.*\)/, ""), v: s.etat === "non-eligible" ? yr(s.prochainLe) : s.etat === "en-retard" ? "en retard" : s.etat === "a-proposer" ? "à proposer" : yr(s.dernierLe), muted: s.etat === "non-eligible" })),
+    // Calculés sur le dossier (âge, sexe, antécédents, dernier test), comme la requête de patientèle du composer.
+    ...ficheDepistages(d.patient.id),
     ...recordsOf(d, "vaccination").slice(0, 3).map((v) => ({ k: `${v.valences.join(" · ")}${v.rappelPrevu && v.rappelPrevu < TODAY ? " · rappel" : ""}`, v: v.rappelPrevu && v.rappelPrevu < TODAY ? "dû" : yr(v.date) })),
   ];
 
@@ -143,6 +145,7 @@ export function patientView(id: string): PatientView | undefined {
     documents: rows,
     suivant: nxt ? { id: nxt.dossier.patient.id, nom: displayName(nxt.dossier.patient) } : undefined,
     ehr: toPatientEhr(d, now()),
+    administratif: { matricule: p.ins.matricule, adresse: p.contact.adresse ? `${p.contact.adresse.ligne1}, ${p.contact.adresse.codePostal} ${p.contact.adresse.ville}` : undefined },
   };
 }
 
