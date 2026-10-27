@@ -3,6 +3,7 @@ import * as React from "react";
 import { CreditCard, FileText, FlaskConical, Mail, Pill, Printer, User } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { dossier, frDate, REF_DATE, type AnchorId } from "@/data/integration-lgc/fournier";
+import { LocusMark } from "@/components/shell/locus-mark";
 import s from "./medicab.module.css";
 
 /**
@@ -10,7 +11,7 @@ import s from "./medicab.module.css";
  * patient, historique, consultation, ordonnance, panneaux. Les quatre zones
  * d'injection (`Zone`) reçoivent les sorties Locus et, pendant l'assistant,
  * le bouton « Injecter ici » ou le repère « Point d'injection ».
- * MédiCab garde son allure d'époque ; seules les surfaces Locus détonnent.
+ * MédiCab est délavé exprès : seules les surfaces Locus, vertes, ressortent.
  */
 
 export type ZoneMode = "idle" | "cand" | "sel";
@@ -68,8 +69,8 @@ export function Medicab(p: MedicabProps) {
           <span className={s.tbBtn}><CreditCard aria-hidden="true" />Feuille de soins</span>
           <span className={s.tbBtn}><Printer aria-hidden="true" />Imprimer</span>
           {p.toolbarLocus.show && (
-            <button type="button" onClick={p.toolbarLocus.onClick} aria-pressed={p.toolbarLocus.open} title={p.toolbarLocus.hint} className={cn("flex items-center gap-1.5 rounded-sm px-2.5 py-1 font-sans text-xs font-medium", p.toolbarLocus.open ? "bg-primary text-primary-foreground" : "border border-primary bg-background text-foreground")}>
-              Locus
+            <button type="button" onClick={p.toolbarLocus.onClick} aria-pressed={p.toolbarLocus.open} title={p.toolbarLocus.hint} className={cn("locus-btn flex h-7 items-center gap-1.5 rounded-full pl-2 pr-3 font-sans text-xs font-semibold", p.toolbarLocus.open && "ring-2 ring-[var(--glow)] ring-offset-1")}>
+              <LocusMark size={14} />Locus
             </button>
           )}
           <span className="flex-1" />

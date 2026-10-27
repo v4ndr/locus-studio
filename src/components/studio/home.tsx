@@ -12,6 +12,7 @@ import { BrouillonsAccueil } from "./note";
 import { initials } from "@/lib/format";
 import { norm } from "@/lib/norm";
 import { cn } from "@/lib/cn";
+import { LocusMark } from "@/components/shell/locus-mark";
 
 /** L'accueil : « Qui voyez-vous ? ». Une recherche, l'agenda, rien d'autre. */
 export function Home({ data }: { data: HomeData }) {
@@ -99,7 +100,7 @@ export function Home({ data }: { data: HomeData }) {
                 {hits.map((h, i) => <PatientRow key={h.id} p={h} active={i === sel} first={i === 0} data={data} onHover={() => setSel(i)} exclure={hits.map((x) => x.id)} />)}
                 {askRow && (
                   <button type="button" onMouseEnter={() => setSel(hits.length)} onClick={() => demander(q.trim())} className={cn("flex w-full items-center gap-3 rounded-[10px] px-3 py-3 text-left text-sm text-ink", sel === hits.length ? "bg-agent-soft-2" : "hover:bg-hover")}>
-                    <span className="flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-full bg-agent-soft text-[11px] font-semibold" style={{ color: "var(--agent)" }}>⌘K</span>
+                    <span className="locus-tint flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-full"><LocusMark size={18} /></span>
                     <span className="flex min-w-0 flex-1 flex-col gap-[3px]"><span className="text-[15px]">{t.askLocus}</span><span className="truncate text-[13px] text-dim">{t.home.askHint(q)}</span></span>
                     {sel === hits.length && <Kbd>⏎</Kbd>}
                   </button>

@@ -1,12 +1,8 @@
 /*
- * Les surfaces Locus dans MédiCab 7 : elles doivent se voir du premier coup
- * d'œil dans un écran legacy chargé. Contour plein de 2 px à la couleur
- * Locus (sur tout le pourtour), ombre portée nette, et une arrivée animée :
- * la carte glisse en place puis son halo s'éteint. Rien ne bouge ensuite.
+ * Les surfaces Locus dans MédiCab 7 : le vert de `.locus-surface` (globals)
+ * sur un MédiCab délavé, plus une arrivée animée : la carte glisse en place,
+ * puis son halo glow s'éteint. Rien ne bouge ensuite.
  */
-.surface {
-  box-shadow: 0 0 0 2px var(--brand), 0 14px 34px -8px rgba(15, 30, 50, .45);
-}
 .arrive {
   animation: arrive .34s cubic-bezier(.2, .8, .2, 1) both, halo 1.4s ease-out .34s 1 both;
 }
@@ -15,8 +11,8 @@
   to { opacity: 1; transform: none; }
 }
 @keyframes halo {
-  from { box-shadow: 0 0 0 2px var(--brand), 0 0 0 10px var(--brand-soft), 0 14px 34px -8px rgba(15, 30, 50, .45); }
-  to { box-shadow: 0 0 0 2px var(--brand), 0 0 0 0 transparent, 0 14px 34px -8px rgba(15, 30, 50, .45); }
+  from { box-shadow: 0 0 0 1px var(--locus-halo), 0 0 0 10px rgba(141, 179, 171, .3), var(--locus-drop); }
+  to { box-shadow: 0 0 0 1px var(--locus-halo), 0 0 0 0 transparent, var(--locus-drop); }
 }
 @media (prefers-reduced-motion: reduce) {
   .arrive { animation: none; }

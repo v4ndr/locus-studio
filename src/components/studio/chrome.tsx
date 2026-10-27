@@ -4,7 +4,7 @@ import Link from "./nav";
 import { useRouter } from "./nav";
 import { cn } from "@/lib/cn";
 import { useLang } from "@/i18n/lang";
-import { common, studio } from "@/i18n";
+import { studio } from "@/i18n";
 import { lbl } from "@/i18n/studio";
 import { LocusMark } from "@/components/shell/locus-mark";
 
@@ -30,22 +30,18 @@ export function Kbd({ children, dark, className }: { children: React.ReactNode; 
   return <span className={cn("kbd", dark && "kbd-dark", className)}>{children}</span>;
 }
 
-/** Le nom de l'outil, en tête des écrans du Studio : ramène à son accueil. */
-export function Wordmark({ href = "/" }: { href?: string }) {
-  const lang = useLang();
-  return <Link href={href} className="flex items-center gap-2 text-[15px] font-semibold tracking-[-.01em] text-ink hover:text-ink">{common[lang].tools.lgcNatif}</Link>;
-}
-
 export function Avatar({ initials, size = 38, accent, className }: { initials: string; hue?: number; size?: number; accent?: boolean; className?: string }) {
   // Noir : avatars neutres, sans teinte par patient.
   return <span className={cn("flex shrink-0 items-center justify-center rounded-full border font-medium", accent ? "border-input bg-accent text-foreground" : "border-border bg-muted text-muted-foreground", className)} style={{ width: size, height: size, fontSize: size >= 36 ? 13 : 11 }}>{initials}</span>;
 }
 
 /**
- * L'en-tête : le wordmark ramène toujours à l'accueil ; sur un dossier, une
- * flèche remonte d'un cran et `esc` fait pareil. À droite, le thème et le praticien.
+ * L'en-tête d'un écran du LGC, sous les pilules flottantes de la coque : elles
+ * portent déjà la marque, le nom du LGC et le compte, alors l'en-tête ne les
+ * répète pas. Il ne garde que le contexte : la flèche qui remonte d'un cran
+ * (`esc` fait pareil) et le patient ouvert. Sur l'accueil, rien.
  */
-export function Header({ praticien, patient, back }: { praticien: { initials: string }; patient?: { id: string; nom: string; initials: string; meta?: string; href?: string }; back?: string }) {
+export function Header({ patient, back }: { praticien?: { initials: string }; patient?: { id: string; nom: string; initials: string; meta?: string; href?: string }; back?: string }) {
   const router = useRouter();
   const lang = useLang();
   const up = back ?? (patient ? "/" : undefined);
@@ -62,11 +58,12 @@ export function Header({ praticien, patient, back }: { praticien: { initials: st
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [up, router]);
+  if (!up && !patient) return null;
+  const retour = up === "/" ? studio[lang].backHome : studio[lang].back;
   return (
-    <header className="flex items-center gap-2 border-b border-line-2 px-4 py-3.5 sm:gap-3 sm:px-7">
-      <div className="flex shrink-0 items-center gap-2 sm:flex-1 sm:gap-3">
-        {up && <Link href={up} aria-label={up === "/" ? studio[lang].backHome : studio[lang].back} title={`${up === "/" ? studio[lang].backHome : studio[lang].back} · esc`} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-ink-3 hover:bg-hover hover:text-ink"><span className="flex h-[30px] w-[30px] items-center justify-center rounded-full border border-line bg-paper"><I.back /></span></Link>}
-        <Wordmark />
+    <header className="flex items-center gap-2 px-4 pb-1 pt-2 sm:gap-3 sm:px-7">
+      <div className="flex shrink-0 items-center sm:flex-1">
+        {up && <Link href={up} aria-label={retour} title={`${retour} · esc`} className="flex h-10 shrink-0 items-center gap-2 rounded-full pr-3 text-[13px] text-ink-3 hover:bg-hover hover:text-ink"><span className="flex h-[30px] w-[30px] items-center justify-center rounded-full border border-line bg-paper"><I.back /></span><span className="hidden sm:inline">{studio[lang].back}</span></Link>}
       </div>
       <div className="flex min-w-0 flex-1 justify-center">
         {patient && (
@@ -77,9 +74,7 @@ export function Header({ praticien, patient, back }: { praticien: { initials: st
           </Link>
         )}
       </div>
-      <div className="flex shrink-0 items-center justify-end gap-2 sm:flex-1">
-        <span className="flex h-[30px] w-[30px] items-center justify-center rounded-full bg-ink text-[11px] font-medium text-paper">{praticien.initials}</span>
-      </div>
+      <div className="hidden shrink-0 sm:block sm:flex-1" />
     </header>
   );
 }
@@ -137,8 +132,8 @@ export function Omni({ placeholder, onSubmit, cta, chips, children, maxWidth = 7
         {/* Ce que Locus a préparé : signé de sa marque, contrasté, et qui arrive (une fois) plutôt que d'attendre qu'on le remarque. */}
         {chips && chips.length > 0 && !showHints && !hasChild && (
           <div className="flex flex-wrap items-center gap-2" role="group" aria-label={t.omni.prepared}>
-            <span className="flex items-center gap-1.5 pr-1 text-[13px] font-medium text-ink"><LocusMark size={15} />{t.omni.prepared}</span>
-            {chips.map((c, i) => <button key={c.id} type="button" onClick={c.onClick} className="locus-chip min-h-10 rounded-full border border-input bg-accent px-3.5 py-[7px] text-[13px] font-medium text-ink hover:bg-secondary" style={{ animationDelay: `${120 + i * 70}ms` }}>{c.label}</button>)}
+            <span className="locus-tag mr-1"><LocusMark size={14} />{t.omni.prepared}</span>
+            {chips.map((c, i) => <button key={c.id} type="button" onClick={c.onClick} className="locus-chip locus-tint min-h-10 rounded-full px-3.5 py-[7px] text-[13px] font-medium" style={{ animationDelay: `${120 + i * 70}ms` }}>{c.label}</button>)}
           </div>
         )}
         <form onSubmit={(e) => { e.preventDefault(); if (showHints && sel >= 0) { setV(suggestions![sel].t); setSel(-1); return; } envoyer(v); }} className="flex items-center gap-2 rounded-[14px] border border-line bg-paper py-2.5 pl-4 pr-2.5 focus-within:border-agent-line sm:gap-3 sm:py-3 sm:pl-[18px] sm:pr-3" style={{ boxShadow: "var(--shadow)" }}>

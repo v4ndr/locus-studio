@@ -9,6 +9,7 @@ export async function generateMetadata({ params }: { params: Promise<{ lang: str
   return { title: { absolute: `${studio[l].meta.title} · Locus Studio` }, description: studio[l].meta.description };
 }
 
+/** `.ehr-fade` : le LGC lui-même baisse d'un cran ; ce qui est Locus (`.locus-surface`, `.locus-tint`, `.locus-btn`) ressort. */
 export default function Layout({ children }: { children: React.ReactNode }) {
-  return children;
+  return <div className="ehr-fade">{children}</div>;
 }
