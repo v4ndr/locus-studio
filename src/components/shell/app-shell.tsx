@@ -12,7 +12,7 @@ import { Segmented } from "@/components/ui/segmented";
 import { LocusMark } from "./locus-mark";
 import { useTheme, type Mode } from "./theme";
 import { CommandPalette, type PaletteItem } from "./command-palette";
-import { TOOL_ICONS } from "./tool-icons";
+import { TOOL_ICONS, cibleOutil } from "./tool-icons";
 import { AccountFooter } from "@/sandbox/acces/account";
 
 /**
@@ -78,9 +78,9 @@ function Brand({ lang }: { lang: Lang }) {
   );
 }
 
-function MenuLink({ href, icon: Icon, label, active, extra, onClick }: { href: string; icon: LucideIcon; label: string; active: boolean; extra?: React.ReactNode; onClick: () => void }) {
+function MenuLink({ href, icon: Icon, label, active, extra, onClick, target, rel }: { href: string; icon: LucideIcon; label: string; active: boolean; extra?: React.ReactNode; onClick: () => void; target?: "_blank"; rel?: string }) {
   return (
-    <Link href={href} onClick={onClick} aria-current={active ? "page" : undefined} className={cn("flex h-9 items-center gap-2.5 rounded-full px-3 text-foreground", active ? "bg-accent font-semibold" : "hover:bg-accent")}>
+    <Link href={href} target={target} rel={rel} onClick={onClick} aria-current={active ? "page" : undefined} className={cn("flex h-9 items-center gap-2.5 rounded-full px-3 text-foreground", active ? "bg-accent font-semibold" : "hover:bg-accent")}>
       <Icon size={16} aria-hidden="true" className="shrink-0 text-muted-foreground" />
       <span className="min-w-0 flex-1 truncate">{label}</span>
       {extra}
@@ -101,7 +101,7 @@ function ShellMenu({ lang, pathname, onClose }: { lang: Lang; pathname: string; 
         <div className="grid gap-px min-[821px]:hidden">
           <MenuLink href={route(lang, "home")} icon={House} label={t.nav.home} active={actif("home")} onClick={onClose} />
           <p className="eyebrow m-0 px-3 pb-1 pt-3 text-[11px]">{t.nav.sandbox}</p>
-          {TOOLS.map((k) => <MenuLink key={k} href={route(lang, k)} icon={TOOL_ICONS[k]} label={t.tools[k]} active={actif(k)} onClick={onClose} />)}
+          {TOOLS.map((k) => <MenuLink key={k} href={route(lang, k)} {...cibleOutil(k)} icon={TOOL_ICONS[k]} label={t.tools[k]} active={actif(k)} onClick={onClose} />)}
         </div>
         <p className="eyebrow m-0 px-3 pb-1 pt-3 text-[11px] min-[821px]:pt-2">{t.nav.resources}</p>
         <MenuLink href={route(lang, "documentation")} icon={BookOpen} label={t.nav.docs} active={actif("documentation")} onClick={onClose} />
@@ -144,7 +144,7 @@ function Actions({ lang, pathname, onSearch }: { lang: Lang; pathname: string; o
             const Icon = TOOL_ICONS[k];
             const on = actif(k);
             return (
-              <Link key={k} href={route(lang, k)} aria-current={on ? "page" : undefined} aria-label={t.tools[k]} title={t.tools[k]} className={cn("flex h-9 shrink-0 items-center gap-2 rounded-full [&_svg]:size-4", on ? "bg-primary px-3.5 font-semibold text-primary-foreground" : "w-9 justify-center text-foreground hover:bg-accent")}>
+              <Link key={k} href={route(lang, k)} {...cibleOutil(k)} aria-current={on ? "page" : undefined} aria-label={t.tools[k]} title={t.tools[k]} className={cn("flex h-9 shrink-0 items-center gap-2 rounded-full [&_svg]:size-4", on ? "bg-primary px-3.5 font-semibold text-primary-foreground" : "w-9 justify-center text-foreground hover:bg-accent")}>
                 <Icon aria-hidden="true" />{on && <span className="whitespace-nowrap text-[13px] max-[1180px]:sr-only">{t.tools[k]}</span>}
               </Link>
             );

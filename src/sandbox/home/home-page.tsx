@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ArrowRight, ArrowUpRight, BookOpen } from "lucide-react";
 import { common, home, route, TOOLS, type Lang } from "@/i18n";
-import { TOOL_ICONS } from "@/components/shell/tool-icons";
+import { TOOL_ICONS, cibleOutil } from "@/components/shell/tool-icons";
 import { LocusMarkMotion } from "@/components/shell/locus-mark-motion";
 
 /** L'adresse de l'équipe, pour une clé d'API ou un accès MCP. */
@@ -33,7 +33,7 @@ export function HomePage({ lang }: { lang: Lang }) {
             const Icon = TOOL_ICONS[k];
             return (
               <li key={k} className="flex">
-                <Link href={route(lang, k)} className="group flex w-full flex-col gap-7 rounded-[20px] border border-border bg-card p-5 min-[641px]:gap-12 min-[641px]:p-6 transition-colors hover:border-brand min-[821px]:p-7">
+                <Link href={route(lang, k)} {...cibleOutil(k)} className="group flex w-full flex-col gap-7 rounded-[20px] border border-border bg-card p-5 min-[641px]:gap-12 min-[641px]:p-6 transition-colors hover:border-brand min-[821px]:p-7">
                   <span className="flex items-center justify-between">
                     <span className="tileico"><Icon aria-hidden="true" /></span>
                     <ArrowUpRight size={20} aria-hidden="true" className="text-muted-foreground transition-colors group-hover:text-brand" />
