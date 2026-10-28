@@ -10,7 +10,7 @@ import { Badge, StatusDot } from "@/components/ui/badge";
 import { Box, Card, CardAction, CardBody, CardFooter, CardIcon, CardText, CardTitle } from "@/components/ui/card";
 import { CONSULTATIONS, consultation, transcriptTexte, type Consultation, type RubriqueCr } from "@/data/scribe/consultations";
 import type { DecisionReponse, ErreurReponse, LiveProbe, ModeleNote, NoteReponse } from "@/data/scribe/live";
-import { ActionRow, AideCard, NoteTable, Player, Provenance, Recap, Stepper, TranscriptLines, type EtatGen, type LigneVue } from "./parts";
+import { ActionRow, AideLocus, NoteTable, Player, Provenance, Recap, Stepper, TranscriptLines, type EtatGen, type LigneVue } from "./parts";
 import { useDictee } from "./dictee";
 import { LocusLoader } from "@/components/shell/locus-loader";
 
@@ -71,8 +71,6 @@ export function ScribePage({ lang }: { lang: Lang }) {
   const [step, setStep] = React.useState(1);
   const [unlocked, setUnlocked] = React.useState(1);
   const [modele, setModele] = React.useState<ModeleNote>("mg");
-  const [why, setWhy] = React.useState<Record<number, boolean>>({});
-  const [retained, setRetained] = React.useState<Record<number, boolean>>({});
   const [status, setStatus] = React.useState<Record<number, Statut | undefined>>({});
   const [texts, setTexts] = React.useState<string[]>([]);
   const [editing, setEditing] = React.useState<number | null>(null);
@@ -112,7 +110,7 @@ export function ScribePage({ lang }: { lang: Lang }) {
   const isMic = cid === MICRO;
   const c = isMic ? undefined : consultation(cid);
   const plan = React.useMemo(() => (c ? planning(c) : null), [c]);
-  const aide = dec?.aide ?? [];
+  const aide = dec?.aide ?? null;
 
   /* ---------- Lecture ---------- */
   React.useEffect(() => {
@@ -170,12 +168,13 @@ export function ScribePage({ lang }: { lang: Lang }) {
   }, [micTr, dictee.etat]);
 
   /* ---------- Génération : compte rendu, puis aide et actions ---------- */
-  const genererDecision = async (note: string) => {
+  /** `k` : la consultation enregistrée en cours, passée explicitement (la fermeture de `lancer` voit encore l'ancienne). */
+  const genererDecision = async (note: string, k: Consultation | undefined = c) => {
     const n = ++seq.current.dec;
     decPour.current = note;
-    setDecGen({ etat: "encours" }); setDec(null); setRetained({}); setWhy({}); setStatus({}); setTexts([]); setEditing(null);
+    setDecGen({ etat: "encours" }); setDec(null); setStatus({}); setTexts([]); setEditing(null);
     try {
-      const r = await fetchLive("/api/scribe/decision", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ note, motif: c?.motif }) });
+      const r = await fetchLive("/api/scribe/decision", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ note, motif: k?.motif, patient: k?.patient }) });
       if (n !== seq.current.dec) return;
       if (!r.ok) { const e = await erreurDe(t, r); if (n === seq.current.dec) setDecGen({ etat: "erreur", erreur: e }); return; }
       const j = (await r.json()) as DecisionReponse;
@@ -187,11 +186,11 @@ export function ScribePage({ lang }: { lang: Lang }) {
   };
 
   /** Le compte rendu depuis la dictée ; s'il aboutit, l'aide et les actions suivent aussitôt. */
-  const genererNote = async (transcript: string, motif: string | undefined, m: ModeleNote) => {
+  const genererNote = async (transcript: string, motif: string | undefined, m: ModeleNote, k: Consultation | undefined = c) => {
     const n = ++seq.current.note;
     seq.current.dec++; decPour.current = null;
     setNoteGen({ etat: "encours" }); setCr([]); setCrVals([]);
-    setDecGen(ATTENTE); setDec(null); setTexts([]); setRetained({}); setWhy({}); setStatus({});
+    setDecGen(ATTENTE); setDec(null); setTexts([]); setStatus({});
     try {
       const r = await fetchLive("/api/scribe/note", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ transcript, modele: m, motif }) });
       if (n !== seq.current.note) return;
@@ -200,7 +199,7 @@ export function ScribePage({ lang }: { lang: Lang }) {
       if (n !== seq.current.note) return;
       const vals = j.cr.map((x) => x.valeur);
       setCr(j.cr); setCrVals(vals); setNoteGen({ etat: "pret" });
-      void genererDecision(noteTexte(j.cr, vals));
+      void genererDecision(noteTexte(j.cr, vals), k);
     } catch {
       if (n === seq.current.note) setNoteGen({ etat: "erreur", erreur: t.errors.reseau });
     }
@@ -214,14 +213,14 @@ export function ScribePage({ lang }: { lang: Lang }) {
     dictee.arreter();
     seq.current.note++; seq.current.dec++; decPour.current = null;
     setCid(id); setStep(1); setUnlocked(1); setPlaying(false); setPos(0); setModele("mg");
-    setWhy({}); setRetained({}); setStatus({}); setEditing(null); setShowTr(false); setCopied(false);
+    setStatus({}); setEditing(null); setShowTr(false); setCopied(false);
     setTexts([]); setMicTr(""); setCr([]); setCrVals([]); setDec(null); setNoteGen(ATTENTE); setDecGen(ATTENTE);
   };
   /** Une consultation enregistrée : la lecture démarre et la génération part aussitôt, sans attendre la fin. */
   const lancer = (k: Consultation) => {
     reset(k.id);
     setPlaying(true);
-    void genererNote(transcriptTexte(k), k.motif, "mg");
+    void genererNote(transcriptTexte(k), k.motif, "mg", k);
   };
   const go = (n: number) => {
     setEditing(null);
@@ -238,8 +237,9 @@ export function ScribePage({ lang }: { lang: Lang }) {
   };
 
   /* ---------- Actions ---------- */
+  // Les actions que la recommandation nomme passent en tête, marquées comme telles.
   const retainedActs: Record<number, boolean> = {};
-  aide.forEach((a, i) => { if (retained[i] && a.action !== undefined && a.action >= 0) retainedActs[a.action] = true; });
+  (dec?.liees ?? []).forEach((i) => { retainedActs[i] = true; });
   const order = texts.map((_, i) => i).sort((a, b) => (retainedActs[b] ? 1 : 0) - (retainedActs[a] ? 1 : 0));
   const okActions = texts.filter((_, i) => status[i] === "ok");
   const setStat = (i: number, v: Statut) => { setStatus((s) => ({ ...s, [i]: s[i] === v ? undefined : v })); setEditing(null); };
@@ -397,13 +397,11 @@ export function ScribePage({ lang }: { lang: Lang }) {
           <div className="flex flex-col gap-3">
             {decGen.etat === "encours" || decGen.etat === "attente" ? <Attente texte={t.liveMode.thinking} />
               : decGen.etat === "erreur" ? <Erreur texte={decGen.erreur ?? t.errors.echec} retry={t.retry} onRetry={() => void genererDecision(noteCourante)} />
-              : aide.length === 0 ? <Erreur texte={t.liveMode.emptyAide} neutre />
+              : !aide ? <Erreur texte={t.liveMode.emptyAide} neutre />
               : (
                 <>
                   <Genere texte={t.run.generatedAide} />
-                  {aide.map((a, i) => (
-                    <AideCard key={i} t={t} a={a} retained={!!retained[i]} open={!!why[i]} onRetain={() => setRetained((r) => ({ ...r, [i]: !r[i] }))} onWhy={() => setWhy((w) => ({ ...w, [i]: !w[i] }))} />
-                  ))}
+                  <AideLocus t={t} lang={lang} a={aide} />
                 </>
               )}
           </div>

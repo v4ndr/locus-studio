@@ -2,7 +2,8 @@
  * Le contrat des routes live du scribe (`/api/scribe/*`), partagé serveur /
  * navigateur. Ni nom de modèle, ni fournisseur, ni identifiant de règle.
  */
-import type { CarteAide, RubriqueCr } from "./consultations";
+import type { RubriqueCr } from "./consultations";
+import type { ChatSource, Confiance } from "@/sandbox/chatbot/events";
 
 export type ModeleNote = "mg" | "ped" | "gyn";
 
@@ -11,7 +12,21 @@ export interface LiveProbe { dictee: boolean }
 
 export interface NoteReponse { cr: RubriqueCr[] }
 
-export interface DecisionReponse { aide: CarteAide[]; actions: string[] }
+/**
+ * L'aide à la décision de Locus, rendue comme dans l'app B2Pro : la réponse
+ * en Markdown, ses renvois renumérotés `[n]`, les seules sources qu'elle cite
+ * (par nature, avec leur éditeur) et son degré de confiance. `alerte` : le
+ * garde-fou d'allergie du composeur, s'il s'est déclenché.
+ */
+export interface AideDecision {
+  markdown: string;
+  sources: ChatSource[];
+  confidence: Confiance;
+  alerte?: string;
+}
+
+/** `liees` : les index des actions que la recommandation nomme (une molécule, un examen). */
+export interface DecisionReponse { aide: AideDecision | null; actions: string[]; liees: number[] }
 
 /**
  * Les codes d'erreur des routes de génération, que la page traduit :

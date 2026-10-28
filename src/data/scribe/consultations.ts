@@ -23,16 +23,6 @@ export interface Transcript { id: string; duree_s: number; lignes: LigneTranscri
 /** Une rubrique du compte rendu. `titre` : ligne d'en-tête sans valeur ; `sous` : sous-rubrique (indentée). */
 export interface RubriqueCr { label: string; valeur: string; titre?: boolean; sous?: boolean }
 
-/** Une carte d'aide à la décision. `action` : l'index de l'action liée, que « Retenir » fait remonter. */
-export interface CarteAide {
-  titre: string;
-  detail: string;
-  alerte?: string;
-  sources: string[];
-  pourquoi: string[];
-  action?: number;
-}
-
 export interface Consultation {
   id: string;
   motif: string;
