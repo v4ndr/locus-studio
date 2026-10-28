@@ -31,45 +31,53 @@ export interface IndexFile {
   chunks: { d: number; x: string; e: string; s: number }[];
 }
 
-interface Loaded { file: IndexFile; vecs: Float32Array[] }
+/** Les vecteurs restent en int8 avec leur échelle : ~4 fois moins de mémoire qu'en flottants pour ~23 000 blocs. */
+interface Loaded { file: IndexFile; vecs: Int8Array[]; norms: Float32Array }
 
-let cache: Promise<Loaded | null> | null = null;
+/** Pourquoi l'index manque : non configuré, téléchargement en échec, ou fichier illisible. Le détail part dans les journaux. */
+type Manque = "unset" | "fetch" | "parse";
 
-async function lireIndex(): Promise<IndexFile | null> {
+let cache: Promise<Loaded | Manque> | null = null;
+
+async function lireIndex(): Promise<IndexFile | Manque> {
   const url = process.env.CHATBOT_INDEX_URL?.trim();
   if (url) {
+    let r: Response;
     try {
       // L'index des RBP HAS pèse ~100 Mo (~45 Mo compressé) : le premier appel d'une instance le télécharge.
-      const r = await fetch(url, { cache: "no-store", signal: AbortSignal.timeout(45_000) });
-      if (r.ok) return (await r.json()) as IndexFile;
-      console.error("[chatbot/rag] index distant", r.status);
-    } catch (e) { console.error("[chatbot/rag] index distant", e); }
-    return null;
+      r = await fetch(url, { cache: "no-store", signal: AbortSignal.timeout(90_000) });
+    } catch (e) { console.error("[chatbot/rag] index distant injoignable", e); return "fetch"; }
+    if (!r.ok) { console.error("[chatbot/rag] index distant", r.status); return "fetch"; }
+    try { return (await r.json()) as IndexFile; } catch (e) { console.error("[chatbot/rag] index distant illisible", e); return "parse"; }
   }
+  let txt: string;
   try {
-    const file = path.join(process.cwd(), "src/data/chatbot/index-has.json");
-    return JSON.parse(await readFile(file, "utf8")) as IndexFile;
+    txt = await readFile(path.join(process.cwd(), "src/data/chatbot/index-has.json"), "utf8");
   } catch {
-    return null;
+    console.error("[chatbot/rag] ni CHATBOT_INDEX_URL ni index local sur ce déploiement");
+    return "unset";
   }
+  try { return JSON.parse(txt) as IndexFile; } catch (e) { console.error("[chatbot/rag] index local illisible", e); return "parse"; }
 }
 
-function charger(): Promise<Loaded | null> {
-  cache ??= lireIndex().then((file) => {
-    if (!file || file.v !== 1 || !file.chunks?.length) return null;
-    const vecs = file.chunks.map((c) => {
+function charger(): Promise<Loaded | Manque> {
+  cache ??= lireIndex().then((file): Loaded | Manque => {
+    if (typeof file === "string") return file;
+    if (file.v !== 1 || !file.chunks?.length) { console.error("[chatbot/rag] index d'un format inattendu"); return "parse"; }
+    const norms = new Float32Array(file.chunks.length);
+    const vecs = file.chunks.map((c, i) => {
       const raw = Buffer.from(c.e, "base64");
-      const v = new Float32Array(raw.length);
-      let norm = 0;
-      for (let i = 0; i < raw.length; i++) { v[i] = ((raw[i] << 24) >> 24) * c.s; norm += v[i] * v[i]; }
-      norm = Math.sqrt(norm) || 1;
-      for (let i = 0; i < v.length; i++) v[i] /= norm;
+      const v = new Int8Array(raw.buffer.slice(raw.byteOffset, raw.byteOffset + raw.length));
+      let n = 0;
+      for (let j = 0; j < v.length; j++) n += v[j] * v[j];
+      norms[i] = Math.sqrt(n) || 1;
+      c.e = ""; // le base64 n'a plus d'usage : la chaîne est libérée
       return v;
     });
-    return { file, vecs };
-  }).catch(() => null);
-  // Un index absent n'est pas mis en cache : il peut être déposé sans redémarrer.
-  cache.then((l) => { if (!l) cache = null; });
+    return { file, vecs, norms };
+  }).catch((e): Manque => { console.error("[chatbot/rag] index", e); return "parse"; });
+  // Un index absent n'est pas mis en cache : il peut être déposé (ou réparé) sans redémarrer.
+  cache.then((l) => { if (typeof l === "string") cache = null; });
   return cache;
 }
 
@@ -88,7 +96,8 @@ async function plonger(texte: string, key: string): Promise<Float32Array> {
 }
 
 function topK(q: Float32Array, l: Loaded, k: number) {
-  const scores = l.vecs.map((v, i) => { let s = 0; for (let j = 0; j < v.length; j++) s += v[j] * q[j]; return { i, s }; });
+  // Cosinus : l'échelle int8 de chaque bloc s'annule dans la normalisation.
+  const scores = l.vecs.map((v, i) => { let s = 0; for (let j = 0; j < v.length; j++) s += v[j] * q[j]; return { i, s: s / l.norms[i] }; });
   return scores.sort((a, b) => b.s - a.s).slice(0, k).map((x) => l.file.chunks[x.i]);
 }
 
@@ -105,7 +114,10 @@ export async function* ragStream(query: string, lang: Lang): AsyncGenerator<Chat
   const key = process.env.MISTRAL_API_KEY?.trim();
   if (!key || !embedModel() || !chatModel()) { yield { t: "error", detail: t.live.ragOff, code: "unconfigured" }; return; }
   const idx = await charger();
-  if (!idx) { yield { t: "error", detail: t.live.ragNoIndex, code: "no_index" }; return; }
+  if (typeof idx === "string") {
+    yield idx === "unset" ? { t: "error", detail: t.live.ragNoIndex, code: "no_index" } : { t: "error", detail: t.live.ragIndexDown, code: `index_${idx}` };
+    return;
+  }
 
   let blocs: IndexFile["chunks"];
   try {

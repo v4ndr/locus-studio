@@ -151,6 +151,7 @@ const fr = {
   live: {
     error: "Réponse indisponible pour le moment. Réessayez.",
     ragNoIndex: "Index du RAG simple absent sur ce déploiement : cette colonne ne peut pas répondre.",
+    ragIndexDown: "L'index du RAG simple n'a pas pu être chargé. Réessayez dans un instant.",
     ragOff: "RAG simple non configuré sur ce déploiement : cette colonne ne peut pas répondre.",
     ragDown: "Le RAG simple est momentanément indisponible. Réessayez.",
     ragBusy: "Le RAG simple a atteint sa limite de requêtes. Réessayez dans une minute.",
@@ -309,6 +310,7 @@ const en: typeof fr = {
   live: {
     error: "Answer unavailable right now. Try again.",
     ragNoIndex: "The basic RAG index is missing on this deployment: this column cannot answer.",
+    ragIndexDown: "The basic RAG index could not be loaded. Try again in a moment.",
     ragOff: "Basic RAG is not configured on this deployment: this column cannot answer.",
     ragDown: "The basic RAG is temporarily unavailable. Try again.",
     ragBusy: "The basic RAG hit its request limit. Try again in a minute.",
