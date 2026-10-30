@@ -1,11 +1,10 @@
 import { z } from "zod";
-import { retrieveStream } from "@/locus/client.server";
+import { retrieveComplet } from "@/locus/client.server";
 import { compose } from "@/locus/compose/run";
 import { donneesReelles, guardLive } from "@/lib/server/guard";
-import type { PublicRetrieve } from "@/locus/contract";
 import type { ComposeAction, PatientLocalPayload } from "@/locus/compose/contract";
-import type { CarteAide } from "@/data/scribe/consultations";
-import type { DecisionReponse } from "@/data/scribe/live";
+import type { AideDecision, DecisionReponse } from "@/data/scribe/live";
+import { publier, type Payload as Sources } from "@/app/api/chatbot/_lib/citations";
 import { codeDe, erreur } from "../erreur";
 
 export const dynamic = "force-dynamic";
@@ -14,8 +13,12 @@ export const maxDuration = 60;
 /**
  * Aide à la décision et actions, générées en direct à chaque appel depuis le
  * compte rendu relu par le médecin (dictée au micro ou enregistrée) :
- * - Locus (`retrieve`, `app_surface: "studio-scribe"`) avec le compte rendu
- *   en `patient_ehr`, sans orchestration ;
+ * - Locus (`retrieve`, `app_surface: "studio-scribe"`) : une vraie question
+ *   clinique tirée du compte rendu (hypothèses, gravité, examens,
+ *   traitement, suivi), le patient et le compte rendu en `patient_ehr`, sans
+ *   orchestration. La réponse est rendue comme dans l'app B2Pro (portage du
+ *   chatbot, `publier`) : Markdown entier, renvois renumérotés, sources
+ *   citées, degré de confiance. Rien n'est résumé ni coupé ici ;
  * - les actions par le même composeur que le LGC natif IA (écran « note »),
  *   donc le même format (`materialize`) et le même garde-fou d'allergie.
  * Les deux en parallèle. Rien n'est stocké.
@@ -28,6 +31,8 @@ export const maxDuration = 60;
 const Input = z.object({
   note: z.string().trim().min(1).max(20_000),
   motif: z.string().trim().max(200).optional(),
+  /** La ligne patient de la consultation enregistrée (« Mme …, 34 ans ») : seuls le sexe et l'âge en sont lus. */
+  patient: z.string().trim().max(200).optional(),
 }).strict();
 
 
@@ -36,32 +41,55 @@ class EchecFlux extends Error {
   constructor(readonly code: "indisponible" | "echec") { super(code); }
 }
 
-const QUESTION = "Au vu de ce compte rendu de consultation de médecine générale, quelle conduite à tenir diagnostique et thérapeutique ? Signale toute contre-indication.";
-
-const sansMd = (s: string) => s.replace(/\[[^\]]{1,80}\]/g, "").replace(/[*_#>`]/g, "").replace(/\s+/g, " ").replace(/\s+([.,])/g, "$1").trim();
-const phrases = (s: string) => sansMd(s).split(/(?<=[.!?])\s+/).map((x) => x.trim()).filter((x) => x.length > 3);
 const norm = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-const coupe = (s: string, n: number) => (s.length > n ? `${s.slice(0, n - 1).replace(/\s+\S*$/, "")}…` : s);
 
-function carte(p: PublicRetrieve, alerte: string | undefined, titreDefaut: string): CarteAide | null {
-  const court = phrases(p.answerShort || "");
-  const long = p.answer.split(/\n+/).map(sansMd).filter((l) => l.length > 3);
-  if (!court.length && !long.length) return null;
-  const tete = court[0] ?? phrases(p.answer)[0] ?? titreDefaut;
-  const vus = new Set<string>();
-  const sources: string[] = [];
-  for (const d of p.docs) {
-    const lib = coupe([d.source_name, d.title].filter(Boolean).join(" · "), 56);
-    if (lib && !vus.has(lib)) { vus.add(lib); sources.push(lib); }
-    if (sources.length >= 4) break;
-  }
-  return {
-    titre: coupe(tete, 220),
-    detail: coupe(court.slice(1).join(" "), 420),
-    alerte,
-    sources,
-    pourquoi: long.filter((l) => l !== tete).slice(0, 6).map((l) => coupe(l, 320)),
-  };
+/** Le patient en clair : sexe et âge, lus dans la ligne patient puis, à défaut, dans le compte rendu. */
+interface Profil { sexe: "F" | "M" | null; age: number | null; allergies: string[] }
+function profil(note: string, patient?: string): Profil {
+  const p = norm(patient ?? ""), n = norm(note);
+  const sexe = /^(mme|madame)\b/.test(p) ? "F" : /^(m\.|monsieur)\s/.test(p) ? "M"
+    : /\b(patiente|madame|mme|enceinte)\b/.test(n) ? "F" : /\b(patient|monsieur)\b/.test(n) ? "M" : null;
+  const a = Number(/\b(\d{1,3})\s*ans\b/.exec(p)?.[1] ?? /\b(\d{1,3})\s*ans\b/.exec(n)?.[1] ?? NaN);
+  // « allergie à la pénicilline », « allergique aux AINS », « Allergies : … » ; jamais « aucune allergie ».
+  const allergies = [...new Set([...note.matchAll(/(?<!(?:pas d'|aucune |sans )\s?)allergi(?:e|que)s?\s*(?:connues?\s*)?(?::|à l'|à la|au|aux|à)\s*([^;,.()\n]{2,80})/gi)]
+    .map((m) => m[1]!.trim()).filter((a) => !/^(aucune?|pas d|non|ras)\b/i.test(a)))].slice(0, 5);
+  return { sexe, age: a > 0 && a < 120 ? a : null, allergies };
+}
+const quiEst = (x: Profil) => [x.sexe === "F" ? "femme" : x.sexe === "M" ? "homme" : "", x.age ? `${x.age} ans` : ""].filter(Boolean).join(", ");
+
+/** La valeur d'une rubrique du compte rendu (« Conclusion : … »), s'il en a une. */
+const rubrique = (note: string, re: RegExp) => note.split(/\n+/).map((l) => /^([^:]{2,40}):\s*(.+)$/.exec(l.trim())).find((m) => m && re.test(norm(m[1]!)))?.[2]?.trim();
+
+/**
+ * La question posée à Locus : celle que le médecin se pose en fin de
+ * consultation, sur CE patient et CE compte rendu, et non une demande
+ * générique. Le dossier (patient, compte rendu) part en `patient_ehr`.
+ */
+function question(note: string, motif: string | undefined, x: Profil): string {
+  const conclusion = rubrique(note, /conclusion|diagnostic|hypothese|impression/);
+  const chez = x.sexe ? `chez ${x.sexe === "F" ? "une femme" : "un homme"}${x.age ? ` de ${x.age} ans` : ""}` : x.age ? `chez un patient de ${x.age} ans` : "";
+  const cible = [motif && `pour ${motif.toLowerCase()}`, chez].filter(Boolean).join(" ");
+  return [
+    `Consultation de médecine générale${cible ? ` ${cible}` : ""}${conclusion ? `. Conclusion du médecin : ${conclusion}` : ""}.`,
+    "À partir du compte rendu joint, quelle conduite à tenir ? Précise :",
+    "1. les hypothèses diagnostiques à retenir et celles à éliminer ;",
+    "2. les signes de gravité à rechercher, qui changeraient la prise en charge ;",
+    "3. les examens complémentaires utiles, ou leur absence d'indication ;",
+    "4. le traitement recommandé (molécule, posologie, durée), compte tenu des allergies, contre-indications et interactions ;",
+    "5. le suivi : réévaluation, critères pour reconsulter.",
+    "Signale tout écart entre la conduite à tenir du compte rendu et les recommandations.",
+  ].join("\n");
+}
+
+/** Le dossier envoyé à Locus : le patient, puis le compte rendu relu, tel quel. */
+function dossier(note: string, x: Profil): string {
+  const qui = quiEst(x);
+  return [
+    qui && `Patient : ${qui}.`,
+    x.allergies.length ? `Allergies : ${x.allergies.join(", ")}.` : "",
+    "Compte rendu de consultation (médecine générale), relu par le médecin :",
+    note,
+  ].filter(Boolean).join("\n");
 }
 
 /**
@@ -70,15 +98,12 @@ function carte(p: PublicRetrieve, alerte: string | undefined, titreDefaut: strin
  * de ses allergies (le garde-fou d'allergie du composeur en dépend).
  */
 const PATIENT_ID = "loc_scribe";
-function patientFictif(note: string): PatientLocalPayload {
-  const n = norm(note);
-  const age = Number(/\b(\d{1,3})\s*ans\b/.exec(n)?.[1] ?? 45);
-  const annee = new Date().getFullYear() - (age > 0 && age < 120 ? age : 45);
-  const allergies = note.split(/\n+/).filter((l) => /allerg/i.test(l)).map((l) => l.replace(/^[^:]*allergi[^:]*:\s*/i, "").trim()).filter((l) => l && !/^(aucune?|pas d)/i.test(l)).slice(0, 5);
+function patientFictif(x: Profil): PatientLocalPayload {
+  const annee = new Date().getFullYear() - (x.age ?? 45);
   return {
     id: PATIENT_ID, nomUsage: "Fictif", prenomUsuel: "Patient", naissance: `${annee}-01-01`,
-    sexe: /\b(patiente|madame|mme|enceinte)\b/.test(n) ? "F" : "M",
-    antecedents: [], allergies: allergies.map((a) => a.slice(0, 300)), traitements: [], notes: [],
+    sexe: x.sexe ?? "M",
+    antecedents: [], allergies: x.allergies.map((a) => a.slice(0, 300)), traitements: [], notes: [],
   };
 }
 
@@ -99,24 +124,21 @@ export async function POST(req: Request) {
   try { raw = await req.json(); } catch { return Response.json({ error: "Corps illisible : JSON attendu." }, { status: 400 }); }
   const parsed = Input.safeParse(raw);
   if (!parsed.success) return Response.json({ error: "Compte rendu manquant ou trop long." }, { status: 400 });
-  const { note, motif } = parsed.data;
-  const reel = donneesReelles(`${note}\n${motif ?? ""}`);
+  const { note, motif, patient } = parsed.data;
+  const reel = donneesReelles(`${note}\n${motif ?? ""}\n${patient ?? ""}`);
   if (reel) return Response.json({ error: reel, code: "donnees_reelles" }, { status: 422 });
+  const x = profil(note, patient);
 
   // Chaque branche lève à la première erreur de son flux : Promise.all rejette alors l'ensemble.
   const locus = (async () => {
-    let fin: PublicRetrieve | null = null;
-    for await (const ev of retrieveStream({ query: QUESTION, patient_ehr: note, orchestrate: false, mode: "rapide", app_surface: "studio-scribe" })) {
-      if (ev.step === "error") throw new EchecFlux("indisponible");
-      if (ev.step === "done") fin = ev.payload;
-    }
+    const fin = await retrieveComplet({ query: question(note, motif, x), patient_ehr: dossier(note, x), orchestrate: false, mode: "rapide", app_surface: "studio-scribe" });
     // Une réponse simulée (core non configuré) n'est pas une réponse de Locus.
     if (!fin) throw new EchecFlux("indisponible");
-    return fin;
+    return publier(fin as unknown as Sources);
   })();
   const plan = (async () => {
     let actions: ComposeAction[] | null = null;
-    for await (const ev of compose({ texte: "", ecran: "note", note, motif, patientId: PATIENT_ID, patient: patientFictif(note) })) {
+    for await (const ev of compose({ texte: "", ecran: "note", note, motif, patientId: PATIENT_ID, patient: patientFictif(x) })) {
       if (ev.step === "error") throw new EchecFlux("echec");
       if (ev.step === "done") actions = ev.plan.actions;
     }
@@ -125,18 +147,18 @@ export async function POST(req: Request) {
   })();
 
   try {
-    const [p, acts] = await Promise.all([locus, plan]);
+    const [pub, acts] = await Promise.all([locus, plan]);
     const retenues = acts.filter((a) => a.kind !== "naviguer");
     const alerte = retenues.map((a) => a.alerte).filter(Boolean).join(" ; ") || undefined;
-    const c = carte(p, alerte ? `Allergie : ${alerte}` : undefined, "Recommandation");
     const lignes = retenues.map(ligne).slice(0, 12);
-    if (c) {
-      // « Retenir » fait remonter l'action dont un terme précis (molécule, examen) figure dans la recommandation.
-      const rep = norm(p.answer);
-      const i = lignes.findIndex((l) => norm(l).split(/[^a-z0-9-]+/).some((w) => w.length >= 7 && rep.includes(w)));
-      if (i >= 0) c.action = i;
-    }
-    const body: DecisionReponse = { aide: c ? [c] : [], actions: lignes };
+    // Seules les sources que la réponse cite : le reste du pool a été retrouvé, pas utilisé.
+    const aide: AideDecision | null = pub.markdown
+      ? { markdown: pub.markdown, sources: pub.sources.filter((s) => s.cited), confidence: pub.confidence, alerte: alerte ? `Allergie : ${alerte}` : undefined }
+      : null;
+    // Une action est liée à la recommandation quand un terme précis (molécule, examen) y figure.
+    const rep = norm(pub.markdown);
+    const liees = aide ? lignes.flatMap((l, i) => (norm(l).split(/[^a-z0-9-]+/).some((w) => w.length >= 7 && rep.includes(w)) ? [i] : [])) : [];
+    const body: DecisionReponse = { aide, actions: lignes, liees };
     return Response.json(body, { headers: { "Cache-Control": "no-store" } });
   } catch (e) {
     // L'autre branche continue seule : on la laisse finir sans bruit.

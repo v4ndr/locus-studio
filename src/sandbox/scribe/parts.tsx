@@ -1,12 +1,16 @@
 "use client";
 import * as React from "react";
-import { AlertTriangle, Check, ChevronRight, FileAudio, Mic, Pause, Play } from "lucide-react";
+import { AlertTriangle, Check, FileAudio, Mic, Pause, Play } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { Button } from "@/components/ui/button";
 import { Badge, StatusDot } from "@/components/ui/badge";
 import { Box } from "@/components/ui/card";
-import type { CarteAide, RubriqueCr } from "@/data/scribe/consultations";
-import type { ScribeDict } from "@/i18n";
+import type { RubriqueCr } from "@/data/scribe/consultations";
+import type { AideDecision } from "@/data/scribe/live";
+import type { Lang, ScribeDict } from "@/i18n";
+import { Md } from "@/components/md";
+import { LocusMark } from "@/components/shell/locus-mark";
+import { ConfidenceBar, SourceList } from "@/sandbox/chatbot/parts";
 import { LocusMarkMotion } from "@/components/shell/locus-mark-motion";
 
 /* ---------- Stepper numéroté (pas de pastilles) ---------- */
@@ -157,36 +161,29 @@ export function NoteTable({ t, cr, vals, onEdit }: { t: ScribeDict; cr: Rubrique
 
 /* ---------- 3 · Aide à la décision ---------- */
 
-export function AideCard({ t, a, retained, open, onRetain, onWhy }: { t: ScribeDict; a: CarteAide; retained: boolean; open: boolean; onRetain: () => void; onWhy: () => void }) {
+/**
+ * L'aide de Locus, rendue comme dans l'app B2Pro et la colonne Locus du
+ * chatbot (mêmes briques) : le degré de confiance, la réponse en Markdown
+ * entière avec ses renvois `[n]`, puis les seules sources citées, par
+ * nature et par éditeur. Sur la surface Locus (`.locus-surface`) : ses
+ * jetons « sur vert » s'appliquent à tout ce qu'elle contient.
+ */
+export function AideLocus({ t, lang, a }: { t: ScribeDict; lang: Lang; a: AideDecision }) {
   return (
-    <article className={cn("flex flex-col gap-3 rounded-xl border bg-card px-5 py-[18px] shadow-sm transition-colors", retained ? "border-ring" : "border-border")}>
-      <div className="flex flex-wrap items-start gap-4">
-        <div className="flex min-w-0 flex-[1_1_420px] flex-col gap-1">
-          <span className="text-base font-semibold leading-[1.4] tracking-[-.01em]">{a.titre}</span>
-          {a.detail && <span className="text-muted-foreground">{a.detail}</span>}
-        </div>
-        <Button variant={retained ? "primary" : "default"} onClick={onRetain} aria-pressed={retained}>
-          {retained && <Check aria-hidden="true" />}{retained ? t.retained : t.retain}
-        </Button>
-      </div>
+    <article aria-label={t.liveMode.answerTitle} className="locus-surface flex flex-col gap-4 rounded-[20px] px-5 py-5 sm:px-7 sm:py-6">
+      <header className="flex flex-wrap items-center gap-x-3 gap-y-2">
+        <span className="locus-tag"><LocusMark size={14} />Locus</span>
+        <h2 className="m-0 text-lg font-semibold leading-tight tracking-[-.01em]">{t.liveMode.answerTitle}</h2>
+        <p className="m-0 basis-full text-[13px] text-muted-foreground">{t.liveMode.answerBasis}</p>
+      </header>
       {a.alerte && (
-        <div role="note" className="flex items-start gap-2 rounded-md bg-destructive/10 px-3 py-2 text-[13px] text-destructive">
+        <div role="note" className="flex items-start gap-2 rounded-md bg-destructive/15 px-3 py-2 text-[13px] text-foreground">
           <AlertTriangle size={16} aria-hidden="true" className="mt-0.5 shrink-0" /><span>{a.alerte}</span>
         </div>
       )}
-      <div className="flex flex-wrap items-center gap-1.5">
-        {a.sources.map((s) => <Badge key={s} className="bg-muted font-normal text-muted-foreground">{s}</Badge>)}
-        {a.pourquoi.length > 0 && (
-          <Button variant="ghost" size="sm" className="ml-auto text-muted-foreground" onClick={onWhy} aria-expanded={open}>
-            {t.why}<ChevronRight aria-hidden="true" className={cn("transition-transform", open && "rotate-90")} />
-          </Button>
-        )}
-      </div>
-      {open && (
-        <ul className="m-0 flex list-disc flex-col gap-1 rounded-md bg-muted py-3 pl-[30px] pr-3.5 text-muted-foreground">
-          {a.pourquoi.map((w) => <li key={w}>{w}</li>)}
-        </ul>
-      )}
+      <ConfidenceBar lang={lang} c={a.confidence} />
+      <Md text={a.markdown} className="max-w-[78ch]" />
+      <SourceList lang={lang} sources={a.sources} numbered />
     </article>
   );
 }

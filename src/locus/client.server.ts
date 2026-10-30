@@ -1,7 +1,7 @@
 import "server-only";
 import { userAuthHeaders, coreConfig, paths, type CoreConfig } from "./config";
 import { readNdjson } from "./ndjson";
-import { toPublic, type LogicComputeRequest, type LogicComputeResponse, type RetrieveRequest, type RetrieveSpecialite, type RetrieveRubric, type StreamEvent, type StudioStreamEvent, type RetrieveSource } from "./contract";
+import { toPublic, type LogicComputeRequest, type LogicComputeResponse, type RetrieveRequest, type RetrieveResponse, type RetrieveSpecialite, type RetrieveRubric, type StreamEvent, type StudioStreamEvent, type RetrieveSource } from "./contract";
 
 /**
  * Le client locus-core du studio. Toujours côté serveur : la clé `lsk_` ne
@@ -18,7 +18,13 @@ export class CoreIndisponible extends Error {
   constructor(detail = INDISPONIBLE) { super(detail); this.name = "CoreIndisponible"; }
 }
 
-export async function* retrieveStream(req: RetrieveRequest, cfg: CoreConfig = coreConfig()): AsyncGenerator<StudioStreamEvent> {
+/**
+ * Les lignes brutes de `/v2/retrieve/stream`, telles que core les envoie.
+ * Reste côté serveur : la ligne `done` y porte encore les règles (MKU). Une
+ * défaillance (core absent, injoignable, en erreur) sort en ligne `error`
+ * au message unique `INDISPONIBLE`, le détail reste dans les journaux.
+ */
+async function* fluxBrut(req: RetrieveRequest, cfg: CoreConfig): AsyncGenerator<StreamEvent> {
   if (cfg.mode === "absent") {
     console.error("[locus] LOCUS_CORE_URL absent : aucun core configuré");
     yield { step: "error", detail: INDISPONIBLE };
@@ -54,6 +60,17 @@ export async function* retrieveStream(req: RetrieveRequest, cfg: CoreConfig = co
     return;
   }
   for await (const ev of readNdjson<StreamEvent>(res.body)) {
+    if (ev.step === "error") {
+      console.error("[locus] erreur de flux", (ev as { detail?: string }).detail);
+      yield { step: "error", detail: INDISPONIBLE };
+      return;
+    }
+    yield ev;
+  }
+}
+
+export async function* retrieveStream(req: RetrieveRequest, cfg: CoreConfig = coreConfig()): AsyncGenerator<StudioStreamEvent> {
+  for await (const ev of fluxBrut(req, cfg)) {
     switch (ev.step) {
       case "progress":
         yield { step: "progress", etape: String((ev as { etape?: string }).etape ?? "") };
@@ -74,7 +91,6 @@ export async function* retrieveStream(req: RetrieveRequest, cfg: CoreConfig = co
         yield { step: "done", payload: toPublic((ev as { payload: Parameters<typeof toPublic>[0] }).payload, "locus-core") };
         break;
       case "error":
-        console.error("[locus] erreur de flux", (ev as { detail?: string }).detail);
         yield { step: "error", detail: INDISPONIBLE };
         break;
       default:
@@ -82,6 +98,21 @@ export async function* retrieveStream(req: RetrieveRequest, cfg: CoreConfig = co
         break;
     }
   }
+}
+
+/**
+ * La réponse complète de core (la ligne `done`), règles comprises, pour un
+ * appelant serveur qui en tire lui-même une réponse publique (citations
+ * résolues, renumérotées, sans identifiant de règle). `null` si core n'a pas
+ * répondu jusqu'au bout. Ne jamais la renvoyer telle quelle au navigateur.
+ */
+export async function retrieveComplet(req: RetrieveRequest, cfg: CoreConfig = coreConfig()): Promise<RetrieveResponse | null> {
+  for await (const ev of fluxBrut(req, cfg)) {
+    if (ev.step === "error") return null;
+    if (ev.step === "done") return (ev as { payload: RetrieveResponse }).payload ?? null;
+  }
+  console.error("[locus] flux terminé sans ligne done");
+  return null;
 }
 
 /** La fiche d'une spécialité ; `null` si core ne la connaît pas (404). Toute autre défaillance lève `CoreIndisponible`. */
